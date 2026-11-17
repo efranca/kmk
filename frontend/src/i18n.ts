@@ -3,11 +3,12 @@ import { initReactI18next } from "react-i18next";
 
 import en from "./locales/en.json";
 import frCA from "./locales/fr-CA.json";
+import { initialLanguage } from "./lang";
 import ptBR from "./locales/pt-BR.json";
 
-// Default is French (CA); the language becomes per-user in a later phase, so no browser detection yet.
+// Start in the language saved on this browser (set before signing in), otherwise French (CA). After sign-in the user's own language wins.
 void i18next.use(initReactI18next).init({
-  lng: "fr-CA",
+  lng: initialLanguage(),
   fallbackLng: "fr-CA",
   resources: {
     "fr-CA": { translation: frCA },

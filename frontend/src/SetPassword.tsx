@@ -1,12 +1,18 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { setPassword } from "./api";
-import { consumeToken, forgetToken } from "./route";
+import { consumeToken, forgetToken, linkLanguage } from "./route";
 
 export default function SetPassword({ onBack }: { onBack: () => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [token] = useState(() => consumeToken());
+  useEffect(() => {
+    // The emailed link carries the recipient's language: use it for this visit (it is not saved as a preference).
+    const lang = linkLanguage();
+    if (lang) void i18n.changeLanguage(lang);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [password, setPasswordValue] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(token ? null : "invalidLink");

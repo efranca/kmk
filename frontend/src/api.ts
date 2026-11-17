@@ -268,3 +268,18 @@ export const adminAct = (csrf: string, id: number, action: "invite" | "reset" | 
   adminCall(csrf, "POST", `users/${id}/${action}`);
 export const adminSetRole = (csrf: string, id: number, role: "user" | "admin") => adminCall(csrf, "POST", `users/${id}/role`, { role });
 export const adminEdit = (csrf: string, id: number, v: { locale?: string; email?: string }) => adminCall(csrf, "PATCH", `users/${id}`, v);
+
+export async function setLocale(csrfToken: string, locale: string): Promise<{ ok: true; user: User } | { ok: false }> {
+  try {
+    const r = await fetch("/api/auth/locale", {
+      ...base,
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ locale }),
+    });
+    if (!r.ok) return { ok: false };
+    return { ok: true, user: (await r.json()).user };
+  } catch {
+    return { ok: false };
+  }
+}

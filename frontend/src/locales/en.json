@@ -102,5 +102,7 @@
   "errSelf": "You cannot do that to your own account.",
   "errInvalidState": "That action is not possible in the account's current state.",
   "errLastAdmin": "Not possible: at least one active administrator must remain.",
-  "errExists": "That username or email is already in use."
+  "errExists": "That username or email is already in use.",
+  "language": "Language",
+  "langError": "Could not change the language."
 }
