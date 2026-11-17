@@ -1,8 +1,12 @@
 pyproject.toml
 app/__init__.py
+app/config.py
+app/db.py
+app/main.py
 kmk_api.egg-info/PKG-INFO
 kmk_api.egg-info/SOURCES.txt
 kmk_api.egg-info/dependency_links.txt
 kmk_api.egg-info/requires.txt
 kmk_api.egg-info/top_level.txt
 tests/test_health.py
+tests/test_schema_permissions.py
