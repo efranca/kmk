@@ -60,7 +60,7 @@ def render(kind: str, locale: str, link: str, to: str) -> EmailMessage:
     t = _T.get(locale, _T["fr-CA"])
     subject, intro, expiry = t[kind]
     ignore = t["ignore"]
-    text = f"{intro}\n\n{link}\n\n{expiry}\n{ignore}\n\nKMK Entretien Ménager"
+    text = f"{intro}\n\n{link}\n\n{expiry}\n{ignore}\n\nKMK Entretien Ménager, Québec"
     paragraphs = "".join(f"<p>{escape(p)}</p>" for p in intro.split("\n\n"))
     html = (
         '<div style="font-family:Inter,Arial,sans-serif;color:#16242C;max-width:520px">'
@@ -69,11 +69,14 @@ def render(kind: str, locale: str, link: str, to: str) -> EmailMessage:
         f'<p><a href="{escape(link)}" style="color:#007A78;font-weight:600">{escape(link)}</a></p>'
         f"<p>{escape(expiry)}</p>"
         f'<p style="color:#49575F;font-size:14px">{escape(ignore)}</p>'
+        '<p style="color:#49575F;font-size:12px;margin-top:24px">KMK Entretien Ménager, Québec</p>'
         "</div>"
     )
     return EmailMessage(to=to, subject=subject, text=text, html=html)
 
 
-def build_link(settings: Settings, raw_token: str) -> str:
+def build_link(settings: Settings, raw_token: str, locale: str | None = None) -> str:
     # The token is in the URL fragment: browsers never send it to the server, so it stays out of logs and Referer headers.
-    return f"{settings.public_base_url.rstrip('/')}/set-password#token={raw_token}"
+    # The language (not secret) rides along so the set-password page opens in the recipient's language.
+    link = f"{settings.public_base_url.rstrip('/')}/set-password#token={raw_token}"
+    return f"{link}&lang={locale}" if locale else link

@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
+from typing import Literal
+
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -29,6 +31,10 @@ class SetPasswordBody(BaseModel):
     password: str = Field(max_length=1024)
 
 
+class LocaleBody(BaseModel):
+    locale: Literal["fr-CA", "en", "pt-BR"]
+
+
 class ChangePasswordBody(BaseModel):
     current_password: str = Field(max_length=1024)
     new_password: str = Field(max_length=1024)
@@ -39,7 +45,7 @@ def weak_password(problems: list[str]) -> JSONResponse:
 
 
 def queue_email(background: BackgroundTasks, request: Request, settings: Settings, kind: str, user: User, raw_token: str) -> None:
-    message = render(kind, user.locale, build_link(settings, raw_token), user.email)
+    message = render(kind, user.locale, build_link(settings, raw_token, user.locale), user.email)
     background.add_task(sender.deliver, request.app.state.engine, settings, message, user.id)
 
 
@@ -144,3 +150,29 @@ def change_password(
     audit.log(db, "password_changed", actor_user_id=user.id, target_user_id=user.id, ip=ip)
     db.commit()
     return {"status": "ok"}
+
+
+@router.post("/locale")
+def set_locale(
+    body: LocaleBody,
+    request: Request,
+    auth: tuple[User, UserSession] = Depends(guard()),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings_dep),
+):
+    """The signed-in user's own interface and email language."""
+    user, _ = auth
+    old = user.locale
+    if body.locale != old:
+        user.locale = body.locale
+        user.updated_at = datetime.now(timezone.utc)
+        audit.log(
+            db,
+            "locale_changed",
+            actor_user_id=user.id,
+            target_user_id=user.id,
+            ip=request_ip(request, settings),
+            details={"from": old, "to": body.locale},
+        )
+    db.commit()
+    return {"user": service.user_payload(user)}

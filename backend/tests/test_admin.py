@@ -58,7 +58,7 @@ def test_create_user_invites(make_client, add_user, outbox, owner_engine):
     assert len(outbox) == 1
     m = outbox[0]
     assert m.to == "maria@example.com" and "horas" in m.text
-    token = re.search(r"/set-password#token=(\S+)", m.text).group(1)
+    token = re.search(r"/set-password#token=([^&\s]+)", m.text).group(1)
     actor = sql(owner_engine, "SELECT actor_user_id FROM audit_log WHERE action = 'user_invited'")[0][0]
     assert actor == user_id(owner_engine, "boss")
     # the emailed link completes the invite and the new user can sign in
@@ -86,11 +86,11 @@ def test_create_user_validation(make_client, add_user, outbox):
 def test_resend_invite(make_client, add_user, outbox, owner_engine):
     c, h = admin_client(make_client, add_user)
     create(c, h)
-    first = re.search(r"#token=(\S+)", outbox[0].text).group(1)
+    first = re.search(r"#token=([^&\s]+)", outbox[0].text).group(1)
     uid = user_id(owner_engine, "maria")
     r = c.post(f"/api/admin/users/{uid}/invite", headers=h)
     assert (r.status_code, r.json()) == (202, {"status": "ok"})
-    second = re.search(r"#token=(\S+)", outbox[1].text).group(1)
+    second = re.search(r"#token=([^&\s]+)", outbox[1].text).group(1)
     anon = make_client()
     assert anon.post("/api/auth/set-password", json={"token": first, "password": NEW}, headers=ORIGIN).status_code == 400
     assert anon.post("/api/auth/set-password", json={"token": second, "password": NEW}, headers=ORIGIN).status_code == 200
@@ -125,3 +125,9 @@ def test_only_superadmin_can_reset_the_superadmin(make_client, add_user, outbox,
     tok = login(su, "root").json()["csrf_token"]
     assert su.post(f"/api/admin/users/{root_id}/reset", headers={**ORIGIN, "X-CSRF-Token": tok}).status_code == 202
     assert len(outbox) == 1
+
+
+def test_invite_link_carries_the_invitees_language(make_client, add_user, outbox):
+    c, h = admin_client(make_client, add_user)
+    create(c, h)  # locale pt-BR
+    assert re.search(r"#token=\S+&lang=pt-BR", outbox[0].text)

@@ -102,3 +102,15 @@ def test_deliver_never_raises(app_engine, monkeypatch):
 
     monkeypatch.setattr(sender, "send_email", boom)
     sender.deliver(app_engine, make_settings(), message(), None)
+
+
+def test_build_link_can_carry_the_language():
+    s = make_settings(public_base_url="https://x.example")
+    assert build_link(s, "tok", "pt-BR") == "https://x.example/set-password#token=tok&lang=pt-BR"
+    assert build_link(s, "tok", None) == "https://x.example/set-password#token=tok"
+
+
+@pytest.mark.parametrize("kind,locale", list(EXPIRY))
+def test_messages_end_with_the_brand_line(kind, locale):
+    m = render(kind, locale, LINK, "a@b.c")
+    assert "KMK Entretien Ménager, Québec" in m.text and "KMK Entretien Ménager, Québec" in m.html

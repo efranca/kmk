@@ -132,7 +132,7 @@ def test_audit_and_logs_never_hold_secrets(client, make_client, add_user, outbox
     caplog.set_level(logging.DEBUG)
     add_user()
     forgot(client, "alice")
-    token = re.search(r"#token=(\S+)", outbox[0].text).group(1)
+    token = re.search(r"#token=([^&\s]+)", outbox[0].text).group(1)
     assert set_password(client, token).status_code == 200
     csrf = login(client, "alice", NEW).json()["csrf_token"]
     post(client, "/api/auth/change-password", {"current_password": NEW, "new_password": OTHER}, {**ORIGIN, "X-CSRF-Token": csrf})
@@ -156,7 +156,7 @@ def test_admins_can_reset_their_own_password_with_forgot_password(make_client, a
     c = make_client()
     assert forgot(c, "boss").status_code == 202
     assert len(outbox) == 1 and outbox[0].to == "boss@example.com"
-    token = re.search(r"#token=(\S+)", outbox[0].text).group(1)
+    token = re.search(r"#token=([^&\s]+)", outbox[0].text).group(1)
     assert set_password(c, token).status_code == 200
     assert login(make_client(), "boss", PW).status_code == 401  # the old password no longer works
     body = login(make_client(), "boss", NEW).json()
@@ -167,7 +167,55 @@ def test_an_admin_with_two_step_still_needs_the_code_after_a_reset(make_client, 
     add_mfa_user("boss", role="admin")
     c = make_client()
     forgot(c, "boss")
-    token = re.search(r"#token=(\S+)", outbox[0].text).group(1)
+    token = re.search(r"#token=([^&\s]+)", outbox[0].text).group(1)
     assert set_password(c, token).status_code == 200
     body = login(make_client(), "boss", NEW).json()
     assert body["mfa"] == "verify"  # a password reset must never bypass two-step verification
+
+
+# ---- language ----
+
+def locale_call(c, token, value):
+    return post(c, "/api/auth/locale", {"locale": value}, {**ORIGIN, "X-CSRF-Token": token})
+
+
+def test_locale_change(make_client, add_user, owner_engine):
+    add_user("alice", "alice@example.com", locale="fr-CA")
+    add_user("bob", "bob@example.com", locale="fr-CA")
+    c = make_client()
+    token = login(c).json()["csrf_token"]
+    r = locale_call(c, token, "en")
+    assert r.status_code == 200 and r.json()["user"]["locale"] == "en"
+    assert c.get("/api/auth/me").json()["user"]["locale"] == "en"
+    langs = dict(sql(owner_engine, "SELECT username, locale FROM users"))
+    assert langs == {"alice": "en", "bob": "fr-CA"}  # only the caller changed
+    row = sql(owner_engine, "SELECT actor_user_id, target_user_id, details::text FROM audit_log WHERE action = 'locale_changed'")
+    assert len(row) == 1 and row[0][0] == row[0][1] and '"from": "fr-CA"' in row[0][2] and '"to": "en"' in row[0][2]
+    assert locale_call(c, token, "en").status_code == 200  # same value again
+    assert sql(owner_engine, "SELECT count(*) FROM audit_log WHERE action = 'locale_changed'")[0][0] == 1  # no second row
+
+
+def test_locale_validation(client, add_user):
+    add_user()
+    token = login(client).json()["csrf_token"]
+    assert locale_call(client, token, "de").status_code == 422
+    assert post(client, "/api/auth/locale", {}, {**ORIGIN, "X-CSRF-Token": token}).status_code == 422
+
+
+def test_locale_needs_login_and_csrf(client, add_user, make_client):
+    add_user()
+    assert post(make_client(), "/api/auth/locale", {"locale": "en"}).status_code == 401
+    login(client)
+    assert post(client, "/api/auth/locale", {"locale": "en"}).status_code == 403  # no CSRF token
+
+
+def test_next_email_uses_the_new_language(client, add_user, outbox):
+    from app.emails.templates import render
+
+    add_user()
+    token = login(client).json()["csrf_token"]
+    locale_call(client, token, "en")
+    assert forgot(client, "alice").status_code == 202
+    m = outbox[0]
+    assert m.subject == render("reset", "en", "x", "y").subject
+    assert re.search(r"#token=\S+&lang=en", m.text)
