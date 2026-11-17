@@ -267,3 +267,194 @@ def test_scripts_pass_the_bash_syntax_check(script):
     assert (SCRIPTS / script).exists(), f"{script} is missing"
     r = subprocess.run(["bash", "-n", str(SCRIPTS / script)], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
+
+
+# ======================= status check =======================
+
+def write_status_file(setup, **kw):
+    setup.state.mkdir(parents=True, exist_ok=True)
+    data = {"result": "ok", "time": "2026-11-17T02:30:00-05:00", "epoch": str(int(time.time())), "file": "/x/kmk.tar.gpg", "bytes": "1234", "message": "backup written"}
+    data.update({k: str(v) for k, v in kw.items()})
+    (setup.state / "status").write_text("".join(f"{k}={v}\n" for k, v in data.items()))
+
+
+def test_status_fresh_ok(setup):
+    write_status_file(setup)
+    r = run("kmk-backup-status.sh", setup.env)
+    assert r.returncode == 0, r.stderr
+    assert "ok" in r.stdout and "/x/kmk.tar.gpg" in r.stdout
+
+
+def test_status_too_old(setup):
+    write_status_file(setup, epoch=int(time.time()) - 40 * 3600)
+    r = run("kmk-backup-status.sh", setup.env)
+    assert r.returncode == 1 and "old" in (r.stdout + r.stderr).lower()
+    assert run("kmk-backup-status.sh", setup.env, "--max-age-hours", "48").returncode == 0  # the limit is honored
+
+
+def test_status_failed_shows_the_message(setup):
+    write_status_file(setup, result="failed", message="the mount is gone")
+    r = run("kmk-backup-status.sh", setup.env)
+    assert r.returncode == 1 and "the mount is gone" in (r.stdout + r.stderr)
+
+
+def test_status_missing(setup):
+    r = run("kmk-backup-status.sh", setup.env)
+    assert r.returncode == 1 and "no backup" in (r.stdout + r.stderr).lower()
+
+
+def test_status_does_not_modify_the_status_file(setup):
+    write_status_file(setup, result="failed", message="x")
+    before = (setup.state / "status").read_text()
+    run("kmk-backup-status.sh", setup.env)
+    assert (setup.state / "status").read_text() == before
+
+
+# ======================= restore rehearsal =======================
+
+RESTORE_DB = "kmk_restore_test_x"
+
+
+@pytest.fixture
+def backup(setup, add_user):
+    """A real archive made by the backup script, with three users in the source."""
+    for n in ("ann", "bob", "cy"):
+        add_user(n, f"{n}@example.com")
+    assert run("kmk-backup.sh", setup.env).returncode == 0
+    (setup.archive,) = archives(setup)
+    setup.restore_env = {**setup.env, "KMK_RESTORE_DB": RESTORE_DB}
+    yield setup
+    if db_exists(RESTORE_DB):
+        psql(f'DROP DATABASE "{RESTORE_DB}" WITH (FORCE)')
+
+
+def restore(b, *extra, archive=None, key=None):
+    return run("kmk-restore.sh", b.restore_env, str(archive or b.archive), "--private-key", str(key or b.key.private), *extra)
+
+
+def test_restore_into_the_scratch_database(backup):
+    r = restore(backup)
+    assert r.returncode == 0, r.stderr
+    assert "RESTORE OK" in r.stdout
+    assert "rows.users: 3" in r.stdout  # the manifest is shown
+    assert not db_exists(RESTORE_DB)  # dropped afterwards
+    assert list(backup.work.iterdir()) == []  # no plaintext or keyring left behind
+
+
+def test_restore_keep_scratch_leaves_the_restored_data(backup):
+    r = restore(backup, "--keep-scratch")
+    assert r.returncode == 0, r.stderr
+    assert psql("select count(*) from users", RESTORE_DB) == "3"
+
+
+def test_restore_extract_only(backup):
+    out = backup.tmp / "extracted"
+    r = restore(backup, "--extract-only", str(out))
+    assert r.returncode == 0, r.stderr
+    assert sorted(p.name for p in out.iterdir()) == ["MANIFEST.txt", "deploy.env", "kmk.dump"]
+    assert all(oct(p.stat().st_mode)[-3:] == "600" for p in out.iterdir())
+    assert not db_exists(RESTORE_DB)  # extract-only never touches the database
+    assert list(backup.work.iterdir()) == []
+
+
+def test_restore_with_the_wrong_key_fails_cleanly(backup, tmp_path_factory):
+    other_home = tmp_path_factory.mktemp("gnupg_other")
+    other_home.chmod(0o700)
+    env = {**os.environ, "GNUPGHOME": str(other_home)}
+    gpg = ["gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", ""]
+    subprocess.run([*gpg, "--quick-generate-key", "Other <other@example.invalid>", "default", "default", "never"], env=env, check=True, capture_output=True)
+    wrong = other_home / "private.asc"
+    subprocess.run([*gpg, "--export-secret-keys", "--armor", "--output", str(wrong)], env=env, check=True)
+    r = restore(backup, key=wrong)
+    subprocess.run(["gpgconf", "--kill", "all"], env=env)
+    assert r.returncode == 1 and r.stderr.strip()
+    assert not db_exists(RESTORE_DB) and list(backup.work.iterdir()) == []
+
+
+def test_restore_of_a_tampered_archive_fails(backup):
+    data = bytearray(backup.archive.read_bytes())
+    data[len(data) // 2] ^= 0xFF
+    bad = backup.tmp / "tampered.tar.gpg"
+    bad.write_bytes(bytes(data))
+    r = restore(backup, archive=bad)
+    assert r.returncode == 1
+    assert not db_exists(RESTORE_DB) and list(backup.work.iterdir()) == []
+
+
+def test_restore_detects_a_manifest_that_does_not_match_the_data(backup):
+    out = decrypt(backup.archive, backup.key, backup.tmp / "edit")
+    manifest = (out / "MANIFEST.txt").read_text().replace("rows.users: 3", "rows.users: 99")
+    (out / "MANIFEST.txt").write_text(manifest)
+    tampered_tar = backup.tmp / "edited.tar"
+    with tarfile.open(tampered_tar, "w") as t:
+        for name in ("kmk.dump", "deploy.env", "MANIFEST.txt"):
+            t.add(out / name, arcname=name)
+    env = {**os.environ, "GNUPGHOME": str(backup.key.home)}
+    forged = backup.tmp / "forged.tar.gpg"
+    subprocess.run(["gpg", "--batch", "--yes", "--trust-model", "always", "--encrypt", "--recipient", backup.key.fpr, "--output", str(forged), str(tampered_tar)], env=env, check=True, capture_output=True)
+    r = restore(backup, archive=forged)
+    assert r.returncode == 1
+    assert "users" in (r.stdout + r.stderr) and "RESTORE OK" not in r.stdout
+    assert not db_exists(RESTORE_DB)
+
+
+def test_restore_never_touches_the_backup_status_file(backup):
+    before = (backup.state / "status").read_text()
+    restore(backup, archive=backup.tmp / "does-not-exist.tar.gpg")  # a failing restore
+    assert (backup.state / "status").read_text() == before
+
+
+# ======================= key ceremony =======================
+
+def keygen(setup, *extra, private=None, public=None):
+    env = {**setup.env, "KMK_KEYGEN_TEST_NOPASS": "1"}
+    private = private or setup.tmp / "private.asc"
+    public = public or setup.tmp / "recipient.pub.asc"
+    r = run("make-backup-key.sh", env, "--private-out", str(private), "--public-out", str(public), *extra)
+    return r, private, public
+
+
+def test_key_ceremony_roundtrip(setup):
+    r, private, public = keygen(setup)
+    assert r.returncode == 0, r.stderr
+    assert oct(private.stat().st_mode)[-3:] == "600"
+    assert public.exists() and "BEGIN PGP PUBLIC KEY BLOCK" in public.read_text()
+    assert "BEGIN PGP PRIVATE KEY BLOCK" not in public.read_text()
+    shown = subprocess.run(["gpg", "--show-keys", "--with-colons", str(public)], capture_output=True, text=True).stdout
+    fpr = next(line.split(":")[9] for line in shown.splitlines() if line.startswith("fpr:"))
+    assert fpr in r.stdout  # the fingerprint is printed
+    assert list(setup.work.iterdir()) == []  # the temporary keyring is gone
+
+    # encrypt with only the public key, decrypt with only the private key
+    pub_home, priv_home = setup.tmp / "g_pub", setup.tmp / "g_priv"
+    for h in (pub_home, priv_home):
+        h.mkdir(mode=0o700)
+    sample = setup.tmp / "sample.txt"
+    sample.write_text("hello backups")
+    pub_env, priv_env = {**os.environ, "GNUPGHOME": str(pub_home)}, {**os.environ, "GNUPGHOME": str(priv_home)}
+    subprocess.run(["gpg", "--batch", "--import", str(public)], env=pub_env, check=True, capture_output=True)
+    enc = setup.tmp / "sample.gpg"
+    subprocess.run(["gpg", "--batch", "--trust-model", "always", "--encrypt", "--recipient", fpr, "--output", str(enc), str(sample)], env=pub_env, check=True, capture_output=True)
+    cant = subprocess.run(["gpg", "--batch", "--decrypt", str(enc)], env=pub_env, capture_output=True)
+    assert cant.returncode != 0  # the public keyring cannot read it
+    subprocess.run(["gpg", "--batch", "--import", str(private)], env=priv_env, check=True, capture_output=True)
+    plain = subprocess.run(["gpg", "--batch", "--decrypt", str(enc)], env=priv_env, capture_output=True, text=True)
+    assert plain.stdout == "hello backups"
+    for env in (pub_env, priv_env):
+        subprocess.run(["gpgconf", "--kill", "all"], env=env)
+
+
+def test_key_ceremony_refuses_to_overwrite(setup):
+    r, private, public = keygen(setup)
+    assert r.returncode == 0
+    before_private, before_public = private.read_bytes(), public.read_bytes()
+    again, _, _ = keygen(setup, private=private, public=setup.tmp / "other.pub.asc")
+    assert again.returncode == 1 and private.read_bytes() == before_private
+    again, _, _ = keygen(setup, private=setup.tmp / "second.asc", public=public)  # would replace the recipient: refused
+    assert again.returncode == 1 and public.read_bytes() == before_public
+    assert not (setup.tmp / "second.asc").exists()
+
+
+def test_key_ceremony_requires_a_private_out_path(setup):
+    r = run("make-backup-key.sh", {**setup.env, "KMK_KEYGEN_TEST_NOPASS": "1"})
+    assert r.returncode != 0

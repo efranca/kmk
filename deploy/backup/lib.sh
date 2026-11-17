@@ -47,10 +47,10 @@ write_status() {
   if dest_reachable; then cp -f "$KMK_BACKUP_STATE_DIR/status" "$KMK_BACKUP_DEST/STATUS" 2>/dev/null || true; fi
 }
 
-# fail MESSAGE: report, record a failed status, stop.
+# fail MESSAGE: report, record a failed backup status (unless KMK_LIB_RECORD_STATUS=0, as the restore script sets), stop.
 fail() {
   log "ERROR: $*"
-  write_status failed "$*" || true
+  if [[ "${KMK_LIB_RECORD_STATUS:-1}" == 1 ]]; then write_status failed "$*" || true; fi
   exit 1
 }
 
