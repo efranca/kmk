@@ -10,6 +10,21 @@ services:
     restart: unless-stopped
     network_mode: host   # reaches the shared Postgres on 127.0.0.1:5432; listens on 127.0.0.1:8001 only
     env_file: .env
+    logging:   # keep log files bounded: 5 files of 10 MB at most per container
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/api/health', timeout=3).status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   caddy:
     image: caddy:2.10.2
@@ -18,6 +33,17 @@ services:
     network_mode: host
     depends_on:
       - api
+    logging:   # keep log files bounded: 5 files of 10 MB at most per container
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null --header='Host: app.kmk-entretien.ca' http://127.0.0.1:8081/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ../frontend/dist:/srv/site:ro
