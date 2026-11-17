@@ -6,7 +6,9 @@ export type User = {
   locale: "fr-CA" | "en" | "pt-BR";
 };
 
-export type Session = { user: User; csrfToken: string };
+export type MfaState = "ok" | "verify" | "setup";
+
+export type Session = { user: User; csrfToken: string; mfa: MfaState; mfaEnabled: boolean };
 
 export type LoginResult =
   | ({ ok: true } & Session)
@@ -19,7 +21,7 @@ export async function me(): Promise<Session | null> {
     const r = await fetch("/api/auth/me", base);
     if (!r.ok) return null;
     const body = await r.json();
-    return { user: body.user, csrfToken: body.csrf_token };
+    return { user: body.user, csrfToken: body.csrf_token, mfa: body.mfa ?? "ok", mfaEnabled: body.mfa_enabled ?? false };
   } catch {
     return null;
   }
@@ -36,7 +38,7 @@ export async function login(identifier: string, password: string): Promise<Login
     if (r.status === 429) return { ok: false, reason: "rate_limited" };
     if (!r.ok) return { ok: false, reason: "invalid" };
     const body = await r.json();
-    return { ok: true, user: body.user, csrfToken: body.csrf_token };
+    return { ok: true, user: body.user, csrfToken: body.csrf_token, mfa: body.mfa ?? "ok", mfaEnabled: body.mfa_enabled ?? false };
   } catch {
     return { ok: false, reason: "network" };
   }
@@ -111,3 +113,89 @@ export async function changePassword(csrfToken: string, current: string, next: s
     return { ok: false, reason: "network" };
   }
 }
+
+// ---- two-step verification (TOTP) ----
+
+function mfaPost(csrfToken: string, path: string, body: unknown) {
+  return fetch(`/api/auth/mfa/${path}`, {
+    ...base,
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+    body: JSON.stringify(body),
+  });
+}
+
+type MfaFailure = "invalid_code" | "rate_limited" | "unavailable" | "network";
+
+export async function mfaSetup(
+  csrfToken: string,
+): Promise<{ ok: true; secret: string; otpauthUri: string } | { ok: false; reason: "unavailable" | "network" }> {
+  try {
+    const r = await mfaPost(csrfToken, "setup", {});
+    if (r.status === 503) return { ok: false, reason: "unavailable" };
+    if (!r.ok) return { ok: false, reason: "network" };
+    const body = await r.json();
+    return { ok: true, secret: body.secret, otpauthUri: body.otpauth_uri };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+export async function mfaEnable(
+  csrfToken: string,
+  code: string,
+): Promise<{ ok: true; recoveryCodes: string[] } | { ok: false; reason: MfaFailure }> {
+  try {
+    const r = await mfaPost(csrfToken, "enable", { code });
+    if (r.ok) return { ok: true, recoveryCodes: (await r.json()).recovery_codes };
+    if (r.status === 403) return { ok: false, reason: "invalid_code" };
+    if (r.status === 429) return { ok: false, reason: "rate_limited" };
+    if (r.status === 503) return { ok: false, reason: "unavailable" };
+    return { ok: false, reason: "network" };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+export async function mfaVerify(
+  csrfToken: string,
+  input: { code: string } | { recoveryCode: string },
+): Promise<{ ok: true; remaining: number } | { ok: false; reason: MfaFailure }> {
+  try {
+    const body = "code" in input ? { code: input.code } : { recovery_code: input.recoveryCode };
+    const r = await mfaPost(csrfToken, "verify", body);
+    if (r.ok) return { ok: true, remaining: (await r.json()).recovery_codes_remaining ?? 0 };
+    if (r.status === 403) return { ok: false, reason: "invalid_code" };
+    if (r.status === 429) return { ok: false, reason: "rate_limited" };
+    if (r.status === 503) return { ok: false, reason: "unavailable" };
+    return { ok: false, reason: "network" };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+export type ConfirmedResult =
+  | { ok: true; recoveryCodes?: string[] }
+  | { ok: false; reason: "wrong_password" | "invalid_code" | "mandatory" | "rate_limited" | "unavailable" | "network" };
+
+async function confirmed(csrfToken: string, path: string, password: string, code: string): Promise<ConfirmedResult> {
+  try {
+    const r = await mfaPost(csrfToken, path, { password, code });
+    if (r.ok) return { ok: true, recoveryCodes: (await r.json()).recovery_codes };
+    if (r.status === 429) return { ok: false, reason: "rate_limited" };
+    if (r.status === 503) return { ok: false, reason: "unavailable" };
+    if (r.status === 403) {
+      const error = (await r.json().catch(() => ({}))).error;
+      if (error === "mfa_mandatory") return { ok: false, reason: "mandatory" };
+      if (error === "invalid_current_password") return { ok: false, reason: "wrong_password" };
+      return { ok: false, reason: "invalid_code" };
+    }
+    return { ok: false, reason: "network" };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+export const mfaDisable = (csrfToken: string, password: string, code: string) => confirmed(csrfToken, "disable", password, code);
+export const mfaRegenerate = (csrfToken: string, password: string, code: string) =>
+  confirmed(csrfToken, "recovery-codes/regenerate", password, code);
