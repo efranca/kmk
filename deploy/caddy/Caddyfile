@@ -1,0 +1,30 @@
+# app.kmk-entretien.ca: static site behind the Cloudflare Tunnel (same pattern as famillai).
+# cloudflared (the famillai one) forwards https://app.kmk-entretien.ca to http://localhost:8081.
+# The listener is bound to loopback, so only cloudflared can reach it.
+{
+	admin off
+	auto_https disable_redirects
+
+	servers 127.0.0.1:8081 {
+		trusted_proxies static 127.0.0.1/32 ::1/128
+		client_ip_headers Cf-Connecting-Ip
+	}
+}
+
+http://app.kmk-entretien.ca:8081 {
+	bind 127.0.0.1
+	encode zstd gzip
+	log
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'"
+		-Server
+	}
+
+	root * /srv/site
+	file_server
+}

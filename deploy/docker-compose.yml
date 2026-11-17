@@ -1,0 +1,18 @@
+name: kmk
+
+# app.kmk-entretien.ca: Caddy on 127.0.0.1:8081, reached through the existing Cloudflare Tunnel
+# (Zero Trust public hostname -> http://localhost:8081). Independent of famillai.
+services:
+  caddy:
+    image: caddy:2.10.2
+    container_name: kmk-caddy
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./site:/srv/site:ro
+      - caddy_data:/data
+
+volumes:
+  caddy_data:
+    name: kmk_caddy_data
