@@ -21,7 +21,7 @@ and the go-live runbook with an incident playbook. See [security-review.md](secu
 **What is still to do, by the owner (everything is listed with how to check it in [golive.md](golive.md), section 1):** run the key ceremony and store the private key and passphrase in the password manager; the first backup and a restore rehearsal; switch email to Resend and test deliverability;
 enroll the super admin in two-step verification; decide on `MFA_REQUIRED_ROLES` before inviting any admin; optionally an uptime monitor; a Portuguese review; then the pilot and the invitations.
 
-**Future steps:** an off-site copy of the encrypted backups (the destination is on the same SSD as the system), a Cloudflare rate-limit rule in front of `/api/auth/*`, uptime monitoring, the privacy-law review before customer records, and the minor review findings below.
+**Future steps:** passkeys (the preferred long-term alternative to passwords, see [decisions.md](decisions.md) D2), an off-site copy of the encrypted backups (the destination is on the same SSD as the system), a Cloudflare rate-limit rule in front of `/api/auth/*`, uptime monitoring, the privacy-law review before customer records, and the minor review findings below.
 
 ## Minor findings from the independent review (phase 6), not yet fixed
 

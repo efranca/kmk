@@ -19,6 +19,7 @@ In production the server (uvicorn) also applies its own standard proxy-header ha
 
 ## Passwords
 
+- The password is sent as typed, protected by HTTPS (it is visible in the user's own browser tools, which is normal); why it is not encrypted again in the browser, and the passkey option, are in [decisions.md](decisions.md) (D1, D2).
 - Argon2id (`argon2-cffi` defaults); hashes are upgraded on login if the parameters age. Each Argon2 call uses 64 MiB, so at most 4 run at once (the rest wait) to bound memory under a burst. Rules: at least 8 characters with letters, digits and special characters (`validate_password_rules`). Maximum length 1024 (longer is rejected before hashing).
 - Login accepts username or email, case-insensitively. Every failure (wrong password, unknown user, disabled, deleted or not-yet-active account) returns the same `401` body, and an unknown user still costs one Argon2 verification so timing does not reveal accounts.
 - Accounts are created only by an admin (invite) or the server command; there is no sign-up.

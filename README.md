@@ -12,6 +12,7 @@ features (customer records, AI tools); see [docs/roadmap.md](docs/roadmap.md).
 | --- | --- |
 | Understand the system and its status | [docs/README.md](docs/README.md) |
 | Run, deploy, back up or fix it | [docs/operations.md](docs/operations.md) |
+| Know why things were decided | [docs/decisions.md](docs/decisions.md) |
 | Know how it is secured (and what was reviewed) | [docs/security.md](docs/security.md), [docs/security-review.md](docs/security-review.md) |
 | Go live, or handle an incident | [docs/golive.md](docs/golive.md) |
 | See what is next | [docs/roadmap.md](docs/roadmap.md) |

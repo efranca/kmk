@@ -6,6 +6,7 @@ What this is: the internal app for KMK Entretien Ménager at https://app.kmk-ent
 | Document | Contents |
 | --- | --- |
 | [operations.md](operations.md) | Runbook: deploy, settings, database, CLI, backups, email, MFA switch, troubleshooting |
+| [decisions.md](decisions.md) | The decision log: what was decided, why, what was rejected, when to revisit |
 | [security.md](security.md) | The security model as implemented, accepted risks, what is not covered |
 | [security-review.md](security-review.md) | The checklist with live evidence and the independent review (findings and what was fixed) |
 | [golive.md](golive.md) | Pre-flight checklist, pilot, inviting everyone, routine, incident runbook, audit-log queries |
