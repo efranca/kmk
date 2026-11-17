@@ -56,3 +56,19 @@ h1 {
 .status::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; background: var(--slate); }
 .status.ok::before { background: var(--teal); }
 .status.down::before { background: #a3261f; }
+
+/* login form */
+.form { display: grid; gap: 14px; text-align: left; margin-top: 16px; }
+label { display: grid; gap: 6px; font-size: 0.9rem; color: var(--slate); }
+input {
+  font: inherit; font-size: 1rem; color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
+}
+input:focus-visible, button:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+button {
+  font: inherit; font-weight: 600; cursor: pointer; margin-top: 4px;
+  color: #fff; background: var(--pine); border: 0; border-radius: 999px; padding: 12px 22px;
+}
+button:hover:not(:disabled) { background: var(--pine-dk); }
+button:disabled { opacity: 0.6; cursor: default; }
+.error { margin: 0; color: #a3261f; font-size: 0.9rem; }

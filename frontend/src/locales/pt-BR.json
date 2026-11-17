@@ -1,1 +1,16 @@
-{ "title": "Em construção", "apiOk": "Serviço online", "apiDown": "Serviço indisponível" }
+{
+  "signInTitle": "Entrar",
+  "identifier": "Usuário ou e-mail",
+  "password": "Senha",
+  "signIn": "Entrar",
+  "signOut": "Sair",
+  "welcome": "Olá, {{name}}",
+  "roleLabel": "Função",
+  "role_user": "Usuário",
+  "role_admin": "Administrador",
+  "role_superadmin": "Superadministrador",
+  "invalidCredentials": "Credenciais inválidas.",
+  "tooManyAttempts": "Muitas tentativas. Tente novamente em alguns minutos.",
+  "networkError": "Não foi possível conectar. Tente novamente.",
+  "checking": "Carregando…"
+}

@@ -1,1 +1,16 @@
-{ "title": "Under Construction", "apiOk": "Service online", "apiDown": "Service unavailable" }
+{
+  "signInTitle": "Sign in",
+  "identifier": "Username or email",
+  "password": "Password",
+  "signIn": "Sign in",
+  "signOut": "Sign out",
+  "welcome": "Hello, {{name}}",
+  "roleLabel": "Role",
+  "role_user": "User",
+  "role_admin": "Administrator",
+  "role_superadmin": "Super administrator",
+  "invalidCredentials": "Invalid credentials.",
+  "tooManyAttempts": "Too many attempts. Try again in a few minutes.",
+  "networkError": "Unable to connect. Try again.",
+  "checking": "Loading…"
+}

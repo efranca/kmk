@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
@@ -7,8 +7,30 @@ import en from "./locales/en.json";
 import frCA from "./locales/fr-CA.json";
 import ptBR from "./locales/pt-BR.json";
 
+const alice = { id: 1, username: "alice", email: "alice@example.com", role: "admin", locale: "fr-CA" };
+const json = (status: number, body: unknown) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
+
+type Handler = (init?: RequestInit) => unknown;
+function mockApi(h: { me?: Handler; login?: Handler; logout?: Handler }) {
+  const fn = vi.fn(async (url: string, init?: RequestInit) => {
+    const route = `${init?.method ?? "GET"} ${url}`;
+    if (route === "GET /api/auth/me") return (h.me ?? (() => json(401, { error: "unauthenticated" })))(init);
+    if (route === "POST /api/auth/login") return (h.login ?? (() => json(401, {})))(init);
+    if (route === "POST /api/auth/logout") return (h.logout ?? (() => ({ ok: true, status: 204 })))(init);
+    throw new Error(`unexpected ${route}`);
+  });
+  vi.stubGlobal("fetch", fn);
+  return fn;
+}
+
+function fillAndSubmit(identifier = "alice", password = "pw") {
+  fireEvent.change(screen.getByLabelText(frCA.identifier), { target: { value: identifier } });
+  fireEvent.change(screen.getByLabelText(frCA.password), { target: { value: password } });
+  fireEvent.click(screen.getByRole("button", { name: frCA.signIn }));
+}
+
 beforeEach(() => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+  mockApi({});
 });
 afterEach(async () => {
   cleanup();
@@ -16,32 +38,58 @@ afterEach(async () => {
 });
 
 describe("App", () => {
-  it("renders the French title by default", async () => {
+  it("shows the login form when there is no session", async () => {
     render(<App />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("En construction");
-    await waitFor(() => expect(screen.getByText(frCA.apiOk)).toBeInTheDocument());
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Connexion");
+    expect(screen.getByLabelText(frCA.password)).toHaveAttribute("type", "password");
+  });
+
+  it("signs in and switches to the user's language", async () => {
+    mockApi({ login: () => json(200, { user: { ...alice, locale: "en" }, csrf_token: "tok" }) });
+    render(<App />);
+    await screen.findByLabelText(frCA.identifier);
+    fillAndSubmit();
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Hello, alice"));
+    expect(screen.getByRole("button", { name: en.signOut })).toBeInTheDocument();
   });
 
   it.each([
-    ["en", "Under Construction"],
-    ["pt-BR", "Em construção"],
-  ])("renders %s after changeLanguage", async (lng, title) => {
-    await act(() => i18n.changeLanguage(lng));
+    [401, frCA.invalidCredentials],
+    [429, frCA.tooManyAttempts],
+  ])("shows the right message for a %s", async (status, message) => {
+    mockApi({ login: () => json(status, {}) });
     render(<App />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(title);
-    expect(document.title).toBe(title);
+    await screen.findByLabelText(frCA.identifier);
+    fillAndSubmit();
+    expect(await screen.findByText(message)).toBeInTheDocument();
   });
 
-  it("shows apiDown when the health call rejects", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("down")));
+  it("shows a network error when the request fails", async () => {
+    mockApi({
+      login: () => {
+        throw new Error("offline");
+      },
+    });
     render(<App />);
-    await waitFor(() => expect(screen.getByText(frCA.apiDown)).toBeInTheDocument());
+    await screen.findByLabelText(frCA.identifier);
+    fillAndSubmit();
+    expect(await screen.findByText(frCA.networkError)).toBeInTheDocument();
   });
 
-  it("shows apiDown when the health call is not ok", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+  it("goes straight to the signed-in page when a session exists", async () => {
+    mockApi({ me: () => json(200, { user: alice, csrf_token: "tok" }) });
     render(<App />);
-    await waitFor(() => expect(screen.getByText(frCA.apiDown)).toBeInTheDocument());
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Bonjour, alice");
+    expect(screen.getByText(new RegExp(frCA.role_admin))).toBeInTheDocument();
+  });
+
+  it("logs out with the CSRF token and returns to the form", async () => {
+    const fn = mockApi({ me: () => json(200, { user: alice, csrf_token: "tok-123" }) });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: frCA.signOut }));
+    await waitFor(() => expect(screen.getByLabelText(frCA.identifier)).toBeInTheDocument());
+    const call = fn.mock.calls.find(([u, i]) => u === "/api/auth/logout" && i?.method === "POST")!;
+    expect((call[1]!.headers as Record<string, string>)["X-CSRF-Token"]).toBe("tok-123");
   });
 
   it("all locale files define the same keys", () => {

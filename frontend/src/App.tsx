@@ -1,34 +1,57 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-type Status = "checking" | "ok" | "down";
+import { logout, me, type Session } from "./api";
+import LoginForm from "./LoginForm";
+import SignedIn from "./SignedIn";
+
+type State = { kind: "checking" } | { kind: "anon" } | { kind: "auth"; session: Session };
 
 export default function App() {
   const { t, i18n } = useTranslation();
-  const [status, setStatus] = useState<Status>("checking");
+  const [state, setState] = useState<State>({ kind: "checking" });
 
   useEffect(() => {
-    document.title = t("title");
+    document.title = "KMK Entretien Ménager";
+  }, []);
+
+  useEffect(() => {
     document.documentElement.lang = i18n.language;
-  }, [t, i18n.language]);
+  }, [i18n.language]);
 
   useEffect(() => {
     let alive = true;
-    fetch("/api/health")
-      .then((r) => alive && setStatus(r.ok ? "ok" : "down"))
-      .catch(() => alive && setStatus("down"));
+    me().then((session) => {
+      if (!alive) return;
+      if (session) {
+        void i18n.changeLanguage(session.user.locale);
+        setState({ kind: "auth", session });
+      } else {
+        setState({ kind: "anon" });
+      }
+    });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [i18n]);
+
+  function signedIn(session: Session) {
+    void i18n.changeLanguage(session.user.locale);
+    setState({ kind: "auth", session });
+  }
+
+  async function signOut() {
+    if (state.kind === "auth") await logout(state.session.csrfToken);
+    void i18n.changeLanguage("fr-CA");
+    setState({ kind: "anon" });
+  }
 
   return (
     <main className="card">
       <img className="logo" src="/logo-horizontal.png" alt="KMK Entretien Ménager" width="300" height="100" />
-      <h1>{t("title")}</h1>
-      {status !== "checking" && (
-        <p className={`status ${status}`}>{t(status === "ok" ? "apiOk" : "apiDown")}</p>
-      )}
+      {state.kind === "checking" && <p className="status">{t("checking")}</p>}
+      {state.kind === "anon" && <LoginForm onSignedIn={signedIn} />}
+      {state.kind === "auth" && <SignedIn user={state.session.user} onSignOut={signOut} />}
     </main>
   );
 }
