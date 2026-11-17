@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { login, type Session } from "./api";
 
-export default function LoginForm({ onSignedIn }: { onSignedIn: (s: Session) => void }) {
+export default function LoginForm({ onSignedIn, onForgot }: { onSignedIn: (s: Session) => void; onForgot: () => void }) {
   const { t } = useTranslation();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -39,6 +39,9 @@ export default function LoginForm({ onSignedIn }: { onSignedIn: (s: Session) => 
         {error && <p className="error" role="alert">{t(error)}</p>}
         <button type="submit" disabled={busy}>{t("signIn")}</button>
       </form>
+      <p>
+        <a href="/forgot-password" onClick={(e) => { e.preventDefault(); onForgot(); }}>{t("forgotPasswordLink")}</a>
+      </p>
     </>
   );
 }

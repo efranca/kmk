@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { logout, me, type Session } from "./api";
+import ForgotPassword from "./ForgotPassword";
 import LoginForm from "./LoginForm";
+import { useRoute } from "./route";
+import SetPassword from "./SetPassword";
 import SignedIn from "./SignedIn";
 
 type State = { kind: "checking" } | { kind: "anon" } | { kind: "auth"; session: Session };
@@ -10,6 +13,7 @@ type State = { kind: "checking" } | { kind: "anon" } | { kind: "auth"; session: 
 export default function App() {
   const { t, i18n } = useTranslation();
   const [state, setState] = useState<State>({ kind: "checking" });
+  const { path, navigate } = useRoute();
 
   useEffect(() => {
     document.title = "KMK Entretien Ménager";
@@ -51,9 +55,17 @@ export default function App() {
   return (
     <main className="card">
       <img className="logo" src="/logo-horizontal.png" alt="KMK Entretien Ménager" width="300" height="100" />
-      {state.kind === "checking" && <p className="status">{t("checking")}</p>}
-      {state.kind === "anon" && <LoginForm onSignedIn={signedIn} />}
-      {state.kind === "auth" && <SignedIn user={state.session.user} onSignOut={signOut} />}
+      {path === "/set-password" ? (
+        <SetPassword onBack={() => navigate("/")} />
+      ) : path === "/forgot-password" ? (
+        <ForgotPassword onBack={() => navigate("/")} />
+      ) : (
+        <>
+          {state.kind === "checking" && <p className="status">{t("checking")}</p>}
+          {state.kind === "anon" && <LoginForm onSignedIn={signedIn} onForgot={() => navigate("/forgot-password")} />}
+          {state.kind === "auth" && <SignedIn user={state.session.user} csrfToken={state.session.csrfToken} onSignOut={signOut} />}
+        </>
+      )}
     </main>
   );
 }

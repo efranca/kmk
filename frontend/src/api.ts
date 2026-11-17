@@ -49,3 +49,65 @@ export async function logout(csrfToken: string): Promise<void> {
     // The session cookie may still be valid; the UI returns to the login form regardless.
   }
 }
+
+export async function forgotPassword(identifier: string): Promise<"ok" | "rate_limited" | "network"> {
+  try {
+    const r = await fetch("/api/auth/forgot-password", {
+      ...base,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier }),
+    });
+    if (r.status === 429) return "rate_limited";
+    return r.ok ? "ok" : "network";
+  } catch {
+    return "network";
+  }
+}
+
+export type SetPasswordResult =
+  | { ok: true }
+  | { ok: false; reason: "invalid_token" | "weak" | "rate_limited" | "network" };
+
+export async function setPassword(token: string, password: string): Promise<SetPasswordResult> {
+  try {
+    const r = await fetch("/api/auth/set-password", {
+      ...base,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, password }),
+    });
+    if (r.ok) return { ok: true };
+    if (r.status === 400) return { ok: false, reason: "invalid_token" };
+    if (r.status === 422) return { ok: false, reason: "weak" };
+    if (r.status === 429) return { ok: false, reason: "rate_limited" };
+    return { ok: false, reason: "network" };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+export type ChangePasswordResult =
+  | { ok: true }
+  | { ok: false; reason: "wrong_password" | "weak" | "same" | "rate_limited" | "network" };
+
+export async function changePassword(csrfToken: string, current: string, next: string): Promise<ChangePasswordResult> {
+  try {
+    const r = await fetch("/api/auth/change-password", {
+      ...base,
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ current_password: current, new_password: next }),
+    });
+    if (r.ok) return { ok: true };
+    if (r.status === 403) return { ok: false, reason: "wrong_password" };
+    if (r.status === 429) return { ok: false, reason: "rate_limited" };
+    if (r.status === 422) {
+      const body = await r.json().catch(() => ({}));
+      return { ok: false, reason: body.error === "same_password" ? "same" : "weak" };
+    }
+    return { ok: false, reason: "network" };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
