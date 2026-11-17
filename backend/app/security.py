@@ -1,21 +1,29 @@
 import hashlib
 import hmac
 import ipaddress
+import os
 import secrets
+import threading
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
 _hasher = PasswordHasher()  # Argon2id with the library's RFC 9106 low-memory defaults
 
+# Each Argon2 call uses 64 MiB. However many requests arrive, only a few run at once (the rest wait their turn), so a
+# burst of logins cannot use gigabytes of memory on this shared machine.
+_ARGON2_SLOTS = threading.BoundedSemaphore(int(os.environ.get("KMK_ARGON2_CONCURRENCY", "4")))
+
 
 def hash_password(password: str) -> str:
-    return _hasher.hash(password)
+    with _ARGON2_SLOTS:
+        return _hasher.hash(password)
 
 
 def verify_password(password_hash: str, password: str) -> bool:
     try:
-        return _hasher.verify(password_hash, password)
+        with _ARGON2_SLOTS:
+            return _hasher.verify(password_hash, password)
     except (VerificationError, InvalidHashError):
         return False
 

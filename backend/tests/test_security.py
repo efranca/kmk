@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app.security import (
     DUMMY_HASH,
     client_ip,
@@ -52,3 +54,39 @@ def test_client_ip():
     assert client_ip("127.0.0.1", "not-an-ip", trusted) == "127.0.0.1"
     assert client_ip("127.0.0.1", None, trusted) == "127.0.0.1"
     assert client_ip("127.0.0.1", " 2001:db8::1 ", trusted) == "2001:db8::1"
+
+
+# ---- review F5: Argon2 uses 64 MiB per call; never run more than a few at once ----
+
+def test_argon2_work_is_capped_in_parallel(monkeypatch):
+    import threading
+    import time
+
+    from app import security
+
+    state = {"now": 0, "max": 0}
+    lock = threading.Lock()
+
+    def slow_verify(*args, **kwargs):
+        with lock:
+            state["now"] += 1
+            state["max"] = max(state["max"], state["now"])
+        time.sleep(0.05)
+        with lock:
+            state["now"] -= 1
+        return True
+
+    class SlowHasher:
+        verify = staticmethod(slow_verify)
+
+    monkeypatch.setattr(security, "_hasher", SlowHasher())
+    threads = [threading.Thread(target=security.verify_password, args=("hash", "pw")) for _ in range(16)]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    assert 1 <= state["max"] <= 4  # at most 4 x 64 MiB at any moment, however many requests arrive
+
+
+def test_the_proxy_limits_request_bodies_for_the_api():
+    caddyfile = (Path(__file__).resolve().parents[2] / "deploy" / "caddy" / "Caddyfile").read_text()
+    api_block = caddyfile[caddyfile.index("handle /api/*"):caddyfile.index("# Missing assets")]
+    assert "request_body" in api_block and "max_size 64KB" in api_block

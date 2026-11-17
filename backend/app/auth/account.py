@@ -78,8 +78,9 @@ def forgot_password(
 def set_password(body: SetPasswordBody, request: Request, db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
     ip = request_ip(request, settings)
     # Bad-link guesses are limited per IP (the IP is also the "identifier" of this kind).
-    ratelimit.serialize(db, ip, ip, "token")
-    if ratelimit.is_limited(db, ip, ip, settings, kind="token"):
+    ip_unit = ratelimit.ip_key(ip)
+    ratelimit.serialize(db, ip, ip_unit, "token")
+    if ratelimit.is_limited(db, ip, ip_unit, settings, kind="token"):
         raise ApiError(429, "too_many_attempts")
 
     # Rules first, so a typo does not burn the single-use link.
@@ -89,7 +90,7 @@ def set_password(body: SetPasswordBody, request: Request, db: Session = Depends(
 
     def invalid() -> JSONResponse:
         db.rollback()
-        ratelimit.record_attempt(db, ip, ip, False, kind="token")
+        ratelimit.record_attempt(db, ip, ip_unit, False, kind="token")
         db.commit()
         raise ApiError(400, "invalid_token")
 

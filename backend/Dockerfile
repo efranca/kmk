@@ -6,4 +6,5 @@ COPY app ./app
 COPY alembic ./alembic
 RUN pip install . && useradd --system --uid 10001 --no-create-home kmk
 USER kmk
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app_factory --factory --host ${API_HOST:-127.0.0.1} --port ${API_PORT:-8001}"]
+# Migrations are NOT run here: the `migrate` service in deploy/docker-compose.yml does that with the owner credentials.
+CMD ["sh", "-c", "exec uvicorn app.main:app_factory --factory --host ${API_HOST:-127.0.0.1} --port ${API_PORT:-8001}"]
