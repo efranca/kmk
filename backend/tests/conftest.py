@@ -66,5 +66,48 @@ def clean_db(request):
         return
     engine = request.getfixturevalue("owner_engine")
     with engine.begin() as c:
-        c.execute(text("TRUNCATE users, sessions, login_attempts, audit_log RESTART IDENTITY CASCADE"))
+        c.execute(text("TRUNCATE users, sessions, login_attempts, audit_log, tokens RESTART IDENTITY CASCADE"))
     yield
+
+
+@pytest.fixture
+def make_client(owner_engine):
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+    from helpers import make_settings
+
+    def _make(peer="127.0.0.1", **kw):
+        return TestClient(create_app(settings=make_settings(**kw)), client=(peer, 50000))
+
+    return _make
+
+
+@pytest.fixture
+def client(make_client):
+    return make_client()
+
+
+@pytest.fixture
+def add_user(owner_engine):
+    from app.security import hash_password
+    from helpers import PW
+
+    def _add(
+        username="alice",
+        email="alice@example.com",
+        password: str | None = PW,
+        status="active",
+        role="user",
+        locale="fr-CA",
+    ):
+        with owner_engine.begin() as c:
+            c.execute(
+                text(
+                    "INSERT INTO users (username, email, password_hash, role, locale, status) "
+                    "VALUES (:u, :e, :h, :r, :l, :s) "
+                ),
+                dict(u=username, e=email, h=hash_password(password) if password else None, r=role, l=locale, s=status),
+            )
+
+    return _add

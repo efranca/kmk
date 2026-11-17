@@ -7,13 +7,13 @@ from app.config import Settings
 from app.models import LoginAttempt
 
 
-def is_limited(db: Session, ip: str, identifier: str, settings: Settings) -> bool:
+def is_limited(db: Session, ip: str, identifier: str, settings: Settings, kind: str = "login") -> bool:
     since = datetime.now(timezone.utc) - timedelta(minutes=settings.rl_window_minutes)
 
     def failures(column, value) -> int:
         return db.scalar(
             select(func.count()).select_from(LoginAttempt).where(
-                LoginAttempt.success.is_(False), LoginAttempt.at >= since, column == value
+                LoginAttempt.success.is_(False), LoginAttempt.kind == kind, LoginAttempt.at >= since, column == value
             )
         )
 
@@ -22,7 +22,7 @@ def is_limited(db: Session, ip: str, identifier: str, settings: Settings) -> boo
     ) >= settings.rl_identifier_max
 
 
-def record_attempt(db: Session, ip: str, identifier: str, success: bool) -> None:
-    db.add(LoginAttempt(ip=ip, identifier=identifier, success=success))
+def record_attempt(db: Session, ip: str, identifier: str, success: bool, kind: str = "login") -> None:
+    db.add(LoginAttempt(ip=ip, identifier=identifier, success=success, kind=kind))
     # Keep the table small: anything older than a day is irrelevant to the rate limit window.
     db.query(LoginAttempt).filter(LoginAttempt.at < datetime.now(timezone.utc) - timedelta(days=1)).delete()

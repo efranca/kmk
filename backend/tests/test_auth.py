@@ -1,68 +1,9 @@
 import json
-import os
 import time
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import text
 
-from app.config import Settings
-from app.main import create_app
-from app.security import hash_password
-
-ORIGIN = {"Origin": "http://testserver"}
-PW = "Abcdef1!"
-
-
-def make_settings(**kw) -> Settings:
-    base = dict(
-        database_url=os.environ["DATABASE_URL"],
-        session_secret="test-secret",
-        cookie_secure=False,
-        allowed_origins=["http://testserver"],
-        rl_ip_max=6,
-        rl_identifier_max=3,
-    )
-    base.update(kw)
-    return Settings(**base)
-
-
-@pytest.fixture
-def make_client(owner_engine):
-    def _make(peer="127.0.0.1", **kw):
-        return TestClient(create_app(settings=make_settings(**kw)), client=(peer, 50000))
-
-    return _make
-
-
-@pytest.fixture
-def client(make_client):
-    return make_client()
-
-
-@pytest.fixture
-def add_user(owner_engine):
-    def _add(username="alice", email="alice@example.com", password=PW, status="active", role="user", locale="fr-CA"):
-        with owner_engine.begin() as c:
-            c.execute(
-                text(
-                    "INSERT INTO users (username, email, password_hash, role, locale, status) "
-                    "VALUES (:u, :e, :h, :r, :l, :s)"
-                ),
-                dict(u=username, e=email, h=hash_password(password), r=role, l=locale, s=status),
-            )
-
-    return _add
-
-
-def login(client, identifier="alice", password=PW, headers=ORIGIN):
-    return client.post("/api/auth/login", json={"identifier": identifier, "password": password}, headers=headers)
-
-
-def sql(engine, query, **params):
-    with engine.begin() as c:
-        result = c.execute(text(query), params)
-        return result.fetchall() if result.returns_rows else []
+from helpers import ORIGIN, PW, login, make_settings, sql
 
 
 def test_login_by_username_and_email_case_insensitive(client, add_user):
@@ -199,3 +140,15 @@ def test_client_ip_header_trusted_only_from_loopback(make_client, owner_engine):
     make_client(peer="127.0.0.1").post("/api/auth/login", json={"identifier": "x", "password": "y"}, headers=spoof)
     ips = [r[0] for r in sql(owner_engine, "SELECT ip FROM audit_log ORDER BY id")]
     assert ips == ["198.51.100.7", "1.2.3.4"]
+
+
+def test_invited_user_cannot_log_in(client, add_user, monkeypatch):
+    import app.auth.service as service
+
+    add_user("newbie", "newbie@example.com", password=None, status="invited")
+    calls = []
+    real = service.verify_password
+    monkeypatch.setattr(service, "verify_password", lambda h, p: calls.append(1) or real(h, p))
+    r = login(client, "newbie", PW)
+    assert r.status_code == 401 and r.json() == {"error": "invalid_credentials"}
+    assert len(calls) == 1

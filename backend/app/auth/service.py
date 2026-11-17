@@ -21,8 +21,9 @@ def find_user(db: Session, identifier: str) -> User | None:
 def authenticate(db: Session, identifier: str, password: str) -> User | None:
     """Exactly one Argon2 verification happens whether or not the user exists."""
     user = find_user(db, identifier)
-    ok = verify_password(user.password_hash if user else DUMMY_HASH, password)
-    if not (user and ok and user.status == "active"):
+    # Invited users have no password yet: they are verified against the dummy hash like unknown users.
+    ok = verify_password(user.password_hash if user and user.password_hash else DUMMY_HASH, password)
+    if not (user and user.password_hash and ok and user.status == "active"):
         return None
     if needs_rehash(user.password_hash):
         user.password_hash = hash_password(password)

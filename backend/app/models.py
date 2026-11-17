@@ -16,13 +16,13 @@ class User(Base):
         CheckConstraint("email = lower(email)", name="users_email_lower"),
         CheckConstraint("role in ('user','admin','superadmin')", name="users_role_valid"),
         CheckConstraint("locale in ('fr-CA','en','pt-BR')", name="users_locale_valid"),
-        CheckConstraint("status in ('active','disabled','deleted')", name="users_status_valid"),
+        CheckConstraint("status in ('invited','active','disabled','deleted')", name="users_status_valid"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     username: Mapped[str] = mapped_column(Text, unique=True)
     email: Mapped[str] = mapped_column(Text, unique=True)
-    password_hash: Mapped[str] = mapped_column(Text)
+    password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     role: Mapped[str] = mapped_column(Text, default="user")
     locale: Mapped[str] = mapped_column(Text, default="fr-CA")
     status: Mapped[str] = mapped_column(Text, default="active")
@@ -65,3 +65,16 @@ class LoginAttempt(Base):
     ip: Mapped[str] = mapped_column(Text)
     identifier: Mapped[str] = mapped_column(Text)
     success: Mapped[bool] = mapped_column(Boolean)
+    kind: Mapped[str] = mapped_column(Text, default="login", server_default="login")
+
+
+class Token(Base):
+    __tablename__ = "tokens"
+    __table_args__ = (CheckConstraint("purpose in ('invite','reset')", name="tokens_purpose_valid"),)
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    purpose: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

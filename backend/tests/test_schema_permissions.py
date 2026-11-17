@@ -5,13 +5,13 @@ from sqlalchemy.exc import IntegrityError, ProgrammingError
 HASH = "$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$aGFzaA"
 
 
-def add_user(conn, username="alice", email="alice@example.com", role="user", locale="fr-CA", status="active"):
+def add_user(conn, username="alice", email="alice@example.com", role="user", locale="fr-CA", status="active", hash=HASH):
     conn.execute(
         text(
             "INSERT INTO users (username, email, password_hash, role, locale, status) "
             "VALUES (:u, :e, :h, :r, :l, :s)"
         ),
-        dict(u=username, e=email, h=HASH, r=role, l=locale, s=status),
+        dict(u=username, e=email, h=hash, r=role, l=locale, s=status),
     )
 
 
@@ -57,3 +57,37 @@ def test_unique_and_lowercase(owner_engine):
     with pytest.raises(IntegrityError):
         with owner_engine.begin() as c:
             add_user(c, "fine", "Mixed@Example.com")
+
+
+def test_tokens_table_permissions_and_checks(owner_engine, app_engine):
+    with app_engine.begin() as c:
+        add_user(c)
+        uid = c.execute(text("SELECT id FROM users")).scalar()
+        c.execute(
+            text("INSERT INTO tokens (token_hash, user_id, purpose, expires_at) VALUES ('h1', :u, 'invite', now() + interval '1 day')"),
+            dict(u=uid),
+        )
+        c.execute(text("UPDATE tokens SET used_at = now() WHERE token_hash = 'h1'"))
+        c.execute(text("DELETE FROM tokens WHERE token_hash = 'h1'"))
+    with pytest.raises(IntegrityError):
+        with owner_engine.begin() as c:
+            uid = c.execute(text("SELECT id FROM users")).scalar()
+            c.execute(
+                text("INSERT INTO tokens (token_hash, user_id, purpose, expires_at) VALUES ('h2', :u, 'other', now())"),
+                dict(u=uid),
+            )
+
+
+def test_invited_user_without_password(owner_engine):
+    with owner_engine.begin() as c:
+        add_user(c, status="invited", hash=None)
+        assert c.execute(text("SELECT status, password_hash FROM users")).one() == ("invited", None)
+
+
+def test_login_attempt_kind_check(owner_engine):
+    with owner_engine.begin() as c:
+        c.execute(text("INSERT INTO login_attempts (ip, identifier, success) VALUES ('1.1.1.1', 'a', false)"))
+        assert c.execute(text("SELECT kind FROM login_attempts")).scalar() == "login"
+    with pytest.raises(IntegrityError):
+        with owner_engine.begin() as c:
+            c.execute(text("INSERT INTO login_attempts (ip, identifier, success, kind) VALUES ('1.1.1.1', 'a', false, 'bogus')"))
