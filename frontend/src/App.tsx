@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { logout, me, type Session } from "./api";
+import AdminPage from "./AdminPage";
 import ForgotPassword from "./ForgotPassword";
 import MfaSetup from "./MfaSetup";
 import MfaVerify from "./MfaVerify";
@@ -60,10 +61,15 @@ export default function App() {
     setState((s) => (s.kind === "auth" ? { kind: "auth", session: { ...s.session, ...patch } } : s));
   }
 
+  const showAdmin =
+    path === "/admin" && state.kind === "auth" && state.session.mfa === "ok" && state.session.user.role !== "user";
+
   return (
-    <main className="card">
+    <main className={showAdmin ? "card wide" : "card"}>
       <img className="logo" src="/logo-horizontal.png" alt="KMK Entretien Ménager" width="300" height="100" />
-      {path === "/set-password" ? (
+      {showAdmin && state.kind === "auth" ? (
+        <AdminPage session={state.session} onBack={() => navigate("/")} />
+      ) : path === "/set-password" ? (
         <SetPassword onBack={() => navigate("/")} />
       ) : path === "/forgot-password" ? (
         <ForgotPassword onBack={() => navigate("/")} />
@@ -91,6 +97,7 @@ export default function App() {
               mfaEnabled={state.session.mfaEnabled}
               recoveryCodesLeft={recoveryCodesLeft}
               onMfaChange={(enabled) => updateSession({ mfaEnabled: enabled })}
+              onOpenAdmin={() => navigate("/admin")}
               onSignOut={signOut}
             />
           )}

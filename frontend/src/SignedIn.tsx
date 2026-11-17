@@ -13,6 +13,7 @@ export default function SignedIn({
   mfaEnabled,
   recoveryCodesLeft,
   onMfaChange,
+  onOpenAdmin,
   onSignOut,
 }: {
   user: User;
@@ -20,6 +21,7 @@ export default function SignedIn({
   mfaEnabled: boolean;
   recoveryCodesLeft: number | null;
   onMfaChange: (enabled: boolean) => void;
+  onOpenAdmin: () => void;
   onSignOut: () => void;
 }) {
   const { t } = useTranslation();
@@ -47,6 +49,11 @@ export default function SignedIn({
       {recoveryCodesLeft !== null && <p className="notice" role="status">{t("codesRemaining", { count: recoveryCodesLeft })}</p>}
       {!mfaEnabled && <MfaBanner role={user.role} />}
       <SecuritySection csrfToken={csrfToken} mfaEnabled={mfaEnabled} onEnroll={() => setEnrolling(true)} onDisabled={() => onMfaChange(false)} />
+      {user.role !== "user" && (
+        <p>
+          <a href="/admin" onClick={(e) => { e.preventDefault(); onOpenAdmin(); }}>{t("adminOpen")}</a>
+        </p>
+      )}
       <ChangePassword csrfToken={csrfToken} />
       <button type="button" className="secondary" onClick={onSignOut}>{t("signOut")}</button>
     </>

@@ -199,3 +199,72 @@ async function confirmed(csrfToken: string, path: string, password: string, code
 export const mfaDisable = (csrfToken: string, password: string, code: string) => confirmed(csrfToken, "disable", password, code);
 export const mfaRegenerate = (csrfToken: string, password: string, code: string) =>
   confirmed(csrfToken, "recovery-codes/regenerate", password, code);
+
+// ---- administration ----
+
+export type AdminUser = {
+  id: number;
+  username: string;
+  email: string;
+  role: "user" | "admin" | "superadmin";
+  locale: "fr-CA" | "en" | "pt-BR";
+  status: "invited" | "active" | "disabled" | "deleted";
+  mfaEnabled: boolean;
+  createdAt: string;
+  lastSignIn: string | null;
+  actions: string[];
+};
+
+export type AdminError = "forbidden" | "self" | "invalid_state" | "last_admin" | "exists" | "network";
+export type AdminResult = { ok: true } | { ok: false; reason: AdminError };
+
+export async function adminList(): Promise<AdminUser[] | null> {
+  try {
+    const r = await fetch("/api/admin/users", base);
+    if (!r.ok) return null;
+    const body = await r.json();
+    return body.users.map((u: Record<string, unknown>) => ({
+      id: u.id,
+      username: u.username,
+      email: u.email,
+      role: u.role,
+      locale: u.locale,
+      status: u.status,
+      mfaEnabled: u.mfa_enabled,
+      createdAt: u.created_at,
+      lastSignIn: u.last_sign_in ?? null,
+      actions: u.actions ?? [],
+    }));
+  } catch {
+    return null;
+  }
+}
+
+async function adminCall(csrfToken: string, method: string, path: string, body?: unknown): Promise<AdminResult> {
+  try {
+    const r = await fetch(`/api/admin/${path}`, {
+      ...base,
+      method,
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (r.ok) return { ok: true };
+    const error = (await r.json().catch(() => ({}))).error;
+    if (r.status === 403) return { ok: false, reason: error === "cannot_target_self" ? "self" : "forbidden" };
+    if (r.status === 409) {
+      if (error === "last_admin") return { ok: false, reason: "last_admin" };
+      if (error === "already_exists") return { ok: false, reason: "exists" };
+      return { ok: false, reason: "invalid_state" };
+    }
+    return { ok: false, reason: "network" };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+export const adminInvite = (csrf: string, v: { username: string; email: string; locale: string; role: "user" | "admin" }) =>
+  adminCall(csrf, "POST", "users", v);
+export const adminAct = (csrf: string, id: number, action: "invite" | "reset" | "disable" | "enable" | "delete" | "restore" | "reset-mfa") =>
+  adminCall(csrf, "POST", `users/${id}/${action}`);
+export const adminSetRole = (csrf: string, id: number, role: "user" | "admin") => adminCall(csrf, "POST", `users/${id}/role`, { role });
+export const adminEdit = (csrf: string, id: number, v: { locale?: string; email?: string }) => adminCall(csrf, "PATCH", `users/${id}`, v);
