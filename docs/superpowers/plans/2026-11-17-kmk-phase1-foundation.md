@@ -19,6 +19,7 @@
 - Do not modify or restart famillai containers/files, or the shared Postgres setup (other than creating the two new roles/databases with the script).
 - Repo layout: `backend/`, `frontend/`, `deploy/`; `scope.md` and `docs/` stay at the root.
 - Commit messages end with the line `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
+- Look and feel follows the public site (`/home/evandro/projects/kmk-public/src/css/critical.css`, read-only source): palette tokens `--pine #007A78`, `--pine-dk #006260`, `--deep #16242C`, `--teal #10938E`, `--spark #00E5D9`, `--mist #CCE4E4`, `--paper #F4FAFA`, `--ink #1C2D37`, `--slate #49575F`, radii/shadows as there; Montserrat headings and Inter body, self-hosted through `@fontsource` packages (no Google Fonts); logo copied from `kmk-public/public/assets/` (`logo-horizontal.png`, `favicon.svg`). Never edit `kmk-public`.
 - UI default language is `fr-CA`; locales `fr-CA`, `en`, `pt-BR`.
 - Security headers stay as in the current Caddyfile; the CSP is tightened for a script-bearing SPA (Task 4), never `unsafe-inline`/`unsafe-eval` for scripts.
 - Interruption: the live site is briefly down while compose moves to `deploy/` (Task 1) and again when Caddy is reconfigured (Task 4). Acceptable.
@@ -160,7 +161,7 @@ docker logs kmk-api 2>&1 | grep -c "$(grep -oP '(?<=kmk:)[^@]+' .env | head -1)"
 Run: `cd frontend && npm install && npx vitest run`
 Expected: FAIL (components missing).
 
-- [ ] **Step 3: Implement** the files above (TypeScript, strict). No external fonts, scripts, or images; plain CSS in a `src/index.css` with `prefers-color-scheme` dark mode and an explicit body background, centered layout, readable at phone width (carry over the placeholder's look).
+- [ ] **Step 3: Implement** the files above (TypeScript, strict). No external requests: fonts via `@fontsource/montserrat` and `@fontsource/inter` (latin weights 400/600/700 only), logo and favicon copied into `frontend/public/`. Plain CSS in `src/index.css` using the public-site tokens above (light: `--paper` background, `--ink` text, `--pine` accents; dark mode via `prefers-color-scheme` on `--deep` with `--spark` accent), the logo above the heading, centered card, readable at phone width.
 
 - [ ] **Step 4: Run to watch it pass, then build**
 
@@ -188,7 +189,7 @@ Expected: not `200` JSON (currently a 404/empty page from the static server).
 
 - [ ] **Step 2: Update the Caddyfile** (keep the global block and headers; same site address and `bind 127.0.0.1`):
 - Order inside the site: `handle /api/* { reverse_proxy 127.0.0.1:8001 }`, then `handle /assets/* { root * /srv/site; file_server }`, then `handle { root * /srv/site; try_files {path} /index.html; file_server }`.
-- CSP becomes `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`.
+- CSP becomes `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`.
 - Validate with `caddy validate` as before.
 
 - [ ] **Step 3: Update compose:** Caddy mount `../frontend/dist:/srv/site:ro` replaces `./site:/srv/site:ro`; remove `deploy/site/` (`git rm -r`).

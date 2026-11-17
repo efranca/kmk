@@ -3,11 +3,21 @@ name: kmk
 # app.kmk-entretien.ca: Caddy on 127.0.0.1:8081, reached through the existing Cloudflare Tunnel
 # (Zero Trust public hostname -> http://localhost:8081). Independent of famillai.
 services:
+  api:
+    build: ../backend
+    pull_policy: build
+    container_name: kmk-api
+    restart: unless-stopped
+    network_mode: host   # reaches the shared Postgres on 127.0.0.1:5432; listens on 127.0.0.1:8001 only
+    env_file: .env
+
   caddy:
     image: caddy:2.10.2
     container_name: kmk-caddy
     restart: unless-stopped
     network_mode: host
+    depends_on:
+      - api
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./site:/srv/site:ro
