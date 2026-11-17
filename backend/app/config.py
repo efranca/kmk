@@ -22,8 +22,15 @@ class Settings(BaseSettings):
     public_base_url: str = "https://app.kmk-entretien.ca"
     invite_hours: int = 48
     reset_minutes: int = 30
+    mfa_encryption_key: str | None = None  # Fernet key; without it the MFA endpoints answer 503
+    mfa_required_roles: str = ""  # comma-separated roles forced to use TOTP; empty = nobody is forced
+    mfa_issuer: str = "KMK Entretien"
     api_host: str = "127.0.0.1"
     api_port: int = 8001
+
+    @property
+    def required_roles(self) -> set[str]:
+        return {r.strip() for r in self.mfa_required_roles.split(",") if r.strip()}
 
 
 @lru_cache

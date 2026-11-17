@@ -66,7 +66,7 @@ def clean_db(request):
         return
     engine = request.getfixturevalue("owner_engine")
     with engine.begin() as c:
-        c.execute(text("TRUNCATE users, sessions, login_attempts, audit_log, tokens RESTART IDENTITY CASCADE"))
+        c.execute(text("TRUNCATE users, sessions, login_attempts, audit_log, tokens, recovery_codes RESTART IDENTITY CASCADE"))
     yield
 
 
@@ -140,3 +140,40 @@ def make_token(owner_engine, app_engine):
         return raw
 
     return _make
+
+
+@pytest.fixture
+def mfa_key():
+    from helpers import TEST_MFA_KEY
+
+    return TEST_MFA_KEY
+
+
+@pytest.fixture
+def add_mfa_user(owner_engine, add_user):
+    """Creates a user with TOTP enabled and 10 recovery codes; returns the plaintext TOTP secret.
+
+    The user's plaintext recovery codes are available as `add_mfa_user.codes[username]`.
+    """
+    from app import mfa
+    from helpers import PW, TEST_MFA_KEY
+
+    def _add(username="alice", email=None, role="user", password=PW, locale="fr-CA", status="active") -> str:
+        add_user(username, email or f"{username}@example.com", password=password, status=status, role=role, locale=locale)
+        secret, codes = mfa.new_secret(), mfa.new_recovery_codes()
+        with owner_engine.begin() as c:
+            c.execute(
+                text("UPDATE users SET mfa_enabled = true, mfa_secret = :s WHERE username = :u"),
+                {"s": mfa.encrypt_secret(secret, TEST_MFA_KEY), "u": username},
+            )
+            uid = c.execute(text("SELECT id FROM users WHERE username = :u"), {"u": username}).scalar()
+            for code in codes:
+                c.execute(
+                    text("INSERT INTO recovery_codes (user_id, code_hash) VALUES (:u, :h)"),
+                    {"u": uid, "h": mfa.hash_recovery_code(code)},
+                )
+        _add.codes[username] = codes
+        return secret
+
+    _add.codes = {}
+    return _add

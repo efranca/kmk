@@ -1,11 +1,15 @@
 import os
 
+import pyotp
+from cryptography.fernet import Fernet
 from sqlalchemy import text
 
+from app import mfa
 from app.config import Settings
 
 ORIGIN = {"Origin": "http://testserver"}
 PW = "Abcdef1!"
+TEST_MFA_KEY = Fernet.generate_key().decode()
 
 
 def make_settings(**kw) -> Settings:
@@ -16,6 +20,7 @@ def make_settings(**kw) -> Settings:
         allowed_origins=["http://testserver"],
         rl_ip_max=6,
         rl_identifier_max=3,
+        mfa_encryption_key=TEST_MFA_KEY,
     )
     base.update(kw)
     return Settings(**base)
@@ -29,3 +34,8 @@ def sql(engine, query, **params):
     with engine.begin() as c:
         result = c.execute(text(query), params)
         return result.fetchall() if result.returns_rows else []
+
+
+def totp(secret: str, offset: int = 0) -> str:
+    """The TOTP code for the current step (per app.mfa.now, so patched clocks work) plus `offset` steps."""
+    return pyotp.TOTP(secret).at((int(mfa.now()) // 30 + offset) * 30)

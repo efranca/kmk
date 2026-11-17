@@ -91,3 +91,30 @@ def test_login_attempt_kind_check(owner_engine):
     with pytest.raises(IntegrityError):
         with owner_engine.begin() as c:
             c.execute(text("INSERT INTO login_attempts (ip, identifier, success, kind) VALUES ('1.1.1.1', 'a', false, 'bogus')"))
+
+
+def test_recovery_codes_permissions_and_unique_hash(owner_engine, app_engine):
+    with app_engine.begin() as c:
+        add_user(c)
+        uid = c.execute(text("SELECT id FROM users")).scalar()
+        c.execute(text("INSERT INTO recovery_codes (user_id, code_hash) VALUES (:u, 'h1')"), dict(u=uid))
+        c.execute(text("UPDATE recovery_codes SET used_at = now() WHERE code_hash = 'h1'"))
+        c.execute(text("DELETE FROM recovery_codes WHERE code_hash = 'h1'"))
+    with pytest.raises(IntegrityError):
+        with owner_engine.begin() as c:
+            uid = c.execute(text("SELECT id FROM users")).scalar()
+            c.execute(text("INSERT INTO recovery_codes (user_id, code_hash) VALUES (:u, 'dup')"), dict(u=uid))
+            c.execute(text("INSERT INTO recovery_codes (user_id, code_hash) VALUES (:u, 'dup')"), dict(u=uid))
+
+
+def test_mfa_kind_and_defaults(owner_engine):
+    with owner_engine.begin() as c:
+        c.execute(text("INSERT INTO login_attempts (ip, identifier, success, kind) VALUES ('1.1.1.1', 'a', false, 'mfa')"))
+        add_user(c)
+        uid = c.execute(text("SELECT id FROM users")).scalar()
+        c.execute(
+            text("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ('t', :u, now() + interval '1 day')"),
+            dict(u=uid),
+        )
+        assert c.execute(text("SELECT mfa_verified FROM sessions")).scalar() is True
+        assert c.execute(text("SELECT mfa_last_step FROM users")).scalar() is None
