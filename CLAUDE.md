@@ -12,7 +12,7 @@ The product plan is `scope.md`; what is actually built is described in `docs/`.
 - `backend/app/` application code. `auth/` holds routes, the guard, services, rate limiting, audit, tokens, MFA. `emails/` is the mail layer. `mfa.py` and `security.py` are pure helpers. `cli.py` is the server-side admin tool.
 - `backend/alembic/versions/` migrations (`0001` to `0004`). `backend/tests/` is the test suite.
 - `frontend/src/` React app: `App.tsx` routes by path to the card pages (sign-in, recovery, two-step screens) or to the signed-in `Shell.tsx` (Welcome, Account, Admin pages); `lang.ts` has the language helpers; `welcomeContent.ts` lists the welcome page's content blocks; `locales/` has the three languages (every key must exist in all three).
-- `deploy/` compose, Caddyfile, `.env.example`.
+- `deploy/` compose, Caddyfile, `.env.example`; `deploy/backup/` the encrypted backup scripts (backup, status, restore, key ceremony, installer, failure notifier) and their systemd units; `scripts/audit-deps.sh` scans dependencies.
 - `docs/superpowers/specs/` design documents; `docs/superpowers/plans/` implementation plans. `.superpowers/` is git-ignored scratch (progress ledgers).
 
 ## Commands
@@ -40,6 +40,9 @@ Set up the backend once with `python3 -m venv backend/.venv && backend/.venv/bin
 - **Tests never use the real database.** `tests/conftest.py` forces the test database URLs. Per-test apps use `NullPool`
   because the Postgres server is shared with other apps and has a limited number of connections.
 - **Test first**, and watch the test fail before implementing.
+- **The compose file lists each container's environment explicitly** (so the API never gets the database owner's URL: only the one-shot `migrate` service does). A new API setting must be added to `api.environment` there. Deploy compose hardening one service at a time and watch its health (dropping all capabilities once stopped Caddy).
+- **Backup scripts** are tested by `backend/tests/test_backup_scripts.py` (real shared Postgres through `docker exec`, `kmk_test`, temporary directories and a throwaway key); restore trusts only archives whose hash the backup recorded.
+- **Rate limiting** is serialized with advisory locks (`ratelimit.serialize`) on every endpoint that counts attempts; keep that when adding one.
 - **Secrets** live only in git-ignored `.env` files (`deploy/.env`, `backend/.env`); never print them, commit them, or paste them into chat.
   Tokens, TOTP secrets, recovery codes and passwords must never reach logs or audit rows.
 - Error bodies are `{"error": "<code>"}`; auth failures are deliberately generic (no account enumeration).

@@ -13,12 +13,22 @@ see [security.md](security.md) and the [design](superpowers/specs/2026-11-17-pha
 The app shell with navigation, the placeholder welcome page, the account page, per-user language switching (stored on the server, with a pre-login picker and language-carrying email links), a not-found page, page titles and responsive polish are built;
 see the [design](superpowers/specs/2026-11-17-phase5-frontend-design.md). **Still to do by the owner:** the real welcome content (the page is a placeholder; see how to add blocks in [README.md](README.md)) and a review of the Portuguese text by someone who reads Portuguese.
 
-## Next: phase 6, Hardening and go-live
+## Done: phase 6, Hardening and go-live (owner steps remain)
 
-- A security review (ideally independent of whoever wrote the code), a **restore test** from a backup, final checks of headers, rate limits and the audit log.
-- Dependency vulnerability scanning in the build (`npm audit` for production dependencies was clean at the end of phase 4a; the Python side has no scanner yet).
-- Consider HSTS preload and tightening the password policy (longer minimum, breached-password check).
-- Resend deliverability test (see [operations.md](operations.md)).
+Built: encrypted, verified, automated backups to `/mnt/shared/BACKUPS/kmk` with a rehearsable restore; log rotation, health checks and container limits; dependency scanning; the security checklist with live evidence; an independent security review whose Important findings were fixed test-first;
+and the go-live runbook with an incident playbook. See [security-review.md](security-review.md), [golive.md](golive.md) and the [design](superpowers/specs/2026-11-17-phase6-hardening-design.md).
+
+**What is still to do, by the owner (everything is listed with how to check it in [golive.md](golive.md), section 1):** run the key ceremony and store the private key and passphrase in the password manager; the first backup and a restore rehearsal; switch email to Resend and test deliverability;
+enroll the super admin in two-step verification; decide on `MFA_REQUIRED_ROLES` before inviting any admin; optionally an uptime monitor; a Portuguese review; then the pilot and the invitations.
+
+**Future steps:** an off-site copy of the encrypted backups (the destination is on the same SSD as the system), a Cloudflare rate-limit rule in front of `/api/auth/*`, uptime monitoring, the privacy-law review before customer records, and the minor review findings below.
+
+## Minor findings from the independent review (phase 6), not yet fixed
+
+Each is described in [security-review.md](security-review.md); none is exploitable without a precondition. In rough order of value:
+F22 recovery codes use unsalted SHA-256 (cheapest to change **before** anyone enrolls two-step verification); F10 username and email count as separate rate-limit identifiers; F12 a TOTP code in non-ASCII digits gives a 500; F13 make the documented `X-Real-Client-Ip` the only client-address path (`--no-proxy-headers`);
+F14 disabling an account should void its unused links; F23 validate settings at startup; F19 `__Host-` session cookie prefix; F20 idle timeout and cleanup of sessions; F21 rate limit for admin email actions; F15 forgot-password timing; F16 backup verification compared with live data (possible false failure during traffic);
+F17 safe-name check for scratch databases; F18 failed weekly copy handling; F24 remaining container hardening (read-only filesystem, image digest pinning, hash-locked dependencies).
 
 ## Switches that are built but off
 
@@ -44,7 +54,7 @@ see the [design](superpowers/specs/2026-11-17-phase5-frontend-design.md). **Stil
 | Risk | Status | Note |
 | --- | --- | --- |
 | Privacy regulation (PIPEDA, Quebec Law 25, LGPD) | parked | have a qualified person review before real customer data is stored |
-| Backups and encryption | partly done | database dumps exist via `pg-backup.sh` (needs its `.env`); `deploy/.env` and the MFA key must be saved separately; no restore test yet; must be solid before customer records are added |
+| Backups and encryption | built | encrypted, verified daily backups with a rehearsable restore (see [operations.md](operations.md)); still on the same SSD (off-site copy is a future step); the owner's first restore rehearsal is a go-live step |
 | Production only (no dev/staging) | accepted | the same compose file can run locally with a different `.env` |
 | "Local" hosting | resolved | no inbound ports are needed; access is through the Cloudflare Tunnel |
 | Password policy fixed at 8 characters | accepted | revisit in phase 6 |
@@ -57,7 +67,7 @@ see the [design](superpowers/specs/2026-11-17-phase5-frontend-design.md). **Stil
 - No Python dependency vulnerability scanning; no TOTP key rotation.
 - The development email backend prints links to the log; do not leave it on once users exist.
 - Reviews of phases 2 to 4a were done by the author, not by an independent reviewer; an independent review is recommended before go-live.
-- The shared scripts `pg-new-db.sh` and `pg-backup.sh` need `/home/evandro/projects/shared/.env`, which does not exist on this machine.
+- The shared scripts `pg-new-db.sh` and `pg-backup.sh` need `/home/evandro/projects/shared/.env`, which does not exist on this machine (kmk's own backup does not use them).
 - The user list on the admin page has no pagination or sorting options (fine for ~15 people).
 - The last-admin safety check cannot trigger through the API today (the super admin always remains); it is tested at the code level only.
 - Sessions are 5 days absolute (no idle timeout, no list of active sessions, no "sign out everywhere" button).

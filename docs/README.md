@@ -7,6 +7,8 @@ What this is: the internal app for KMK Entretien Ménager at https://app.kmk-ent
 | --- | --- |
 | [operations.md](operations.md) | Runbook: deploy, settings, database, CLI, backups, email, MFA switch, troubleshooting |
 | [security.md](security.md) | The security model as implemented, accepted risks, what is not covered |
+| [security-review.md](security-review.md) | The checklist with live evidence and the independent review (findings and what was fixed) |
+| [golive.md](golive.md) | Pre-flight checklist, pilot, inviting everyone, routine, incident runbook, audit-log queries |
 | [roadmap.md](roadmap.md) | What is next, deferred items, parked risks, open questions |
 | [superpowers/specs/](superpowers/specs/) | Design documents, one per phase (the reasoning and the decisions) |
 | [superpowers/plans/](superpowers/plans/) | Implementation plans, one per phase (the task lists that were executed) |
@@ -34,7 +36,7 @@ browser --HTTPS--> Cloudflare --tunnel (outbound from this machine)--> cloudflar
 | 4a TOTP | optional two-step verification, recovery codes, enforcement switch (off) | done | [spec](superpowers/specs/2026-11-17-phase4a-totp-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase4a-totp.md) |
 | 4b Admin | admin page, user lifecycle, authority rules (only the super admin manages admins) | done | [spec](superpowers/specs/2026-11-17-phase4b-admin-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase4b-admin.md) |
 | 5 Frontend | app shell, welcome page (placeholder), per-user language switching, polish | done (real welcome content still to come) | [spec](superpowers/specs/2026-11-17-phase5-frontend-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase5-frontend.md) |
-| 6 Hardening | security review, restore test, go-live checks | planned | | |
+| 6 Hardening | encrypted verified backups, container limits and health checks, dependency scan, independent security review, go-live runbook | built; go-live waits for the owner's steps (key, Resend, two-step, pilot) | [spec](superpowers/specs/2026-11-17-phase6-hardening-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase6-hardening.md) |
 
 ## Data model (as built)
 
@@ -102,5 +104,6 @@ The server serves the single-page app for any non-`/api`, non-`/assets` path.
 - Backend entry: `backend/app/main.py` (`create_app`, Origin check middleware, error handler). Routers in `backend/app/auth/`.
 - The guard (`auth/guard.py`) decides what a session may call. MFA state logic is in `auth/service.py` (`state_for`, `mfa_state`).
 - Who may do what to whom is decided in one place, `auth/policy.py`; the account state changes (disable, delete, role change, ...) are in `auth/lifecycle.py`; `auth/admin.py` calls them in that order (policy check, change, audit, commit).
-- Settings: `backend/app/config.py` (each one explained in [operations.md](operations.md)).
+- Settings: `backend/app/config.py` (each one explained in [operations.md](operations.md)); the compose file passes each container only the variables it needs.
+- Backups and restore: `deploy/backup/` (scripts, systemd units, key ceremony). Dependency scan: `scripts/audit-deps.sh`. Tests for these live in `backend/tests/test_backup_scripts.py` and `test_deploy_config.py`.
 - Frontend entry: `frontend/src/App.tsx` (switches between the screens); API client in `frontend/src/api.ts`.

@@ -12,7 +12,8 @@ features (customer records, AI tools); see [docs/roadmap.md](docs/roadmap.md).
 | --- | --- |
 | Understand the system and its status | [docs/README.md](docs/README.md) |
 | Run, deploy, back up or fix it | [docs/operations.md](docs/operations.md) |
-| Know how it is secured | [docs/security.md](docs/security.md) |
+| Know how it is secured (and what was reviewed) | [docs/security.md](docs/security.md), [docs/security-review.md](docs/security-review.md) |
+| Go live, or handle an incident | [docs/golive.md](docs/golive.md) |
 | See what is next | [docs/roadmap.md](docs/roadmap.md) |
 | Work on the code (also for AI coding sessions) | [CLAUDE.md](CLAUDE.md) |
 | Read the original project plan | [scope.md](scope.md) (the plan; `docs/` describes what is actually built) |
@@ -30,7 +31,8 @@ features (customer records, AI tools); see [docs/roadmap.md](docs/roadmap.md).
 ```
 backend/    FastAPI app (app/), migrations (alembic/), tests (tests/)
 frontend/   React app (src/); `npm run build` produces dist/, which Caddy serves
-deploy/     docker-compose.yml, Caddyfile, .env.example (the real .env is git-ignored)
+deploy/     docker-compose.yml, Caddyfile, .env.example (the real .env is git-ignored); deploy/backup/ = encrypted backup scripts and timer
+scripts/    scripts/audit-deps.sh: scan the Python and JavaScript dependencies for known vulnerabilities
 docs/       documentation; docs/superpowers/ holds the design specs and implementation plans
 scope.md    the original project plan
 ```
@@ -39,7 +41,7 @@ scope.md    the original project plan
 
 ```bash
 # backend (needs backend/.env with the test database URLs, see docs/operations.md)
-cd backend && .venv/bin/pytest -q            # 243 tests at the time of writing (about a minute)
+cd backend && .venv/bin/pytest -q            # 310 tests at the time of writing (about two minutes)
 
 # frontend
 cd frontend && npx vitest run && npm run build   # 83 tests
