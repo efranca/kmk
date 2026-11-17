@@ -63,6 +63,8 @@ Counting uses the submitted identifier whether or not the account exists, so the
 **State machine** (`users.status`, in `lifecycle.py`): disable: `invited`/`active` to `disabled`; enable: `disabled` to `active` (or back to `invited` if the person never set a password); delete: any non-deleted state to `deleted` (sets `deleted_at`, voids unused invite/reset links); restore: `deleted` to `disabled` (an admin then enables it). A wrong source state answers `409 invalid_state`.
 A deleted account keeps its username and email reserved (nothing new can take them); restoring is the way to bring someone back.
 
+**Admins and their own password:** an admin or the super admin changes their password on the signed-in page (needs the current password) or recovers it with the ordinary "forgot password" link, exactly like anyone else; a reset never bypasses two-step verification (an account with TOTP still asks for a code at the next sign-in). The admin page's "reset password" action is for other people's accounts (the super admin may also use it on themselves).
+
 **Session effects:** disabling, deleting, changing the role of, or resetting the two-step verification of an account signs all of that account's sessions out at once. A disabled or deleted user cannot sign in (the generic `401`).
 
 **Last-admin invariant:** demoting, disabling or deleting an active admin or super admin is refused (`409 last_admin`) if no other active admin or super admin would remain; the privileged rows are locked in the same transaction, so two simultaneous requests cannot both succeed (tested with a race). Because the super admin is untouchable and always active, this cannot trigger through the API today; it is a safety net.

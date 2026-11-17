@@ -148,3 +148,26 @@ def test_no_store_header(client, add_user):
     add_user()
     assert forgot(client, "alice").headers["cache-control"] == "no-store"
     assert client.get("/api/auth/me").headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("role", ["admin", "superadmin"])
+def test_admins_can_reset_their_own_password_with_forgot_password(make_client, add_user, outbox, role):
+    add_user("boss", "boss@example.com", role=role)
+    c = make_client()
+    assert forgot(c, "boss").status_code == 202
+    assert len(outbox) == 1 and outbox[0].to == "boss@example.com"
+    token = re.search(r"#token=(\S+)", outbox[0].text).group(1)
+    assert set_password(c, token).status_code == 200
+    assert login(make_client(), "boss", PW).status_code == 401  # the old password no longer works
+    body = login(make_client(), "boss", NEW).json()
+    assert (body["user"]["role"], body["mfa"]) == (role, "ok")
+
+
+def test_an_admin_with_two_step_still_needs_the_code_after_a_reset(make_client, add_mfa_user, outbox, owner_engine):
+    add_mfa_user("boss", role="admin")
+    c = make_client()
+    forgot(c, "boss")
+    token = re.search(r"#token=(\S+)", outbox[0].text).group(1)
+    assert set_password(c, token).status_code == 200
+    body = login(make_client(), "boss", NEW).json()
+    assert body["mfa"] == "verify"  # a password reset must never bypass two-step verification
