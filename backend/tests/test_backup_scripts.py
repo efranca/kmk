@@ -536,3 +536,12 @@ def test_notify_failure_never_fails(setup):
     assert run("notify-failure.sh", {**setup.env, "KMK_NOTIFY_BIN": "no-such-notifier"}).returncode == 0  # no notifier at all
     empty = setup.tmp / "empty-state"
     assert run("notify-failure.sh", {**setup.env, "KMK_BACKUP_STATE_DIR": str(empty), "KMK_NOTIFY_BIN": "no-such-notifier"}).returncode == 0  # no status file
+
+
+def test_repository_scripts_pass_the_bash_syntax_check():
+    scripts = sorted((REPO / "scripts").glob("*.sh"))
+    assert scripts, "scripts/ has no shell scripts"
+    for path in scripts:
+        r = subprocess.run(["bash", "-n", str(path)], capture_output=True, text=True)
+        assert r.returncode == 0, f"{path.name}: {r.stderr}"
+        assert os.access(path, os.X_OK), f"{path.name} is not executable"

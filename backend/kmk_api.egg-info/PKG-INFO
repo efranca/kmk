@@ -14,3 +14,4 @@ Requires-Dist: pyotp>=2.9
 Requires-Dist: cryptography>=43
 Provides-Extra: dev
 Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: pip-audit>=2.7; extra == "dev"
