@@ -129,6 +129,8 @@ def test_reset_mfa(db, add_user, add_mfa_user, owner_engine):
     assert tuple(sql(owner_engine, "SELECT mfa_enabled, mfa_secret, mfa_last_step FROM users WHERE username = 'm'")[0]) == (False, None, None)
     assert sql(owner_engine, "SELECT count(*) FROM recovery_codes")[0][0] == 0
     assert refused(db, lifecycle.reset_mfa, load(db, "plain")) == "409 not_enabled"
+    add_mfa_user("gone", status="deleted")
+    assert refused(db, lifecycle.reset_mfa, load(db, "gone")) == "409 invalid_state"  # same rule as policy.state_allows
 
 
 def test_last_admin_invariant(db, add_user, owner_engine):

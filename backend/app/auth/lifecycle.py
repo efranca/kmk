@@ -113,6 +113,8 @@ def update(db: Session, target: User, locale: str | None, email: str | None) -> 
 
 
 def reset_mfa(db: Session, target: User) -> None:
+    if target.status == "deleted":
+        raise ApiError(409, "invalid_state")
     if not target.mfa_enabled:
         raise ApiError(409, "not_enabled")
     target.mfa_enabled = False
