@@ -458,3 +458,81 @@ def test_key_ceremony_refuses_to_overwrite(setup):
 def test_key_ceremony_requires_a_private_out_path(setup):
     r = run("make-backup-key.sh", {**setup.env, "KMK_KEYGEN_TEST_NOPASS": "1"})
     assert r.returncode != 0
+
+
+# ======================= scheduling and failure notification =======================
+
+def render_units(setup, *extra):
+    out = setup.tmp / "units"
+    r = run("install.sh", setup.env, "--render-to", str(out), *extra)
+    return r, out
+
+
+def test_units_are_rendered_with_the_repository_path(setup):
+    r, out = render_units(setup)
+    assert r.returncode == 0, r.stderr
+    names = sorted(p.name for p in out.iterdir())
+    assert names == ["kmk-backup-alert.service", "kmk-backup.service", "kmk-backup.timer"]
+    service = (out / "kmk-backup.service").read_text()
+    timer = (out / "kmk-backup.timer").read_text()
+    alert = (out / "kmk-backup-alert.service").read_text()
+    assert f"ExecStart={REPO}/deploy/backup/kmk-backup.sh" in service
+    assert f"ExecStart={REPO}/deploy/backup/notify-failure.sh" in alert
+    assert "OnFailure=kmk-backup-alert.service" in service
+    assert "OnCalendar=*-*-* 02:30:00" in timer and "Persistent=true" in timer and "RandomizedDelaySec=10min" in timer
+    assert all("@REPO@" not in (out / n).read_text() for n in names)
+    assert os.access(REPO / "deploy/backup/kmk-backup.sh", os.X_OK) and os.access(REPO / "deploy/backup/notify-failure.sh", os.X_OK)
+
+
+@pytest.mark.skipif(not shutil.which("systemd-analyze"), reason="systemd-analyze not available")
+def test_rendered_units_pass_systemd_verify(setup):
+    _, out = render_units(setup)
+    r = subprocess.run(
+        ["systemd-analyze", "--user", "verify", *(str(p) for p in sorted(out.iterdir()))],
+        capture_output=True, text=True, env={**os.environ, "SYSTEMD_LOG_LEVEL": "warning"},
+    )
+    assert r.returncode == 0, r.stderr
+
+
+def test_dry_run_prints_the_plan_and_touches_nothing(setup):
+    unit_dir = setup.tmp / "user-units"
+    r = run("install.sh", {**setup.env, "KMK_BACKUP_UNIT_DIR": str(unit_dir)}, "--dry-run")
+    assert r.returncode == 0, r.stderr
+    assert "systemctl --user enable --now kmk-backup.timer" in r.stdout
+    assert "OnCalendar=*-*-* 02:30:00" in r.stdout and str(REPO) in r.stdout
+    assert not unit_dir.exists()  # nothing was installed
+
+
+def test_install_refuses_without_the_recipient_key(setup):
+    r = run("install.sh", {**setup.env, "KMK_BACKUP_UNIT_DIR": str(setup.tmp / "u"), "KMK_BACKUP_RECIPIENT_FILE": str(setup.tmp / "none.asc")})
+    assert r.returncode == 1 and "make-backup-key" in r.stderr
+    assert not (setup.tmp / "u").exists()
+
+
+def fake_notifier(tmp: Path, exit_code: int) -> Path:
+    bin_dir = tmp / "bin"
+    bin_dir.mkdir()
+    log = tmp / "notify.log"
+    script = bin_dir / "notify-send"
+    script.write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" >> "{log}"\nexit {exit_code}\n')
+    script.chmod(0o755)
+    return bin_dir
+
+
+def test_notify_failure_shows_the_failure_message(setup):
+    write_status_file(setup, result="failed", message="the mount is gone")
+    bin_dir = fake_notifier(setup.tmp, 0)
+    r = run("notify-failure.sh", {**setup.env, "PATH": f"{bin_dir}:{os.environ['PATH']}"})
+    assert r.returncode == 0, r.stderr
+    sent = (setup.tmp / "notify.log").read_text()
+    assert "the mount is gone" in sent and "critical" in sent
+    assert "SECRET_TEST_VALUE" not in sent + r.stdout + r.stderr
+
+
+def test_notify_failure_never_fails(setup):
+    write_status_file(setup, result="failed", message="x")
+    bin_dir = fake_notifier(setup.tmp, 1)  # the notifier itself fails
+    assert run("notify-failure.sh", {**setup.env, "PATH": f"{bin_dir}:{os.environ['PATH']}"}).returncode == 0
+    assert run("notify-failure.sh", {**setup.env, "KMK_NOTIFY_BIN": "no-such-notifier"}).returncode == 0  # no notifier at all
+    empty = setup.tmp / "empty-state"
+    assert run("notify-failure.sh", {**setup.env, "KMK_BACKUP_STATE_DIR": str(empty), "KMK_NOTIFY_BIN": "no-such-notifier"}).returncode == 0  # no status file

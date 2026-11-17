@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily kmk backup
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+# A run missed because the computer was off happens at the next start.
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target
