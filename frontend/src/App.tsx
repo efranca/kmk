@@ -33,7 +33,9 @@ export default function App() {
     return () => {
       alive = false;
     };
-  }, [i18n]);
+    // Run once on load; re-running on language changes would re-check the session and could reset the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function signedIn(session: Session) {
     void i18n.changeLanguage(session.user.locale);
