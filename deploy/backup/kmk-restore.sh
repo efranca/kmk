@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Rehearse (or extract from) a backup. Needs the private key, which only the owner has.
-#   kmk-restore.sh ARCHIVE --private-key FILE [--extract-only DIR] [--keep-scratch]
+#   kmk-restore.sh ARCHIVE --private-key FILE [--extract-only DIR] [--keep-scratch] [--accept-unverified]
+# Archives must be ones the backup script wrote (its hash is in the state directory); --accept-unverified overrides
+# that (for example after a reinstall) and you must then be sure of where the file came from.
 # Default: decrypt, show the manifest, restore the dump into a scratch database (KMK_RESTORE_DB, default kmk_restore_test),
 # compare the row counts with the manifest, print RESTORE OK, drop the scratch database. Never touches the live database.
 set -euo pipefail
@@ -9,18 +11,19 @@ SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SELF_DIR/lib.sh"
 KMK_LIB_RECORD_STATUS=0  # a restore must never overwrite the backup status
 
-ARCHIVE=""; PRIVATE_KEY=""; EXTRACT_DIR=""; KEEP=0
+ARCHIVE=""; PRIVATE_KEY=""; EXTRACT_DIR=""; KEEP=0; ACCEPT_UNVERIFIED=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --private-key) PRIVATE_KEY="${2:?--private-key needs a file}"; shift 2 ;;
     --extract-only) EXTRACT_DIR="${2:?--extract-only needs a directory}"; shift 2 ;;
     --keep-scratch) KEEP=1; shift ;;
+    --accept-unverified) ACCEPT_UNVERIFIED=1; shift ;;
     -h|--help) sed -n '2,5p' "${BASH_SOURCE[0]}"; exit 0 ;;
     -*) echo "unknown option: $1" >&2; exit 2 ;;
     *) ARCHIVE="$1"; shift ;;
   esac
 done
-[[ -n "$ARCHIVE" && -n "$PRIVATE_KEY" ]] || { echo "usage: kmk-restore.sh ARCHIVE --private-key FILE [--extract-only DIR] [--keep-scratch]" >&2; exit 2; }
+[[ -n "$ARCHIVE" && -n "$PRIVATE_KEY" ]] || { echo "usage: kmk-restore.sh ARCHIVE --private-key FILE [--extract-only DIR] [--keep-scratch] [--accept-unverified]" >&2; exit 2; }
 
 RESTORE_DB="${KMK_RESTORE_DB:-kmk_restore_test}"
 WORK=""; KEYRING=""; SCRATCH_CREATED=0
@@ -40,6 +43,16 @@ trap cleanup EXIT
 
 [[ -r "$ARCHIVE" ]] || fail "cannot read the archive $ARCHIVE"
 [[ -r "$PRIVATE_KEY" ]] || fail "cannot read the private key file $PRIVATE_KEY"
+# An archive is encrypted to a PUBLIC key, so anyone who can write to the backup share could add one. Restoring runs SQL as
+# the database superuser, so only archives this machine's backup script wrote (hash recorded in the state directory) are trusted.
+archive_hash="$(sha256sum "$ARCHIVE" | cut -d' ' -f1)"
+if ! grep -q "^$archive_hash " "$KMK_BACKUP_STATE_DIR/archives.sha256" 2>/dev/null; then
+  if [[ "$ACCEPT_UNVERIFIED" == 1 ]]; then
+    log "WARNING: this archive is not recognised (its hash is not in $KMK_BACKUP_STATE_DIR/archives.sha256); continuing because of --accept-unverified."
+  else
+    fail "this archive is not recognised: it was not written by this machine's backup script (or the state directory was lost). Only if you are sure where it came from, repeat with --accept-unverified (ideally restore it into a throwaway database server)"
+  fi
+fi
 check_db_name "$RESTORE_DB"
 [[ "$RESTORE_DB" != "$KMK_BACKUP_DB" ]] || fail "refusing to restore over the live database '$KMK_BACKUP_DB'"
 

@@ -260,6 +260,40 @@ def test_a_failed_run_deletes_nothing(setup):
     assert sorted(p.name for p in archives(setup)) == sorted(old_daily)
 
 
+def test_an_unexpected_error_still_records_a_failed_status(setup, add_user):
+    """Review F8: a failure that is not one of the script's own checks must not leave an old 'ok' status standing."""
+    add_user()
+    write_status_file(setup, message="an old good run")
+    bad_bin = setup.tmp / "badbin"
+    bad_bin.mkdir()
+    (bad_bin / "tar").write_text("#!/bin/sh\nexit 1\n")
+    (bad_bin / "tar").chmod(0o755)
+    r = run("kmk-backup.sh", {**setup.env, "PATH": f"{bad_bin}:{os.environ['PATH']}"})
+    assert r.returncode != 0
+    status = status_of(setup)
+    assert status["result"] == "failed" and "unexpected" in status["message"]
+    assert archives(setup) == []
+    assert not db_exists(SCRATCH) and list(setup.work.iterdir()) == []
+
+
+def test_retention_goes_by_the_name_not_the_modification_time(setup, add_user):
+    """Review F6: files with future modification times (NTFS, clock skew) must not push the new backup out."""
+    add_user()
+    d = setup.dest / "daily"
+    d.mkdir(parents=True)
+    future = time.time() + 30 * 86400
+    for i in range(14):
+        f = d / f"kmk-2026-01-{i + 1:02d}_000000.tar.gpg"
+        f.write_bytes(b"x")
+        os.utime(f, (future + i, future + i))
+    r = run("kmk-backup.sh", {**setup.env, "KMK_BACKUP_NOW": "2026-11-23 02:30:00"})
+    assert r.returncode == 0, r.stderr
+    names = [p.name for p in archives(setup)]
+    assert "kmk-2026-11-23_023000.tar.gpg" in names  # the new backup survives
+    assert len(names) == 14 and "kmk-2026-01-01_000000.tar.gpg" not in names  # the oldest by NAME went
+    assert status_of(setup)["result"] == "ok"
+
+
 # ---- hygiene ----
 
 @pytest.mark.parametrize("script", sorted(p.name for p in SCRIPTS.glob("*.sh")) or ["kmk-backup.sh"])
@@ -332,6 +366,21 @@ def restore(b, *extra, archive=None, key=None):
     return run("kmk-restore.sh", b.restore_env, str(archive or b.archive), "--private-key", str(key or b.key.private), *extra)
 
 
+def reencrypt(b, tar_path: Path, name: str) -> Path:
+    """Encrypt a tar to the test key the way an attacker with the public key could (not made by the backup script)."""
+    env = {**os.environ, "GNUPGHOME": str(b.key.home)}
+    out = b.tmp / name
+    subprocess.run(["gpg", "--batch", "--yes", "--trust-model", "always", "--encrypt", "--recipient", b.key.fpr, "--output", str(out), str(tar_path)], env=env, check=True, capture_output=True)
+    return out
+
+
+def repack(out_dir: Path, tar_path: Path) -> Path:
+    with tarfile.open(tar_path, "w") as t:
+        for name in ("kmk.dump", "deploy.env", "MANIFEST.txt"):
+            t.add(out_dir / name, arcname=name)
+    return tar_path
+
+
 def test_restore_into_the_scratch_database(backup):
     r = restore(backup)
     assert r.returncode == 0, r.stderr
@@ -385,17 +434,31 @@ def test_restore_detects_a_manifest_that_does_not_match_the_data(backup):
     out = decrypt(backup.archive, backup.key, backup.tmp / "edit")
     manifest = (out / "MANIFEST.txt").read_text().replace("rows.users: 3", "rows.users: 99")
     (out / "MANIFEST.txt").write_text(manifest)
-    tampered_tar = backup.tmp / "edited.tar"
-    with tarfile.open(tampered_tar, "w") as t:
-        for name in ("kmk.dump", "deploy.env", "MANIFEST.txt"):
-            t.add(out / name, arcname=name)
-    env = {**os.environ, "GNUPGHOME": str(backup.key.home)}
-    forged = backup.tmp / "forged.tar.gpg"
-    subprocess.run(["gpg", "--batch", "--yes", "--trust-model", "always", "--encrypt", "--recipient", backup.key.fpr, "--output", str(forged), str(tampered_tar)], env=env, check=True, capture_output=True)
-    r = restore(backup, archive=forged)
+    forged = reencrypt(backup, repack(out, backup.tmp / "edited.tar"), "forged.tar.gpg")
+    r = restore(backup, "--accept-unverified", archive=forged)
     assert r.returncode == 1
     assert "users" in (r.stdout + r.stderr) and "RESTORE OK" not in r.stdout
     assert not db_exists(RESTORE_DB)
+
+
+def test_backup_records_the_hash_of_every_archive_it_writes(backup):
+    import hashlib
+
+    line = f"{hashlib.sha256(backup.archive.read_bytes()).hexdigest()}  {backup.archive.name}"
+    assert line in (backup.state / "archives.sha256").read_text().splitlines()
+
+
+def test_restore_refuses_an_archive_the_backup_did_not_write(backup):
+    """Review F7: anyone who can write to the share could add an archive encrypted to the public key."""
+    out = decrypt(backup.archive, backup.key, backup.tmp / "same")
+    forged = reencrypt(backup, repack(out, backup.tmp / "same.tar"), "not-ours.tar.gpg")  # same content, different ciphertext
+    r = restore(backup, archive=forged)
+    assert r.returncode == 1
+    assert "not recognised" in r.stderr and "--accept-unverified" in r.stderr
+    assert not db_exists(RESTORE_DB)  # nothing was executed on the database server
+    assert list(backup.work.iterdir()) == []
+    ok = restore(backup, "--accept-unverified", archive=forged)  # the explicit override still works (for example after a reinstall)
+    assert ok.returncode == 0 and "RESTORE OK" in ok.stdout and "WARNING" in ok.stderr
 
 
 def test_restore_never_touches_the_backup_status_file(backup):

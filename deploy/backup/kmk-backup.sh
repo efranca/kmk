@@ -15,6 +15,10 @@ SCRATCH_CREATED=0
 
 cleanup() {
   local rc=$?
+  # Any failure that was not one of our own explicit checks must still be recorded, or an old "ok" status would stand.
+  if [[ $rc -ne 0 && "${KMK_FAIL_RECORDED:-0}" != 1 ]]; then
+    write_status failed "unexpected error (exit code $rc); see: journalctl --user -u kmk-backup.service" || true
+  fi
   if [[ "$SCRATCH_CREATED" == 1 ]]; then
     pg_exec postgres "DROP DATABASE IF EXISTS \"$SCRATCH\" WITH (FORCE)" >/dev/null 2>&1 || true
   fi
@@ -107,14 +111,24 @@ if [[ "$(date -d "${KMK_BACKUP_NOW:-now}" +%u)" == "7" ]]; then
 fi
 
 # ---- retention: only after a successful write ----
+# Newest first BY NAME (the name carries the timestamp), never by modification time: the destination is an NTFS share
+# that other systems can write to, and a file with a future modification time must not push the new backup out.
 prune() {
-  local dir=$1 keep=$2 f
+  local dir=$1 keep=$2 keep_file=$3 n
   [[ -d "$dir" ]] || return 0
-  # shellcheck disable=SC2012  # file names are ours and contain no newlines; sorted newest first by modification time
-  ls -1t "$dir"/kmk-*.tar.gpg 2>/dev/null | tail -n +"$((keep + 1))" | while IFS= read -r f; do rm -f -- "$f"; done
+  ls -1 "$dir" | grep -E '^kmk-.*\.tar\.gpg$' | sort -r | tail -n +"$((keep + 1))" | while IFS= read -r n; do
+    [[ "$dir/$n" == "$keep_file" ]] && continue  # never delete the backup just written
+    rm -f -- "$dir/$n"
+  done
 }
-prune "$KMK_BACKUP_DEST/daily" "$KMK_BACKUP_KEEP_DAILY"
-prune "$KMK_BACKUP_DEST/weekly" "$KMK_BACKUP_KEEP_WEEKLY"
+prune "$KMK_BACKUP_DEST/daily" "$KMK_BACKUP_KEEP_DAILY" "$FINAL"
+prune "$KMK_BACKUP_DEST/weekly" "$KMK_BACKUP_KEEP_WEEKLY" "$KMK_BACKUP_DEST/weekly/$NAME"
+[[ -f "$FINAL" ]] || fail "internal error: the new backup is missing after pruning"
+
+# Remember the hash of what we wrote, on the Linux disk (not on the shared partition): the restore script only
+# trusts archives it can find in this list, so an archive someone else drops on the share is not executed.
+mkdir -p "$KMK_BACKUP_STATE_DIR"
+printf '%s  %s\n' "$(sha256sum "$FINAL" | cut -d' ' -f1)" "$NAME" >>"$KMK_BACKUP_STATE_DIR/archives.sha256"
 
 bytes="$(stat -c %s "$FINAL")"
 write_status ok "backup written" "$FINAL" "$bytes"

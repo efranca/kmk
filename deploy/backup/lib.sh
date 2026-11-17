@@ -50,6 +50,7 @@ write_status() {
 # fail MESSAGE: report, record a failed backup status (unless KMK_LIB_RECORD_STATUS=0, as the restore script sets), stop.
 fail() {
   log "ERROR: $*"
+  KMK_FAIL_RECORDED=1
   if [[ "${KMK_LIB_RECORD_STATUS:-1}" == 1 ]]; then write_status failed "$*" || true; fi
   exit 1
 }
