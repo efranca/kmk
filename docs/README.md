@@ -33,7 +33,7 @@ browser --HTTPS--> Cloudflare --tunnel (outbound from this machine)--> cloudflar
 | 3 Account flows | invite, password reset, password change, email layer (Resend or log) | done (email still in `log` mode) | [spec](superpowers/specs/2026-11-17-phase3-account-flows-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase3-account-flows.md) |
 | 4a TOTP | optional two-step verification, recovery codes, enforcement switch (off) | done | [spec](superpowers/specs/2026-11-17-phase4a-totp-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase4a-totp.md) |
 | 4b Admin | admin page, user lifecycle, authority rules (only the super admin manages admins) | done | [spec](superpowers/specs/2026-11-17-phase4b-admin-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase4b-admin.md) |
-| 5 Frontend | welcome page, language switcher, polish | next | | |
+| 5 Frontend | app shell, welcome page (placeholder), per-user language switching, polish | done (real welcome content still to come) | [spec](superpowers/specs/2026-11-17-phase5-frontend-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase5-frontend.md) |
 | 6 Hardening | security review, restore test, go-live checks | planned | | |
 
 ## Data model (as built)
@@ -66,6 +66,7 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `POST /api/auth/forgot-password` | anyone | request a reset email (always answers the same) |
 | `POST /api/auth/set-password` | anyone with a token | accept an invite or finish a reset |
 | `POST /api/auth/change-password` | verified | needs the current password |
+| `POST /api/auth/locale` | verified | set your own interface and email language (`fr-CA`, `en`, `pt-BR`) |
 | `POST /api/auth/mfa/setup` | verified or `setup` state | start enrollment, returns the secret and `otpauth://` URI |
 | `POST /api/auth/mfa/enable` | verified or `setup` state | confirm a code, returns the 10 recovery codes once |
 | `POST /api/auth/mfa/verify` | `verify` state | second login step: a code or a recovery code |
@@ -80,7 +81,20 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `POST /api/admin/users/{id}/disable`, `/enable`, `/delete`, `/restore` | as above | account lifecycle (see the state machine in [security.md](security.md)) |
 | `POST /api/admin/users/{id}/role` | super admin only | switch an account between `user` and `admin` |
 
-The frontend pages are `/` (sign-in, signed-in page, two-step screens), `/forgot-password`, `/set-password#token=...`, and `/admin` (user management, shown only to admins and the super admin).
+The frontend pages (hand-rolled path routing in `frontend/src/App.tsx`):
+
+| Path | Who | Content |
+| --- | --- | --- |
+| `/` | signed in: everyone; otherwise the sign-in form | the Welcome page (placeholder) inside the app shell |
+| `/account` | signed in | two-step verification, recovery codes, change password |
+| `/admin` | admins and the super admin (a plain user sees Welcome) | user management |
+| `/forgot-password`, `/set-password#token=...&lang=...` | anyone | recovery and invitation pages; the link's `lang` opens the page in the recipient's language |
+| anything else | anyone | a friendly "page not found" |
+
+Signed-in pages sit inside the **shell** (`Shell.tsx`): logo, navigation (Users only for admins and the super admin), a language switcher and sign out. People who are not signed in get a small FR / EN / PT picker instead; the choice is kept in this browser (`localStorage` key `kmk.lang`).
+A signed-in user's language is stored on the server (`users.locale`, changed with `POST /api/auth/locale`) and is also used for their emails; signing in applies it and saves it as the browser's preference. A user who still has to enter or set up two-step verification sees those screens on every path.
+
+**Adding content to the Welcome page:** add the title and body strings to all three files in `frontend/src/locales/`, then add `{ titleKey, bodyKey }` to the list in `frontend/src/welcomeContent.ts`. The placeholder texts are the keys `welcomeTitle` and `welcomeIntro`.
 The server serves the single-page app for any non-`/api`, non-`/assets` path.
 
 ## Pointers for the code

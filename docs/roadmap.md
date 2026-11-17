@@ -8,13 +8,12 @@ The admin page, the user lifecycle (disable, enable, delete, restore, role chang
 see [security.md](security.md) and the [design](superpowers/specs/2026-11-17-phase4b-admin-design.md).
 **Decision recorded:** only the super admin can create, demote, disable or delete admins. This deliberately overrides `scope.md` section 6 (which let admins manage admins).
 
-## Next: phase 5, Frontend
+## Done recently: phase 5, Frontend
 
-- The static welcome page (company information; copy needed in EN, FR-CA and PT-BR).
-- A language switcher for signed-in users (the language is stored per user and applied at sign-in; there is no way to change it yet).
-- Polish of the screens and the emails.
+The app shell with navigation, the placeholder welcome page, the account page, per-user language switching (stored on the server, with a pre-login picker and language-carrying email links), a not-found page, page titles and responsive polish are built;
+see the [design](superpowers/specs/2026-11-17-phase5-frontend-design.md). **Still to do by the owner:** the real welcome content (the page is a placeholder; see how to add blocks in [README.md](README.md)) and a review of the Portuguese text by someone who reads Portuguese.
 
-## Then: phase 6, Hardening and go-live
+## Next: phase 6, Hardening and go-live
 
 - A security review (ideally independent of whoever wrote the code), a **restore test** from a backup, final checks of headers, rate limits and the audit log.
 - Dependency vulnerability scanning in the build (`npm audit` for production dependencies was clean at the end of phase 4a; the Python side has no scanner yet).
@@ -35,7 +34,8 @@ see [security.md](security.md) and the [design](superpowers/specs/2026-11-17-pha
 | Is the hostname proxied through Cloudflare? | answered: yes, always, through the tunnel |
 | Who is the super admin? | created with the server command (see [operations.md](operations.md)) |
 | Resend sender address | suggested `no-reply@mail.kmk-entretien.ca`; Resend itself is not set up yet |
-| Welcome page copy in EN, FR-CA, PT-BR | open (needed for phase 5) |
+| Welcome page copy in EN, FR-CA, PT-BR | open: the page exists with placeholder text; real content to be added by the owner |
+| Portuguese review | open: all Portuguese UI and email text was written without a native reviewer |
 | Schedule the regulation and backup reviews | open |
 | Invite the ~15 employees | waits until the above is ready; the owner chose to do it after everything else |
 

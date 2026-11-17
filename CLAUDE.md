@@ -11,7 +11,7 @@ The product plan is `scope.md`; what is actually built is described in `docs/`.
 
 - `backend/app/` application code. `auth/` holds routes, the guard, services, rate limiting, audit, tokens, MFA. `emails/` is the mail layer. `mfa.py` and `security.py` are pure helpers. `cli.py` is the server-side admin tool.
 - `backend/alembic/versions/` migrations (`0001` to `0004`). `backend/tests/` is the test suite.
-- `frontend/src/` React app; `locales/` has the three languages (every key must exist in all three).
+- `frontend/src/` React app: `App.tsx` routes by path to the card pages (sign-in, recovery, two-step screens) or to the signed-in `Shell.tsx` (Welcome, Account, Admin pages); `lang.ts` has the language helpers; `welcomeContent.ts` lists the welcome page's content blocks; `locales/` has the three languages (every key must exist in all three).
 - `deploy/` compose, Caddyfile, `.env.example`.
 - `docs/superpowers/specs/` design documents; `docs/superpowers/plans/` implementation plans. `.superpowers/` is git-ignored scratch (progress ledgers).
 

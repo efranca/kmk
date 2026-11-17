@@ -26,6 +26,8 @@ The API believes that header only when the TCP peer is loopback; anyone else's v
 - A session is valid only if not revoked, not expired, and its user is `active`. Sessions are revoked on logout, password reset, password change (all others), enabling or disabling two-step verification (all others), and by `reset-mfa` (all).
 - CSRF has three layers: the strict cookie, an `Origin` check on every mutating `/api` request (must be in `allowed_origins`), and a per-session token (HMAC of the session hash with `SESSION_SECRET`) sent as `X-CSRF-Token` on authenticated mutating requests.
 
+A person changes their own language with `POST /api/auth/locale`, protected like every account change (verified session, CSRF token, allowed Origin); it cannot be used on anyone else.
+
 ## Rate limiting
 
 Failed attempts are stored in `login_attempts` by kind and counted over 15 minutes, per IP and per submitted identifier. Defaults: 10 per IP, 5 per identifier, then `429 too_many_attempts`.
@@ -35,7 +37,7 @@ Counting uses the submitted identifier whether or not the account exists, so the
 ## Invite and reset links
 
 - 32 random bytes, stored only as SHA-256; invite valid 48 hours, reset 30 minutes; single use (redeemed with one atomic `UPDATE ... RETURNING`, so concurrent use has one winner); issuing a new one cancels older unused ones of the same purpose.
-- The token is in the URL fragment (`/set-password#token=...`), so it is never sent to the server, Caddy logs or Referer headers; the page removes it from the address bar at once.
+- The token is in the URL fragment (`/set-password#token=...&lang=...`), so it is never sent to the server, Caddy logs or Referer headers; the page removes the whole fragment from the address bar at once. The `lang` part is the recipient's language (not secret); the page uses it only if it is one of the three supported languages.
 - `forgot-password` always answers `202 {"status":"ok"}`; email is sent after the response so timing does not leak. A new password is validated before the token is spent. A reset revokes all of the user's sessions; accepting an invite does not sign anyone in.
 - All bad links return one generic `400 invalid_token`.
 
@@ -75,7 +77,7 @@ A deleted account keeps its username and email reserved (nothing new can take th
 ## Audit log
 
 `audit_log` is append-only at the database level: the runtime role `kmk_app` has INSERT but no SELECT, UPDATE or DELETE on it. Events written: `login_success`, `login_failed`, `login_rate_limited`, `logout`, `user_created`, `user_invited`, `invite_resent`,
-`password_reset_requested`, `invite_accepted`, `password_reset_completed`, `password_changed`, `email_failed`, `mfa_enrolled`, `mfa_verified`, `mfa_failed`, `recovery_code_used`, `recovery_codes_regenerated`, `mfa_disabled`, `mfa_reset` (by the server command or by an admin), `user_disabled`, `user_enabled`, `user_deleted`, `user_restored`, `user_role_changed` (with the old and new role), `user_updated` (field names only, never values such as email addresses).
+`password_reset_requested`, `invite_accepted`, `password_reset_completed`, `password_changed`, `email_failed`, `mfa_enrolled`, `mfa_verified`, `mfa_failed`, `recovery_code_used`, `recovery_codes_regenerated`, `mfa_disabled`, `mfa_reset` (by the server command or by an admin), `user_disabled`, `user_enabled`, `user_deleted`, `user_restored`, `user_role_changed` (with the old and new role), `user_updated` (field names only, never values such as email addresses), `locale_changed` (a person changing their own language, with the old and new value).
 Details never contain passwords, hashes, tokens, links, TOTP secrets, codes or recovery codes (tests scan audit rows and logs for them). There is no viewer yet; read it with `psql` as the superuser.
 
 ## Secrets

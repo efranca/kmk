@@ -39,10 +39,10 @@ scope.md    the original project plan
 
 ```bash
 # backend (needs backend/.env with the test database URLs, see docs/operations.md)
-cd backend && .venv/bin/pytest -q            # 228 tests at the time of writing (about a minute)
+cd backend && .venv/bin/pytest -q            # 243 tests at the time of writing (about a minute)
 
 # frontend
-cd frontend && npx vitest run && npm run build   # 45 tests
+cd frontend && npx vitest run && npm run build   # 83 tests
 ```
 
 The backend tests only ever touch the `kmk_test` database, never the real `kmk` one.
