@@ -111,3 +111,32 @@ def add_user(owner_engine):
             )
 
     return _add
+
+
+@pytest.fixture
+def outbox(monkeypatch):
+    """Collects emails instead of sending them."""
+    import app.emails.sender as sender
+
+    sent = []
+    monkeypatch.setattr(sender, "send_email", lambda message, settings, *a, **k: sent.append(message) or True)
+    return sent
+
+
+@pytest.fixture
+def make_token(owner_engine, app_engine):
+    from datetime import timedelta
+
+    from sqlalchemy.orm import Session
+
+    from app.auth import tokens
+
+    def _make(username: str, purpose: str = "reset", ttl: timedelta = timedelta(minutes=30)) -> str:
+        with owner_engine.begin() as c:
+            uid = c.execute(text("SELECT id FROM users WHERE username = :u"), {"u": username}).scalar()
+        with Session(app_engine) as db:
+            raw = tokens.issue_token(db, uid, purpose, ttl)
+            db.commit()
+        return raw
+
+    return _make

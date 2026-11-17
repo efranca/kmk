@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.auth import audit, ratelimit, service
+from app.auth.errors import ApiError
 from app.config import Settings
 from app.security import client_ip, csrf_token, verify_csrf
 
@@ -29,6 +30,16 @@ def request_ip(request: Request, settings: Settings) -> str:
 class LoginBody(BaseModel):
     identifier: str = Field(max_length=256)
     password: str = Field(max_length=1024)
+
+
+def require_auth(request: Request, db: Session, settings: Settings, *, csrf: bool):
+    """The signed-in (user, session), or ApiError 401 / 403 (missing or wrong CSRF token when csrf=True)."""
+    found = service.current_session(db, request.cookies.get(service.SESSION_COOKIE))
+    if not found:
+        raise ApiError(401, "unauthenticated")
+    if csrf and not verify_csrf(found[1].token_hash, settings.session_secret, request.headers.get("x-csrf-token", "")):
+        raise ApiError(403, "forbidden")
+    return found
 
 
 def error(status: int, code: str) -> JSONResponse:
@@ -81,12 +92,7 @@ def me(request: Request, db: Session = Depends(get_db), settings: Settings = Dep
 
 @router.post("/logout")
 def logout(request: Request, db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
-    found = service.current_session(db, request.cookies.get(service.SESSION_COOKIE))
-    if not found:
-        return error(401, "unauthenticated")
-    user, session = found
-    if not verify_csrf(session.token_hash, settings.session_secret, request.headers.get("x-csrf-token", "")):
-        return error(403, "forbidden")
+    user, session = require_auth(request, db, settings, csrf=True)
     session.revoked_at = datetime.now(timezone.utc)
     audit.log(db, "logout", actor_user_id=user.id, target_user_id=user.id, ip=request_ip(request, settings))
     db.commit()

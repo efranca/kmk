@@ -5,6 +5,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.config import Settings, get_settings
+from app.auth.account import router as account_router
+from app.auth.errors import ApiError
 from app.auth.routes import router as auth_router
 from app.db import make_engine
 
@@ -32,14 +34,26 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
 
     app.include_router(api)
     app.include_router(auth_router)
+    app.include_router(account_router)
+
+    @app.exception_handler(ApiError)
+    async def api_error(request, exc: ApiError):
+        return JSONResponse({"error": exc.code}, status_code=exc.status)
 
     @app.middleware("http")
     async def origin_check(request, call_next):
         # CSRF layer: every mutating API request must come from an allowed origin.
-        if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path.startswith("/api"):
+        path = request.url.path
+        if request.method in ("POST", "PUT", "PATCH", "DELETE") and path.startswith("/api"):
             if request.headers.get("origin") not in settings.allowed_origins:
-                return JSONResponse({"error": "forbidden"}, status_code=403)
-        return await call_next(request)
+                response = JSONResponse({"error": "forbidden"}, status_code=403)
+            else:
+                response = await call_next(request)
+        else:
+            response = await call_next(request)
+        if path.startswith(("/api/auth", "/api/admin")):
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
     return app
 
