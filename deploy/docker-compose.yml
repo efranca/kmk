@@ -20,7 +20,7 @@ services:
       - api
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./site:/srv/site:ro
+      - ../frontend/dist:/srv/site:ro
       - caddy_data:/data
 
 volumes:
