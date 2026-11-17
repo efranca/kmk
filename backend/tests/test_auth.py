@@ -1,0 +1,201 @@
+import json
+import os
+import time
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import text
+
+from app.config import Settings
+from app.main import create_app
+from app.security import hash_password
+
+ORIGIN = {"Origin": "http://testserver"}
+PW = "Abcdef1!"
+
+
+def make_settings(**kw) -> Settings:
+    base = dict(
+        database_url=os.environ["DATABASE_URL"],
+        session_secret="test-secret",
+        cookie_secure=False,
+        allowed_origins=["http://testserver"],
+        rl_ip_max=6,
+        rl_identifier_max=3,
+    )
+    base.update(kw)
+    return Settings(**base)
+
+
+@pytest.fixture
+def make_client(owner_engine):
+    def _make(peer="127.0.0.1", **kw):
+        return TestClient(create_app(settings=make_settings(**kw)), client=(peer, 50000))
+
+    return _make
+
+
+@pytest.fixture
+def client(make_client):
+    return make_client()
+
+
+@pytest.fixture
+def add_user(owner_engine):
+    def _add(username="alice", email="alice@example.com", password=PW, status="active", role="user", locale="fr-CA"):
+        with owner_engine.begin() as c:
+            c.execute(
+                text(
+                    "INSERT INTO users (username, email, password_hash, role, locale, status) "
+                    "VALUES (:u, :e, :h, :r, :l, :s)"
+                ),
+                dict(u=username, e=email, h=hash_password(password), r=role, l=locale, s=status),
+            )
+
+    return _add
+
+
+def login(client, identifier="alice", password=PW, headers=ORIGIN):
+    return client.post("/api/auth/login", json={"identifier": identifier, "password": password}, headers=headers)
+
+
+def sql(engine, query, **params):
+    with engine.begin() as c:
+        result = c.execute(text(query), params)
+        return result.fetchall() if result.returns_rows else []
+
+
+def test_login_by_username_and_email_case_insensitive(client, add_user):
+    add_user()
+    r = login(client, "Alice")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["user"] == {"id": body["user"]["id"], "username": "alice", "email": "alice@example.com", "role": "user", "locale": "fr-CA"}
+    assert "password_hash" not in r.text and body["csrf_token"]
+    assert "kmk_session" in r.cookies
+    assert login(client, "ALICE@Example.com").status_code == 200
+
+
+def test_cookie_attributes_when_secure(make_client, add_user):
+    add_user()
+    c = make_client(cookie_secure=True)
+    h = login(c, headers={"Origin": "http://testserver"}).headers["set-cookie"]
+    for part in ("HttpOnly", "Secure", "SameSite=strict", "Path=/api", "Max-Age=432000"):
+        assert part.lower() in h.lower()
+
+
+@pytest.mark.parametrize("status", ["disabled", "deleted"])
+def test_failures_are_indistinguishable(client, add_user, status):
+    add_user("alice", "alice@example.com")
+    add_user("dis", "dis@example.com", status=status)
+    results = [
+        login(client, "alice", "Wrong1!pw"),
+        login(client, "nobody", "Wrong1!pw"),
+        login(client, "dis", PW),
+    ]
+    for r in results:
+        assert r.status_code == 401
+        assert r.json() == {"error": "invalid_credentials"}
+
+
+def test_unknown_user_still_runs_a_verify(client, monkeypatch):
+    import app.auth.service as service
+
+    calls = []
+    real = service.verify_password
+    monkeypatch.setattr(service, "verify_password", lambda h, p: calls.append(1) or real(h, p))
+    assert login(client, "ghost").status_code == 401
+    assert len(calls) == 1
+
+
+def test_rate_limit_by_identifier(client, add_user):
+    add_user()
+    for _ in range(3):
+        assert login(client, "alice", "Wrong1!pw").status_code == 401
+    r = login(client, "alice", PW)
+    assert r.status_code == 429 and r.json() == {"error": "too_many_attempts"}
+    assert login(client, "someone-else", "x").status_code == 401
+
+
+def test_rate_limit_by_ip(client):
+    for i in range(6):
+        assert login(client, f"user{i}", "x").status_code == 401
+    assert login(client, "user99", "x").status_code == 429
+
+
+def test_me_requires_session(client, add_user):
+    add_user()
+    r = client.get("/api/auth/me")
+    assert r.status_code == 401 and r.json() == {"error": "unauthenticated"}
+    login(client)
+    r = client.get("/api/auth/me")
+    assert r.status_code == 200 and r.json()["user"]["username"] == "alice" and r.json()["csrf_token"]
+
+
+@pytest.mark.parametrize(
+    "breaker",
+    [
+        "UPDATE sessions SET expires_at = now() - interval '1 minute'",
+        "UPDATE sessions SET revoked_at = now()",
+        "UPDATE users SET status = 'disabled'",
+    ],
+)
+def test_session_expired_revoked_or_user_disabled_rejected(client, add_user, owner_engine, breaker):
+    add_user()
+    login(client)
+    assert client.get("/api/auth/me").status_code == 200
+    sql(owner_engine, breaker)
+    assert client.get("/api/auth/me").status_code == 401
+
+
+def test_logout_revokes_session(client, add_user, owner_engine):
+    add_user()
+    r = login(client)
+    token, cookie = r.json()["csrf_token"], client.cookies["kmk_session"]
+    out = client.post("/api/auth/logout", headers={**ORIGIN, "X-CSRF-Token": token})
+    assert out.status_code == 204
+    assert client.get("/api/auth/me", headers={"Cookie": f"kmk_session={cookie}"}).status_code == 401
+    assert sql(owner_engine, "SELECT count(*) FROM sessions WHERE revoked_at IS NOT NULL")[0][0] == 1
+
+
+def test_mutating_requests_need_origin_and_csrf(client, add_user):
+    add_user()
+    assert login(client, headers={}).status_code == 403
+    assert login(client, headers={"Origin": "https://evil.example"}).status_code == 403
+    token = login(client).json()["csrf_token"]
+    assert client.post("/api/auth/logout", headers=ORIGIN).status_code == 403
+    assert client.post("/api/auth/logout", headers={**ORIGIN, "X-CSRF-Token": "bad"}).status_code == 403
+    assert client.post("/api/auth/logout", headers={**ORIGIN, "X-CSRF-Token": token}).status_code == 204
+
+
+def test_logout_without_session_is_401(client):
+    assert client.post("/api/auth/logout", headers=ORIGIN).status_code == 401
+
+
+def test_oversized_input(client, owner_engine):
+    t = time.monotonic()
+    r = login(client, "alice", "a" * 1_000_000)
+    assert r.status_code == 422 and time.monotonic() - t < 1
+    assert sql(owner_engine, "SELECT count(*) FROM login_attempts")[0][0] == 0
+
+
+def test_audit_rows(make_client, add_user, owner_engine):
+    add_user()
+    c = make_client(rl_identifier_max=1)
+    bad = "Wr0ng!pass"
+    assert login(c, "bob", bad).status_code == 401
+    assert login(c, "bob", bad).status_code == 429
+    token = login(c, "alice").json()["csrf_token"]
+    c.post("/api/auth/logout", headers={**ORIGIN, "X-CSRF-Token": token})
+    rows = sql(owner_engine, "SELECT action, ip, details::text FROM audit_log ORDER BY id")
+    assert [r[0] for r in rows] == ["login_failed", "login_rate_limited", "login_success", "logout"]
+    assert all(r[1] == "127.0.0.1" for r in rows)
+    assert bad not in json.dumps([list(r) for r in rows]) and PW not in json.dumps([list(r) for r in rows])
+
+
+def test_client_ip_header_trusted_only_from_loopback(make_client, owner_engine):
+    spoof = {**ORIGIN, "X-Real-Client-Ip": "1.2.3.4"}
+    make_client(peer="198.51.100.7").post("/api/auth/login", json={"identifier": "x", "password": "y"}, headers=spoof)
+    make_client(peer="127.0.0.1").post("/api/auth/login", json={"identifier": "x", "password": "y"}, headers=spoof)
+    ips = [r[0] for r in sql(owner_engine, "SELECT ip FROM audit_log ORDER BY id")]
+    assert ips == ["198.51.100.7", "1.2.3.4"]

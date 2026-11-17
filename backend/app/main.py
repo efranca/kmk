@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.config import Settings, get_settings
+from app.auth.routes import router as auth_router
 from app.db import make_engine
 
 log = logging.getLogger("kmk")
@@ -30,6 +31,16 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
         return JSONResponse({"status": "ok"})
 
     app.include_router(api)
+    app.include_router(auth_router)
+
+    @app.middleware("http")
+    async def origin_check(request, call_next):
+        # CSRF layer: every mutating API request must come from an allowed origin.
+        if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path.startswith("/api"):
+            if request.headers.get("origin") not in settings.allowed_origins:
+                return JSONResponse({"error": "forbidden"}, status_code=403)
+        return await call_next(request)
+
     return app
 
 
