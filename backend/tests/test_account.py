@@ -88,7 +88,7 @@ def test_bad_tokens_are_generic(make_client, add_user, make_token, owner_engine)
     newest = make_token("alice", "reset")
     assert set_password(c, used).status_code == 400  # invite token for an active user is not valid either
     disabled = make_token("bob", "reset")
-    sql(owner_engine, "UPDATE users SET status = 'disabled' WHERE username = 'bob'")
+    sql(owner_engine, "UPDATE users SET status = 'deleted' WHERE username = 'bob'")  # (disabled accounts may be reset: review F2)
     for bad in ("unknown", expired, superseded, disabled):
         r = set_password(c, bad)
         assert (r.status_code, r.json()) == (400, {"error": "invalid_token"})

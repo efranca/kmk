@@ -237,3 +237,27 @@ def test_verify_and_recovery_login_are_audited(make_client, add_mfa_user, owner_
     api(d, "verify", {"recovery_code": codes[0]}, dtoken)
     actions = [r[0] for r in sql(owner_engine, "SELECT action FROM audit_log WHERE action LIKE 'mfa_%' OR action LIKE 'recovery_%' ORDER BY id")]
     assert actions == ["mfa_verified", "recovery_code_used"]
+
+
+def test_parallel_wrong_codes_cannot_exceed_the_limit(make_client, add_mfa_user):
+    """Review F3: a burst of simultaneous code guesses must not get more attempts than the limit allows."""
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    add_mfa_user("alice")
+    n = 12
+    sessions = []
+    for _ in range(n):
+        c = make_client(rl_ip_max=100, rl_identifier_max=3)
+        sessions.append((c, login(c, "alice").json()["csrf_token"]))
+    barrier = threading.Barrier(n)
+
+    def guess(args):
+        c, token = args
+        barrier.wait()
+        return api(c, "verify", {"code": "000000"}, token).status_code
+
+    with ThreadPoolExecutor(n) as pool:
+        codes = list(pool.map(guess, sessions))
+    assert codes.count(403) <= 3, codes
+    assert codes.count(429) >= n - 3, codes

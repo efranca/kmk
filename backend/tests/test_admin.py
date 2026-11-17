@@ -109,8 +109,10 @@ def test_admin_reset(make_client, add_user, outbox, owner_engine):
     assert len(outbox) == 1 and outbox[0].to == "carl@example.com"
     details = sql(owner_engine, "SELECT details::text FROM audit_log WHERE action = 'password_reset_requested'")[0][0]
     assert '"admin"' in details
-    for name in ("dis", "inv"):
-        assert c.post(f"/api/admin/users/{user_id(owner_engine, name)}/reset", headers=h).json() == {"error": "not_active"}
+    # A disabled account may be reset (review F2: needed to recover a taken-over account while it stays locked out);
+    # an invited one has no password yet, so there is nothing to reset.
+    assert c.post(f"/api/admin/users/{user_id(owner_engine, 'dis')}/reset", headers=h).status_code == 202
+    assert c.post(f"/api/admin/users/{user_id(owner_engine, 'inv')}/reset", headers=h).json() == {"error": "not_active"}
     assert c.post("/api/admin/users/99999/reset", headers=h).status_code == 404
 
 

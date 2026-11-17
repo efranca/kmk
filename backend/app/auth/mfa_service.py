@@ -15,6 +15,7 @@ def need_key(settings: Settings) -> str:
 
 
 def check_not_limited(db: Session, user: User, ip: str, settings: Settings) -> None:
+    ratelimit.serialize(db, ip, user.username, "mfa")  # parallel guesses take turns (held until the request commits)
     if ratelimit.is_limited(db, ip, user.username, settings, kind="mfa"):
         raise ApiError(429, "too_many_attempts")
 

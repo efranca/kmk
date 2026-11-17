@@ -59,6 +59,7 @@ def forgot_password(
 ):
     ip = request_ip(request, settings)
     identifier = service.normalize_identifier(body.identifier)
+    ratelimit.serialize(db, ip, identifier, "reset_request")
     if ratelimit.is_limited(db, ip, identifier, settings, kind="reset_request"):
         raise ApiError(429, "too_many_attempts")
     ratelimit.record_attempt(db, ip, identifier, False, kind="reset_request")
@@ -77,6 +78,7 @@ def forgot_password(
 def set_password(body: SetPasswordBody, request: Request, db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
     ip = request_ip(request, settings)
     # Bad-link guesses are limited per IP (the IP is also the "identifier" of this kind).
+    ratelimit.serialize(db, ip, ip, "token")
     if ratelimit.is_limited(db, ip, ip, settings, kind="token"):
         raise ApiError(429, "too_many_attempts")
 
@@ -97,7 +99,10 @@ def set_password(body: SetPasswordBody, request: Request, db: Session = Depends(
     user_id, purpose = redeemed
     user = db.get(User, user_id)
     if user is None or not (
-        (purpose == "invite" and user.status == "invited") or (purpose == "reset" and user.status == "active")
+        (purpose == "invite" and user.status == "invited")
+        # A reset link may be used on a disabled account (sent by an admin to recover it); the status is NOT changed:
+        # only an admin enabling the account lets the person in.
+        or (purpose == "reset" and user.status in ("active", "disabled"))
     ):
         invalid()
 
@@ -129,6 +134,7 @@ def change_password(
 ):
     user, session = auth
     ip = request_ip(request, settings)
+    ratelimit.serialize(db, ip, user.username)
     if ratelimit.is_limited(db, ip, user.username, settings):
         raise ApiError(429, "too_many_attempts")
     if not user.password_hash or not verify_password(user.password_hash, body.current_password):

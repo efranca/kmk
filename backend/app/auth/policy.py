@@ -46,7 +46,8 @@ def state_allows(target: User, action: str) -> bool:
     if action == "resend_invite":
         return status == "invited"
     if action == "reset_password":
-        return status == "active"
+        # A disabled account may be reset: that is how a taken-over account is recovered while it stays locked out.
+        return status in ("active", "disabled")
     if action == "reset_mfa":
         return bool(target.mfa_enabled) and status != "deleted"
     if action == "disable":

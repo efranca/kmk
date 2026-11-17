@@ -99,7 +99,8 @@ def test_check_raises_what_authority_error_returns():
         ("resend_invite", "active", False, False),
         ("reset_password", "active", False, True),
         ("reset_password", "invited", False, False),
-        ("reset_password", "disabled", False, False),
+        ("reset_password", "disabled", False, True),
+        ("reset_password", "invited", False, False),
         ("reset_mfa", "active", True, True),
         ("reset_mfa", "active", False, False),
         ("reset_mfa", "deleted", True, False),
@@ -133,6 +134,7 @@ def test_available_actions_examples():
         "view", "edit", "resend_invite", "disable", "delete", "set_role",
     ]
     assert policy.available_actions(admin, user(4, status="deleted")) == ["view", "restore"]
+    assert policy.available_actions(admin, user(6, status="disabled")) == ["view", "edit", "reset_password", "enable", "delete"]
     assert policy.available_actions(admin, root) == ["view"]
     assert policy.available_actions(root, root) == ["view", "reset_password"]
     assert policy.available_actions(admin, admin) == ["view", "reset_password"]  # admins can reset their own password too

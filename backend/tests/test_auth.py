@@ -152,3 +152,76 @@ def test_invited_user_cannot_log_in(client, add_user, monkeypatch):
     r = login(client, "newbie", PW)
     assert r.status_code == 401 and r.json() == {"error": "invalid_credentials"}
     assert len(calls) == 1
+
+
+# ---- review F11: what people type into the username box ----
+
+def test_audit_never_stores_what_was_typed_for_an_unknown_account(make_client, add_user, owner_engine):
+    add_user()
+    typed = "Hunter2!pasted-by-mistake"
+    c = make_client(rl_identifier_max=1)
+    login(c, typed, "x")  # fails and hits the limit, which also writes the lockout row
+    login(c, typed, "x")
+    rows = sql(owner_engine, "SELECT action, details::text FROM audit_log ORDER BY id")
+    assert [r[0] for r in rows] == ["login_failed", "login_rate_limited"]
+    assert all(typed.lower() not in (r[1] or "").lower() for r in rows)
+    login(make_client(), "ALICE", "Wrong1!pw")  # a real account: the (normalized) name is useful and recorded
+    details = sql(owner_engine, "SELECT details::text FROM audit_log WHERE action = 'login_failed' ORDER BY id DESC LIMIT 1")[0][0]
+    assert '"alice"' in details
+
+
+# ---- review F4: a flood of limited requests must not flood the append-only audit log ----
+
+def test_a_flood_of_limited_requests_writes_one_lockout_row(make_client, owner_engine):
+    c = make_client(rl_identifier_max=2)
+    codes = [login(c, "ghost", "x").status_code for _ in range(60)]
+    assert codes.count(401) == 2 and codes.count(429) == 58
+    counts = dict(sql(owner_engine, "SELECT action, count(*) FROM audit_log GROUP BY action"))
+    assert counts == {"login_failed": 2, "login_rate_limited": 1}
+
+
+def test_a_flood_from_one_address_writes_one_lockout_row(make_client, owner_engine):
+    c = make_client()  # rl_ip_max = 6
+    for i in range(40):
+        login(c, f"user{i}", "x")
+    counts = dict(sql(owner_engine, "SELECT action, count(*) FROM audit_log GROUP BY action"))
+    assert counts == {"login_failed": 6, "login_rate_limited": 1}
+
+
+# ---- review F3: parallel guesses must not get past the limit ----
+
+def test_parallel_password_guesses_cannot_exceed_the_limit(make_client, add_user):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    add_user()
+    n = 16
+    clients = [make_client() for _ in range(n)]  # rl_identifier_max = 3
+    barrier = threading.Barrier(n)
+
+    def attempt(c):
+        barrier.wait()
+        return login(c, "alice", "Wrong1!pw").status_code
+
+    with ThreadPoolExecutor(n) as pool:
+        codes = list(pool.map(attempt, clients))
+    assert codes.count(401) <= 3, codes
+    assert codes.count(429) >= n - 3, codes
+
+
+def test_parallel_guesses_from_one_address_cannot_exceed_the_address_limit(make_client):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    n = 16
+    clients = [make_client() for _ in range(n)]  # rl_ip_max = 6, every request uses a fresh name
+    barrier = threading.Barrier(n)
+
+    def attempt(args):
+        i, c = args
+        barrier.wait()
+        return login(c, f"nobody{i}", "x").status_code
+
+    with ThreadPoolExecutor(n) as pool:
+        codes = list(pool.map(attempt, enumerate(clients)))
+    assert codes.count(401) <= 6, codes

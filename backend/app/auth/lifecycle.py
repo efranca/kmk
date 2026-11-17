@@ -109,6 +109,8 @@ def update(db: Session, target: User, locale: str | None, email: str | None) -> 
         except IntegrityError:
             db.rollback()
             raise ApiError(409, "already_exists")
+        if "email" in changed:
+            void_tokens(db, target.id)  # links already sent to the old address must stop working
     return changed
 
 

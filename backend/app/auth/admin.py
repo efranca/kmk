@@ -254,7 +254,7 @@ def admin_reset(
 ):
     target = get_target(db, user_id)
     policy.check(actor, target, "reset_password")
-    if target.status != "active":
+    if target.status not in ("active", "disabled"):
         raise ApiError(409, "not_active")
     raw = tokens.issue_token(db, target.id, "reset", timedelta(minutes=settings.reset_minutes))
     audit.log(

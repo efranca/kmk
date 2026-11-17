@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.config import Settings
@@ -26,3 +26,14 @@ def record_attempt(db: Session, ip: str, identifier: str, success: bool, kind: s
     db.add(LoginAttempt(ip=ip, identifier=identifier, success=success, kind=kind))
     # Keep the table small: anything older than a day is irrelevant to the rate limit window.
     db.query(LoginAttempt).filter(LoginAttempt.at < datetime.now(timezone.utc) - timedelta(days=1)).delete()
+
+
+def serialize(db: Session, ip: str, identifier: str, kind: str = "login") -> None:
+    """Make concurrent attempts for the same address / identifier take turns.
+
+    Without this, N parallel requests all pass the "is it limited?" check before any of them records its failure.
+    Transaction-scoped advisory locks (held until the request commits or rolls back); always taken in sorted order,
+    so two requests cannot deadlock each other.
+    """
+    for key in sorted({f"{kind}:ip:{ip}", f"{kind}:id:{identifier}"}):
+        db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": key})

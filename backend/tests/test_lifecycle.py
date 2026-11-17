@@ -170,3 +170,20 @@ def test_last_admin_invariant_holds_under_concurrency(app_engine, owner_engine, 
     [t.join() for t in threads]
     assert sorted(outcomes) == ["last_admin", "ok"]
     assert sql(owner_engine, "SELECT count(*) FROM users WHERE role = 'admin' AND status = 'active'")[0][0] == 1
+
+
+def test_changing_the_email_cancels_the_old_invite_link(db, add_user, make_token, owner_engine):
+    """Review F1: the first invite went to the old (possibly mistyped) address and must stop working."""
+    add_user("inv", "inv@gmial.com", password=None, status="invited")
+    old_link = make_token("inv", "invite")
+    assert lifecycle.update(db, load(db, "inv"), None, "inv@gmail.com") == ["email"]
+    db.commit()
+    assert sql(owner_engine, "SELECT count(*) FROM tokens WHERE used_at IS NULL")[0][0] == 0
+    from app.auth import tokens
+
+    assert tokens.redeem_token(db, old_link) is None
+    # changing only the language does not touch the link
+    new_link = make_token("inv", "invite")
+    assert lifecycle.update(db, load(db, "inv"), "en", None) == ["locale"]
+    db.commit()
+    assert tokens.redeem_token(db, new_link) is not None

@@ -34,15 +34,21 @@ def login(body: LoginBody, request: Request, db: Session = Depends(get_db), sett
     ip = request_ip(request, settings)
     identifier = service.normalize_identifier(body.identifier)
 
+    ratelimit.serialize(db, ip, identifier)
     if ratelimit.is_limited(db, ip, identifier, settings):
-        audit.log(db, "login_rate_limited", ip=ip, details={"identifier": identifier})
-        db.commit()
+        # No audit row here: once limited, every further request would add one (review F4). The row written when the
+        # limit was first reached is the record.
         return error(429, "too_many_attempts")
 
     user = service.authenticate(db, identifier, body.password)
     if user is None:
+        # What was typed is only worth keeping when it names a real account: people paste passwords into this box (review F11).
+        known = service.find_user(db, identifier) is not None
+        details = {"identifier": identifier} if known else {"known": False}
         ratelimit.record_attempt(db, ip, identifier, False)
-        audit.log(db, "login_failed", ip=ip, details={"identifier": identifier})
+        audit.log(db, "login_failed", ip=ip, details=details)
+        if ratelimit.is_limited(db, ip, identifier, settings):  # this failure just reached the limit: record that once
+            audit.log(db, "login_rate_limited", ip=ip, details=details)
         db.commit()
         return error(401, "invalid_credentials")
 

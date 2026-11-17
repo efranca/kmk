@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 import pytest
@@ -304,3 +305,44 @@ def test_a_lone_admin_can_still_be_disabled_by_the_superadmin(make_client, add_u
     add_user("solo", "solo@example.com", role="admin")
     assert call(root_c, root_h, "disable", uid(owner_engine, "solo")).status_code == 200
     assert call(root_c, root_h, "delete", uid(owner_engine, "solo")).status_code == 200
+
+
+def test_correcting_an_invited_email_kills_the_first_invite_link(make_client, add_user, outbox, owner_engine):
+    c, h = admin_client_for_lifecycle(make_client, add_user)
+    created = c.post(URL, json={"username": "marie", "email": "marie@gmial.com", "locale": "fr-CA"}, headers=h)
+    assert created.status_code == 201
+    first = re.search(r"#token=([^&\s]+)", outbox[0].text).group(1)
+    uid_marie = created.json()["user"]["id"]
+    assert c.patch(f"{URL}/{uid_marie}", json={"email": "marie@gmail.com"}, headers=h).status_code == 200
+    anon = make_client()
+    stranger = anon.post("/api/auth/set-password", json={"token": first, "password": "Newpass1!"}, headers=ORIGIN)
+    assert (stranger.status_code, stranger.json()) == (400, {"error": "invalid_token"})  # the stranger at gmial.com is locked out
+    assert c.post(f"{URL}/{uid_marie}/invite", headers=h).status_code == 202  # the admin re-sends to the corrected address
+    assert outbox[-1].to == "marie@gmail.com"
+    second = re.search(r"#token=([^&\s]+)", outbox[-1].text).group(1)
+    assert anon.post("/api/auth/set-password", json={"token": second, "password": "Newpass1!"}, headers=ORIGIN).status_code == 200
+
+
+def admin_client_for_lifecycle(make_client, add_user):
+    return signed_in(make_client, add_user, "admin")
+
+
+def test_takeover_playbook_disable_reset_password_then_enable(make_client, add_user, outbox, owner_engine):
+    """Review F2: the account stays locked out until the real owner has set a new password; only then is it enabled."""
+    c, h = admin_client_for_lifecycle(make_client, add_user)
+    add_user("bob", "bob@example.com")  # password PW, possibly known to an attacker
+    bob_id = uid(owner_engine, "bob")
+    attacker = make_client()
+    assert login(attacker, "bob").status_code == 200  # the attacker is in with the stolen password
+    assert call(c, h, "disable", bob_id).status_code == 200
+    assert attacker.get("/api/auth/me").status_code == 401
+    r = call(c, h, "reset_password", bob_id)  # allowed while disabled
+    assert (r.status_code, r.json()) == (202, {"status": "ok"})
+    token = re.search(r"#token=([^&\s]+)", outbox[-1].text).group(1)
+    owner = make_client()
+    assert owner.post("/api/auth/set-password", json={"token": token, "password": "Brandnew1!"}, headers=ORIGIN).status_code == 200
+    assert sql(owner_engine, "SELECT status FROM users WHERE username = 'bob'")[0][0] == "disabled"  # NOT re-enabled by the link
+    assert login(make_client(), "bob", "Brandnew1!").status_code == 401  # still locked out until an admin enables
+    assert call(c, h, "enable", bob_id).status_code == 200
+    assert login(make_client(), "bob", PW).status_code == 401  # the attacker's password no longer works
+    assert login(make_client(), "bob", "Brandnew1!").status_code == 200
