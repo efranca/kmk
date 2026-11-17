@@ -11,9 +11,11 @@ from sqlalchemy.orm import Session
 from app.auth import audit, service, tokens
 from app.auth.account import queue_email
 from app.auth.errors import ApiError
-from app.auth.routes import get_db, get_settings_dep, request_ip, require_auth
+from app.auth.deps import get_db, get_settings_dep
+from app.auth.guard import guard
+from app.auth.routes import request_ip
 from app.config import Settings
-from app.models import User
+from app.models import User, UserSession
 
 router = APIRouter(prefix="/api/admin")
 
@@ -43,8 +45,8 @@ class NewUser(BaseModel):
         return v
 
 
-def admin_actor(request: Request, db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)) -> User:
-    user, _ = require_auth(request, db, settings, csrf=True)
+def admin_actor(auth: tuple[User, UserSession] = Depends(guard())) -> User:
+    user, _ = auth
     if user.role not in ("admin", "superadmin"):
         raise ApiError(403, "forbidden")
     return user

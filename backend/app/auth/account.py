@@ -8,11 +8,13 @@ from sqlalchemy.orm import Session
 
 from app.auth import audit, ratelimit, service, tokens
 from app.auth.errors import ApiError
-from app.auth.routes import get_db, get_settings_dep, request_ip, require_auth
+from app.auth.deps import get_db, get_settings_dep
+from app.auth.guard import guard
+from app.auth.routes import request_ip
 from app.config import Settings
 from app.emails import sender
 from app.emails.templates import build_link, render
-from app.models import User
+from app.models import User, UserSession
 from app.security import hash_password, validate_password_rules, verify_password
 
 router = APIRouter(prefix="/api/auth")
@@ -112,8 +114,14 @@ def set_password(body: SetPasswordBody, request: Request, db: Session = Depends(
 
 
 @router.post("/change-password")
-def change_password(body: ChangePasswordBody, request: Request, db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
-    user, session = require_auth(request, db, settings, csrf=True)
+def change_password(
+    body: ChangePasswordBody,
+    request: Request,
+    auth: tuple[User, UserSession] = Depends(guard()),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings_dep),
+):
+    user, session = auth
     ip = request_ip(request, settings)
     if ratelimit.is_limited(db, ip, user.username, settings):
         raise ApiError(429, "too_many_attempts")

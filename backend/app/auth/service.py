@@ -30,7 +30,9 @@ def authenticate(db: Session, identifier: str, password: str) -> User | None:
     return user
 
 
-def create_session(db: Session, user: User, settings: Settings, ip: str, user_agent: str | None) -> tuple[str, str]:
+def create_session(
+    db: Session, user: User, settings: Settings, ip: str, user_agent: str | None, mfa_verified: bool = True
+) -> tuple[str, str]:
     """Returns (raw cookie token, stored token hash)."""
     token = new_session_token()
     token_hash = hash_token(token)
@@ -41,6 +43,7 @@ def create_session(db: Session, user: User, settings: Settings, ip: str, user_ag
             expires_at=datetime.now(timezone.utc) + timedelta(days=settings.session_days),
             ip=ip,
             user_agent=(user_agent or "")[:512] or None,
+            mfa_verified=mfa_verified,
         )
     )
     return token, token_hash
@@ -64,3 +67,20 @@ def current_session(db: Session, token: str | None) -> tuple[User, UserSession] 
 
 def user_payload(user: User) -> dict:
     return {"id": user.id, "username": user.username, "email": user.email, "role": user.role, "locale": user.locale}
+
+
+def state_for(user: User, verified: bool, settings: Settings) -> str:
+    """ok / verify (has TOTP, not yet proven this session) / setup (role requires TOTP, none enrolled)."""
+    if user.mfa_enabled and not verified:
+        return "verify"
+    if not user.mfa_enabled and user.role in settings.required_roles:
+        return "setup"
+    return "ok"
+
+
+def mfa_state(user: User, session: UserSession, settings: Settings) -> str:
+    return state_for(user, session.mfa_verified, settings)
+
+
+def auth_payload(user: User, state: str, csrf: str) -> dict:
+    return {"user": user_payload(user), "csrf_token": csrf, "mfa": state, "mfa_enabled": user.mfa_enabled}

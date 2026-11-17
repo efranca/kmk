@@ -6,20 +6,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.auth import audit, ratelimit, service
-from app.auth.errors import ApiError
+from app.auth.deps import get_db, get_settings_dep  # noqa: F401  (re-exported for other modules)
+from app.auth.guard import guard
 from app.config import Settings
-from app.security import client_ip, csrf_token, verify_csrf
+from app.models import User, UserSession
+from app.security import client_ip, csrf_token
 
 router = APIRouter(prefix="/api/auth")
-
-
-def get_db(request: Request):
-    with Session(request.app.state.engine, expire_on_commit=False) as db:
-        yield db
-
-
-def get_settings_dep(request: Request) -> Settings:
-    return request.app.state.settings
 
 
 def request_ip(request: Request, settings: Settings) -> str:
@@ -30,16 +23,6 @@ def request_ip(request: Request, settings: Settings) -> str:
 class LoginBody(BaseModel):
     identifier: str = Field(max_length=256)
     password: str = Field(max_length=1024)
-
-
-def require_auth(request: Request, db: Session, settings: Settings, *, csrf: bool):
-    """The signed-in (user, session), or ApiError 401 / 403 (missing or wrong CSRF token when csrf=True)."""
-    found = service.current_session(db, request.cookies.get(service.SESSION_COOKIE))
-    if not found:
-        raise ApiError(401, "unauthenticated")
-    if csrf and not verify_csrf(found[1].token_hash, settings.session_secret, request.headers.get("x-csrf-token", "")):
-        raise ApiError(403, "forbidden")
-    return found
 
 
 def error(status: int, code: str) -> JSONResponse:
@@ -63,12 +46,14 @@ def login(body: LoginBody, request: Request, db: Session = Depends(get_db), sett
         db.commit()
         return error(401, "invalid_credentials")
 
-    token, token_hash = service.create_session(db, user, settings, ip, request.headers.get("user-agent"))
+    verified = not user.mfa_enabled  # a user with TOTP must still prove a code before this session is fully usable
+    token, token_hash = service.create_session(db, user, settings, ip, request.headers.get("user-agent"), mfa_verified=verified)
     ratelimit.record_attempt(db, ip, identifier, True)
     audit.log(db, "login_success", actor_user_id=user.id, target_user_id=user.id, ip=ip)
     db.commit()
 
-    response = JSONResponse({"user": service.user_payload(user), "csrf_token": csrf_token(token_hash, settings.session_secret)})
+    state = service.state_for(user, verified, settings)
+    response = JSONResponse(service.auth_payload(user, state, csrf_token(token_hash, settings.session_secret)))
     response.set_cookie(
         service.SESSION_COOKIE,
         token,
@@ -82,17 +67,23 @@ def login(body: LoginBody, request: Request, db: Session = Depends(get_db), sett
 
 
 @router.get("/me")
-def me(request: Request, db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
-    found = service.current_session(db, request.cookies.get(service.SESSION_COOKIE))
-    if not found:
-        return error(401, "unauthenticated")
-    user, session = found
-    return {"user": service.user_payload(user), "csrf_token": csrf_token(session.token_hash, settings.session_secret)}
+def me(
+    auth: tuple[User, UserSession] = Depends(guard(allow=("ok", "verify", "setup"), csrf=False)),
+    settings: Settings = Depends(get_settings_dep),
+):
+    user, session = auth
+    state = service.mfa_state(user, session, settings)
+    return service.auth_payload(user, state, csrf_token(session.token_hash, settings.session_secret))
 
 
 @router.post("/logout")
-def logout(request: Request, db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
-    user, session = require_auth(request, db, settings, csrf=True)
+def logout(
+    request: Request,
+    auth: tuple[User, UserSession] = Depends(guard(allow=("ok", "verify", "setup"), csrf=True)),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings_dep),
+):
+    user, session = auth
     session.revoked_at = datetime.now(timezone.utc)
     audit.log(db, "logout", actor_user_id=user.id, target_user_id=user.id, ip=request_ip(request, settings))
     db.commit()
