@@ -2,7 +2,7 @@ import argparse
 import getpass
 import sys
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -54,6 +54,25 @@ def create_superadmin(username: str, email: str, locale: str) -> int:
     return 0
 
 
+def reset_mfa(username: str) -> int:
+    """Escape hatch for a lost phone: removes the user's TOTP, recovery codes and sessions."""
+    engine = make_engine(get_settings().database_url)
+    with Session(engine) as db:
+        user = db.scalar(select(User).where(User.username == username.strip().lower()))
+        if user is None:
+            print("No such user.", file=sys.stderr)
+            return 1
+        user.mfa_enabled = False
+        user.mfa_secret = None
+        user.mfa_last_step = None
+        db.execute(text("DELETE FROM recovery_codes WHERE user_id = :u"), {"u": user.id})
+        db.execute(text("UPDATE sessions SET revoked_at = now() WHERE user_id = :u AND revoked_at IS NULL"), {"u": user.id})
+        audit.log(db, "mfa_reset", target_user_id=user.id, details={"via": "cli"})
+        db.commit()
+    print(f"Two-step verification reset for '{username.strip().lower()}'. Their sessions were signed out.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -61,7 +80,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--username", required=True)
     p.add_argument("--email", required=True)
     p.add_argument("--locale", default="fr-CA", choices=["fr-CA", "en", "pt-BR"])
+    r = sub.add_parser("reset-mfa", help="remove a user's two-step verification (lost phone)")
+    r.add_argument("--username", required=True)
     args = parser.parse_args(argv)
+    if args.command == "reset-mfa":
+        return reset_mfa(args.username)
     return create_superadmin(args.username, args.email, args.locale)
 
 

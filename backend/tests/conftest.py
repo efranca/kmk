@@ -73,12 +73,18 @@ def clean_db(request):
 @pytest.fixture
 def make_client(owner_engine):
     from fastapi.testclient import TestClient
+    from sqlalchemy.pool import NullPool
 
     from app.main import create_app
     from helpers import make_settings
 
     def _make(peer="127.0.0.1", **kw):
-        return TestClient(create_app(settings=make_settings(**kw)), client=(peer, 50000))
+        settings = make_settings(**kw)
+        app = create_app(settings=settings)
+        # The Postgres server is shared with other apps: test apps must not keep pooled connections around.
+        app.state.engine.dispose()
+        app.state.engine = create_engine(settings.database_url, poolclass=NullPool)
+        return TestClient(app, client=(peer, 50000))
 
     return _make
 

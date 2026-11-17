@@ -40,3 +40,29 @@ def test_locale_option(owner_engine, monkeypatch):
     monkeypatch.setattr(cli, "read_password", lambda: "Str0ng!pass")
     assert cli.main(ARGS + ["--locale", "pt-BR"]) == 0
     assert rows(owner_engine, "SELECT locale FROM users")[0][0] == "pt-BR"
+
+
+def test_reset_mfa_clears_everything(make_client, add_mfa_user, owner_engine, capsys):
+    secret = add_mfa_user("alice")
+    c1, c2 = make_client(), make_client()
+    from helpers import login
+
+    login(c1, "alice")
+    login(c2, "alice")
+    assert cli.main(["reset-mfa", "--username", "Alice"]) == 0
+    row = rows(owner_engine, "SELECT mfa_enabled, mfa_secret, mfa_last_step FROM users")[0]
+    assert tuple(row) == (False, None, None)
+    assert rows(owner_engine, "SELECT count(*) FROM recovery_codes")[0][0] == 0
+    assert rows(owner_engine, "SELECT count(*) FROM sessions WHERE revoked_at IS NULL")[0][0] == 0
+    audit_rows = rows(owner_engine, "SELECT action, actor_user_id, details::text FROM audit_log WHERE action = 'mfa_reset'")
+    assert [(r[0], r[1]) for r in audit_rows] == [("mfa_reset", None)] and "cli" in audit_rows[0][2]
+    out = capsys.readouterr()
+    assert secret not in out.out + out.err
+    assert c1.get("/api/auth/me").status_code == 401  # sessions are gone
+    body = login(make_client(), "alice").json()
+    assert (body["mfa"], body["mfa_enabled"]) == ("ok", False)  # password alone works again
+
+
+def test_reset_mfa_unknown_user(owner_engine, capsys):
+    assert cli.main(["reset-mfa", "--username", "ghost"]) == 1
+    assert rows(owner_engine, "SELECT count(*) FROM audit_log")[0][0] == 0  # nothing is written for an unknown user
