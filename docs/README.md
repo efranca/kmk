@@ -32,8 +32,8 @@ browser --HTTPS--> Cloudflare --tunnel (outbound from this machine)--> cloudflar
 | 2 Core auth | users, sessions, login/logout, rate limiting, audit log, minimal login page | done | [spec](superpowers/specs/2026-11-17-phase2-core-auth-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase2-core-auth.md) |
 | 3 Account flows | invite, password reset, password change, email layer (Resend or log) | done (email still in `log` mode) | [spec](superpowers/specs/2026-11-17-phase3-account-flows-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase3-account-flows.md) |
 | 4a TOTP | optional two-step verification, recovery codes, enforcement switch (off) | done | [spec](superpowers/specs/2026-11-17-phase4a-totp-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase4a-totp.md) |
-| 4b Admin | admin page, user lifecycle, role rules | next | not written | not written |
-| 5 Frontend | welcome page, language switcher, polish | planned | | |
+| 4b Admin | admin page, user lifecycle, authority rules (only the super admin manages admins) | done | [spec](superpowers/specs/2026-11-17-phase4b-admin-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase4b-admin.md) |
+| 5 Frontend | welcome page, language switcher, polish | next | | |
 | 6 Hardening | security review, restore test, go-live checks | planned | | |
 
 ## Data model (as built)
@@ -50,7 +50,7 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 | `audit_log` | append-only security events | `timestamp`, `actor_user_id`, `action`, `target_user_id`, `ip`, `details` (JSON) |
 | `alembic_version` | migration state | |
 
-Deletion is soft by design (`status = 'deleted'`, not implemented in the UI yet), so the audit log keeps its references.
+Deletion is soft (`status = 'deleted'`, `deleted_at` set): the row stays, so the audit log keeps its references and the username and email stay reserved. An admin can restore a deleted account (it comes back `disabled`).
 
 ## API
 
@@ -71,16 +71,22 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `POST /api/auth/mfa/verify` | `verify` state | second login step: a code or a recovery code |
 | `POST /api/auth/mfa/disable` | verified | needs password and a code; refused for roles in `MFA_REQUIRED_ROLES` |
 | `POST /api/auth/mfa/recovery-codes/regenerate` | verified | needs password and a code |
-| `POST /api/admin/users` | verified admin or super admin | create and invite a `user`-role account |
-| `POST /api/admin/users/{id}/invite` | verified admin or super admin | re-send an invite |
-| `POST /api/admin/users/{id}/reset` | verified admin or super admin | email a reset link (only the super admin may target the super admin) |
+| `GET /api/admin/users` | verified admin or super admin | all accounts with role, status, two-step state, last sign-in, and the `actions` the caller may take on each row |
+| `POST /api/admin/users` | verified admin or super admin | create and invite an account; role `user`, or `admin` for the super admin only |
+| `PATCH /api/admin/users/{id}` | verified admin or super admin (per [authority](security.md#administration-authority-and-account-lifecycle)) | change language; change email only while the account is `invited` |
+| `POST /api/admin/users/{id}/invite` | as above | re-send an invite |
+| `POST /api/admin/users/{id}/reset` | as above | email a reset link (the super admin may do it for themselves) |
+| `POST /api/admin/users/{id}/reset-mfa` | as above | remove the target's two-step verification and sign them out |
+| `POST /api/admin/users/{id}/disable`, `/enable`, `/delete`, `/restore` | as above | account lifecycle (see the state machine in [security.md](security.md)) |
+| `POST /api/admin/users/{id}/role` | super admin only | switch an account between `user` and `admin` |
 
-The frontend pages are `/` (sign-in, signed-in page, two-step screens), `/forgot-password`, and `/set-password#token=...`.
+The frontend pages are `/` (sign-in, signed-in page, two-step screens), `/forgot-password`, `/set-password#token=...`, and `/admin` (user management, shown only to admins and the super admin).
 The server serves the single-page app for any non-`/api`, non-`/assets` path.
 
 ## Pointers for the code
 
 - Backend entry: `backend/app/main.py` (`create_app`, Origin check middleware, error handler). Routers in `backend/app/auth/`.
 - The guard (`auth/guard.py`) decides what a session may call. MFA state logic is in `auth/service.py` (`state_for`, `mfa_state`).
+- Who may do what to whom is decided in one place, `auth/policy.py`; the account state changes (disable, delete, role change, ...) are in `auth/lifecycle.py`; `auth/admin.py` calls them in that order (policy check, change, audit, commit).
 - Settings: `backend/app/config.py` (each one explained in [operations.md](operations.md)).
 - Frontend entry: `frontend/src/App.tsx` (switches between the screens); API client in `frontend/src/api.ts`.

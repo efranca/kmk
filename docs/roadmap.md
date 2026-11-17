@@ -2,17 +2,13 @@
 
 Where the project stands and what to pick up next. Status of the phases is also in the table in [README.md](README.md).
 
-## Next: phase 4b, Admin
+## Done recently: phase 4b, Admin
 
-From `scope.md` §6 and the phase 4 split (the design is not written yet; brainstorm it first):
+The admin page, the user lifecycle (disable, enable, delete, restore, role change, edit, reset password and two-step) and one central authority policy are built;
+see [security.md](security.md) and the [design](superpowers/specs/2026-11-17-phase4b-admin-design.md).
+**Decision recorded:** only the super admin can create, demote, disable or delete admins. This deliberately overrides `scope.md` section 6 (which let admins manage admins).
 
-- An admin page: list users, invite (the endpoint exists), re-send an invite, trigger a reset (exists), **disable and re-enable**, **soft-delete**, **change role**, and **reset another user's two-step verification** (the server command `reset-mfa` exists, the admin version does not).
-- Role rules: admins can create, disable, soft-delete users and trigger resets, and can demote or delete other admins; the last admin can never be removed or demoted; one **super admin** is protected from everyone else; deletion is soft so the audit log keeps its references; every admin action is audited.
-- Disabling, deleting or demoting a user must revoke their sessions.
-- Inviting admins (phase 3 only allows the `user` role): decide whether admins then need two-step verification first (see "Switches that are built but off").
-- Note: because the super admin cannot be touched, "the last admin" can only trigger in unusual cases; keep it as a safety invariant (at least one active admin or super admin must remain).
-
-## Then: phase 5, Frontend
+## Next: phase 5, Frontend
 
 - The static welcome page (company information; copy needed in EN, FR-CA and PT-BR).
 - A language switcher for signed-in users (the language is stored per user and applied at sign-in; there is no way to change it yet).
@@ -29,7 +25,7 @@ From `scope.md` §6 and the phase 4 split (the design is not written yet; brains
 
 | Switch | Where | What it does |
 | --- | --- | --- |
-| Force two-step verification | `MFA_REQUIRED_ROLES=admin,superadmin` in `deploy/.env` | forces the listed roles to enroll; they cannot disable it. Original plan (`scope.md`) wanted this for admins; it was relaxed to "encouraged" during phase 4a |
+| Force two-step verification | `MFA_REQUIRED_ROLES=admin,superadmin` in `deploy/.env` | forces the listed roles to enroll; they cannot disable it. Original plan (`scope.md`) wanted this for admins; it was relaxed to "encouraged" during phase 4a. **Turn it on before inviting any admin accounts** |
 | Real email | `EMAIL_BACKEND=resend` + `RESEND_API_KEY` | invites and resets go out through Resend; today they are only printed in the API log |
 
 ## Open items (from `scope.md` §14, with their status)
@@ -62,6 +58,8 @@ From `scope.md` §6 and the phase 4 split (the design is not written yet; brains
 - The development email backend prints links to the log; do not leave it on once users exist.
 - Reviews of phases 2 to 4a were done by the author, not by an independent reviewer; an independent review is recommended before go-live.
 - The shared scripts `pg-new-db.sh` and `pg-backup.sh` need `/home/evandro/projects/shared/.env`, which does not exist on this machine.
+- The user list on the admin page has no pagination or sorting options (fine for ~15 people).
+- The last-admin safety check cannot trigger through the API today (the super admin always remains); it is tested at the code level only.
 - Sessions are 5 days absolute (no idle timeout, no list of active sessions, no "sign out everywhere" button).
 - The first-ever login of each invited user needs the email layer to be real (Resend) or the owner to read links from the API log.
 

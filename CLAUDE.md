@@ -34,6 +34,7 @@ Set up the backend once with `python3 -m venv backend/.venv && backend/.venv/bin
 - **Every protected route uses the guard** (`app/auth/guard.py`): `Depends(guard())` for fully verified sessions,
   `guard(allow=(...), csrf=...)` only for deliberate exceptions. A test (`tests/test_mfa_guard.py`) calls every route in
   the API description with a half-authenticated session; a new route without a guard fails it. Public routes are listed in that test.
+- **Authority rules live in one place:** `backend/app/auth/policy.py` (who may do what to whom) and `lifecycle.py` (account state changes). New admin actions go through `policy.check` first, and the `actions` list sent to the admin page comes from the same policy. Only the super admin manages admins (deliberate override of `scope.md`).
 - **The runtime database role `kmk_app` cannot read the audit log** (INSERT only). Write audit rows with `audit.log(...)`
   (a plain INSERT, never `RETURNING`, never an ORM flush of the audit table). Migrations run as the owner role `kmk`.
 - **Tests never use the real database.** `tests/conftest.py` forces the test database URLs. Per-test apps use `NullPool`

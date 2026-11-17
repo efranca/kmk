@@ -47,10 +47,32 @@ Counting uses the submitted identifier whether or not the account exists, so the
 - States: `ok`, `verify`, `setup`. `setup` applies only to roles listed in `MFA_REQUIRED_ROLES` without TOTP (empty by default: **two-step verification is encouraged, not forced**).
 - Disabling or regenerating needs the password and a current code. If the phone is lost, the server command `reset-mfa` clears it; there is deliberately no email-based reset (it would make TOTP only as strong as the mailbox).
 
+## Administration: authority and account lifecycle
+
+**Authority** is decided in one module, `backend/app/auth/policy.py`, and enforced by the server on every admin endpoint (the page only shows what the server lists). Checks run in this order: the actor must be an admin or the super admin; nobody may disable, delete, change the role of, or reset the two-step verification of **themselves**; then the matrix:
+
+| Actor | May act on | Notes |
+| --- | --- | --- |
+| super admin | `user` and `admin` accounts | everything; role changes only between `user` and `admin`; never creates a second super admin (that is the server command) |
+| admin | `user` accounts only | invite (role `user`), edit, resend invite, reset password, reset two-step, disable, enable, delete, restore; cannot change roles |
+| anyone | the super admin account | nothing, except the super admin's own password reset |
+| plain user | nobody | no admin powers |
+
+**This overrides `scope.md` section 6**, which let admins demote or delete other admins. Here only the super admin manages admins, because two-step verification is optional and one stolen admin password must not be able to remove every other admin.
+
+**State machine** (`users.status`, in `lifecycle.py`): disable: `invited`/`active` to `disabled`; enable: `disabled` to `active` (or back to `invited` if the person never set a password); delete: any non-deleted state to `deleted` (sets `deleted_at`, voids unused invite/reset links); restore: `deleted` to `disabled` (an admin then enables it). A wrong source state answers `409 invalid_state`.
+A deleted account keeps its username and email reserved (nothing new can take them); restoring is the way to bring someone back.
+
+**Session effects:** disabling, deleting, changing the role of, or resetting the two-step verification of an account signs all of that account's sessions out at once. A disabled or deleted user cannot sign in (the generic `401`).
+
+**Last-admin invariant:** demoting, disabling or deleting an active admin or super admin is refused (`409 last_admin`) if no other active admin or super admin would remain; the privileged rows are locked in the same transaction, so two simultaneous requests cannot both succeed (tested with a race). Because the super admin is untouchable and always active, this cannot trigger through the API today; it is a safety net.
+
+**Edit rules:** the language can change at any time; the email only while the account is still `invited` (to fix a typo before the person accepts). The page's "last sign-in" comes from the `sessions` table because the app cannot read the audit log.
+
 ## Audit log
 
 `audit_log` is append-only at the database level: the runtime role `kmk_app` has INSERT but no SELECT, UPDATE or DELETE on it. Events written: `login_success`, `login_failed`, `login_rate_limited`, `logout`, `user_created`, `user_invited`, `invite_resent`,
-`password_reset_requested`, `invite_accepted`, `password_reset_completed`, `password_changed`, `email_failed`, `mfa_enrolled`, `mfa_verified`, `mfa_failed`, `recovery_code_used`, `recovery_codes_regenerated`, `mfa_disabled`, `mfa_reset`.
+`password_reset_requested`, `invite_accepted`, `password_reset_completed`, `password_changed`, `email_failed`, `mfa_enrolled`, `mfa_verified`, `mfa_failed`, `recovery_code_used`, `recovery_codes_regenerated`, `mfa_disabled`, `mfa_reset` (by the server command or by an admin), `user_disabled`, `user_enabled`, `user_deleted`, `user_restored`, `user_role_changed` (with the old and new role), `user_updated` (field names only, never values such as email addresses).
 Details never contain passwords, hashes, tokens, links, TOTP secrets, codes or recovery codes (tests scan audit rows and logs for them). There is no viewer yet; read it with `psql` as the superuser.
 
 ## Secrets
@@ -63,9 +85,9 @@ Only in git-ignored `.env` files with mode 600: database passwords, `SESSION_SEC
 - One machine hosts everything; the Postgres server is shared with other projects (they cannot read the `kmk` data without its role passwords, but share the server's availability and its superuser).
 - Any process on the host can reach the loopback ports; the API still authenticates every request.
 - Losing `MFA_ENCRYPTION_KEY` makes stored TOTP secrets unusable (recovery: `reset-mfa` per user). There is no key rotation yet.
-- A compromised super admin session could do anything an admin can; two-step verification is optional for now.
+- A compromised super admin session could do anything an admin can, and more; two-step verification is optional for now. A compromised admin session can disable or delete plain users (not admins).
 - The password policy is 8 characters with a mix (from the plan); a breached-password check and a longer minimum are deferred.
 
 ## Not covered yet
 
-Admin tools to disable, delete or change the role of users (phase 4b), an audit log viewer, a tested restore procedure, dependency vulnerability scanning in the build, an independent security review, privacy-law review (PIPEDA, Quebec Law 25, LGPD) before real customer data is stored. See the [roadmap](roadmap.md).
+An audit log viewer, a tested restore procedure, dependency vulnerability scanning in the build, an independent security review, privacy-law review (PIPEDA, Quebec Law 25, LGPD) before real customer data is stored. See the [roadmap](roadmap.md).
