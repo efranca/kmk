@@ -29,9 +29,10 @@ secrets or password hashes in logs, audit details, or API responses; the API con
 - Existing stack from phase 1 (FastAPI, SQLAlchemy 2, psycopg 3, Alembic, React/Vite, shared Postgres on `127.0.0.1:5432`,
   Caddy on `127.0.0.1:8081`, API on `127.0.0.1:8001`). Nothing is bound beyond loopback.
 - Browser traffic is HTTPS via Cloudflare; the origin sees HTTP. Cookies are `Secure` regardless (`COOKIE_SECURE=true`).
-- Real client IP: Caddy gets it from `Cf-Connecting-Ip` (trusted proxy 127.0.0.1) and forwards it as `X-Forwarded-For`.
+- Real client IP: Caddy gets it from `Cf-Connecting-Ip` (trusted proxy 127.0.0.1) and forwards it to the API in a dedicated header `X-Real-Client-Ip`
+  (`header_up X-Real-Client-Ip {client_ip}`, which overwrites anything the client sent; chosen over `X-Forwarded-For`, which can be spoofed).
   The API trusts that header only when the TCP peer is loopback. The builder verifies, through Caddy, that the API sees the
-  Cloudflare-reported client IP and that a client-supplied `X-Forwarded-For` cannot spoof it.
+  Cloudflare-reported client IP and that a client-supplied `X-Real-Client-Ip` or `X-Forwarded-For` cannot spoof it.
 - famillai and the shared Postgres setup are not modified, except creating the `kmk_app` role.
 
 ## Approaches considered (my calls unless noted)
