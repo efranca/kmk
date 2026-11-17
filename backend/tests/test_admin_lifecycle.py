@@ -169,12 +169,16 @@ def test_nobody_destroys_themselves(make_client, add_user, owner_engine):
         assert call(root_c, root_h, action, root).json() == {"error": "cannot_target_self"}, action
 
 
-def test_only_the_superadmin_resets_their_own_password(make_client, add_user, outbox, owner_engine):
+def test_admins_and_the_superadmin_can_reset_their_own_password(make_client, add_user, outbox, owner_engine):
     c, h = signed_in(make_client, add_user, "admin")
-    assert call(c, h, "reset_password", uid(owner_engine, "boss")).status_code == 403  # admins use "forgot password"
+    r = call(c, h, "reset_password", uid(owner_engine, "boss"))
+    assert (r.status_code, r.json()) == (202, {"status": "ok"})
     root_c, root_h = signed_in(make_client, add_user, "superadmin")
     assert call(root_c, root_h, "reset_password", uid(owner_engine, "root")).status_code == 202
-    assert len(outbox) == 1
+    assert [m.to for m in outbox] == ["boss@example.com", "root@example.com"]
+    # ...but an admin still cannot reset another admin's password
+    add_user("adm2", "adm2@example.com", role="admin")
+    assert call(c, h, "reset_password", uid(owner_engine, "adm2")).status_code == 403
 
 
 # ---- lifecycle effects ----

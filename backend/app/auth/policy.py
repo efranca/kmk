@@ -2,7 +2,8 @@
 
 Order of checks: (1) the actor must be an admin or the super admin; (2) nobody disables, deletes, re-roles or
 resets the two-step verification of themselves; (3) the matrix: only the super admin acts on admins, admins act on
-plain users, and the super admin account is untouchable (apart from its own password reset).
+plain users, and the super admin account is untouchable. The one exception to the matrix: anyone with admin
+powers may reset their own password.
 """
 
 from app.auth.errors import ApiError
@@ -21,9 +22,10 @@ def authority_error(actor: User, target: User, action: str) -> ApiError | None:
         return ApiError(403, "cannot_target_self")
     if action == "view":
         return None
+    if action == "reset_password" and actor.id == target.id:
+        return None  # an admin or the super admin may reset their own password
     if target.role == "superadmin":
-        own_password_reset = action == "reset_password" and actor.role == "superadmin" and actor.id == target.id
-        return None if own_password_reset else ApiError(403, "forbidden")
+        return ApiError(403, "forbidden")
     if action == "set_role":
         return None if actor.role == "superadmin" and target.role in ("user", "admin") else ApiError(403, "forbidden")
     if target.role == "admin":

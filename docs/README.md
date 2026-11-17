@@ -75,7 +75,7 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `POST /api/admin/users` | verified admin or super admin | create and invite an account; role `user`, or `admin` for the super admin only |
 | `PATCH /api/admin/users/{id}` | verified admin or super admin (per [authority](security.md#administration-authority-and-account-lifecycle)) | change language; change email only while the account is `invited` |
 | `POST /api/admin/users/{id}/invite` | as above | re-send an invite |
-| `POST /api/admin/users/{id}/reset` | as above | email a reset link (the super admin may do it for themselves) |
+| `POST /api/admin/users/{id}/reset` | as above | email a reset link (admins and the super admin may also do it for themselves) |
 | `POST /api/admin/users/{id}/reset-mfa` | as above | remove the target's two-step verification and sign them out |
 | `POST /api/admin/users/{id}/disable`, `/enable`, `/delete`, `/restore` | as above | account lifecycle (see the state machine in [security.md](security.md)) |
 | `POST /api/admin/users/{id}/role` | super admin only | switch an account between `user` and `admin` |

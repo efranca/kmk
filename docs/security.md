@@ -56,6 +56,7 @@ Counting uses the submitted identifier whether or not the account exists, so the
 | super admin | `user` and `admin` accounts | everything; role changes only between `user` and `admin`; never creates a second super admin (that is the server command) |
 | admin | `user` accounts only | invite (role `user`), edit, resend invite, reset password, reset two-step, disable, enable, delete, restore; cannot change roles |
 | anyone | the super admin account | nothing, except the super admin's own password reset |
+| admin or super admin | their own account | reset their own password only (never disable, delete, change role or reset two-step on themselves) |
 | plain user | nobody | no admin powers |
 
 **This overrides `scope.md` section 6**, which let admins demote or delete other admins. Here only the super admin manages admins, because two-step verification is optional and one stolen admin password must not be able to remove every other admin.
@@ -63,7 +64,7 @@ Counting uses the submitted identifier whether or not the account exists, so the
 **State machine** (`users.status`, in `lifecycle.py`): disable: `invited`/`active` to `disabled`; enable: `disabled` to `active` (or back to `invited` if the person never set a password); delete: any non-deleted state to `deleted` (sets `deleted_at`, voids unused invite/reset links); restore: `deleted` to `disabled` (an admin then enables it). A wrong source state answers `409 invalid_state`.
 A deleted account keeps its username and email reserved (nothing new can take them); restoring is the way to bring someone back.
 
-**Admins and their own password:** an admin or the super admin changes their password on the signed-in page (needs the current password) or recovers it with the ordinary "forgot password" link, exactly like anyone else; a reset never bypasses two-step verification (an account with TOTP still asks for a code at the next sign-in). The admin page's "reset password" action is for other people's accounts (the super admin may also use it on themselves).
+**Admins and their own password:** an admin or the super admin can change their password on the signed-in page (needs the current password), recover it with the ordinary "forgot password" link, or use "reset password" on their own row of the admin page (which emails them a reset link). A reset never bypasses two-step verification: an account with TOTP still asks for a code at the next sign-in.
 
 **Session effects:** disabling, deleting, changing the role of, or resetting the two-step verification of an account signs all of that account's sessions out at once. A disabled or deleted user cannot sign in (the generic `401`).
 
