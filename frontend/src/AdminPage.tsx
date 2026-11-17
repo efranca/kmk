@@ -14,7 +14,7 @@ const ERRORS = {
   network: "networkError",
 } as const;
 
-export default function AdminPage({ session, onBack }: { session: Session; onBack: () => void }) {
+export default function AdminPage({ session }: { session: Session }) {
   const { t } = useTranslation();
   const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -55,9 +55,6 @@ export default function AdminPage({ session, onBack }: { session: Session; onBac
   return (
     <>
       <h1>{t("adminTitle")}</h1>
-      <p>
-        <button type="button" className="linklike" onClick={onBack}>{t("adminBack")}</button>
-      </p>
       {notice && (
         <p className={notice.ok ? "notice" : "error"} role={notice.ok ? "status" : "alert"}>
           {t(notice.key)}

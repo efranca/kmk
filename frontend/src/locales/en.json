@@ -65,8 +65,6 @@
   "mfaUnavailable": "Two-step verification is unavailable right now.",
   "codesRemaining": "You have {{count}} recovery code(s) left. Consider generating new ones.",
   "adminTitle": "User management",
-  "adminOpen": "Manage users",
-  "adminBack": "Back",
   "adminSearch": "Search",
   "adminShowDeleted": "Show deleted accounts",
   "adminInviteTitle": "Invite a user",
@@ -74,7 +72,7 @@
   "adminInviteSent": "Invitation sent.",
   "adminUsername": "Username",
   "adminEmail": "Email",
-  "adminLanguage": "Language",
+  "adminLanguage": "Account language",
   "adminRole": "Account role",
   "adminNever": "Never",
   "adminLastSignIn": "Last sign-in",
@@ -104,5 +102,14 @@
   "errLastAdmin": "Not possible: at least one active administrator must remain.",
   "errExists": "That username or email is already in use.",
   "language": "Language",
-  "langError": "Could not change the language."
+  "langError": "Could not change the language.",
+  "navWelcome": "Home",
+  "navAccount": "My account",
+  "navUsers": "Users",
+  "welcomeTitle": "Welcome to KMK Entretien Ménager",
+  "welcomeIntro": "This space is for the team. Company information (contacts, procedures, resources) will be added here soon.",
+  "notFoundTitle": "Page not found",
+  "notFoundText": "This page does not exist.",
+  "notFoundHome": "Back to home",
+  "skipToContent": "Skip to content"
 }

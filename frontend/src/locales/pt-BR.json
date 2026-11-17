@@ -65,8 +65,6 @@
   "mfaUnavailable": "A verificação em duas etapas está indisponível no momento.",
   "codesRemaining": "Restam {{count}} código(s) de recuperação. Considere gerar novos.",
   "adminTitle": "Gerenciar usuários",
-  "adminOpen": "Gerenciar usuários",
-  "adminBack": "Voltar",
   "adminSearch": "Pesquisar",
   "adminShowDeleted": "Mostrar contas excluídas",
   "adminInviteTitle": "Convidar um usuário",
@@ -74,7 +72,7 @@
   "adminInviteSent": "Convite enviado.",
   "adminUsername": "Nome de usuário",
   "adminEmail": "E-mail",
-  "adminLanguage": "Idioma",
+  "adminLanguage": "Idioma da conta",
   "adminRole": "Função da conta",
   "adminNever": "Nunca",
   "adminLastSignIn": "Último acesso",
@@ -104,5 +102,14 @@
   "errLastAdmin": "Não é possível: deve restar ao menos um administrador ativo.",
   "errExists": "Esse nome de usuário ou e-mail já está em uso.",
   "language": "Idioma",
-  "langError": "Não foi possível alterar o idioma."
+  "langError": "Não foi possível alterar o idioma.",
+  "navWelcome": "Início",
+  "navAccount": "Minha conta",
+  "navUsers": "Usuários",
+  "welcomeTitle": "Bem-vindo à KMK Entretien Ménager",
+  "welcomeIntro": "Este espaço é para a equipe. As informações da empresa (contatos, procedimentos, recursos) serão adicionadas aqui em breve.",
+  "notFoundTitle": "Página não encontrada",
+  "notFoundText": "Esta página não existe.",
+  "notFoundHome": "Voltar ao início",
+  "skipToContent": "Ir para o conteúdo"
 }

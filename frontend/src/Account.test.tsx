@@ -125,6 +125,7 @@ describe("set password", () => {
 describe("change password", () => {
   const signedIn = { "GET /api/auth/me": () => res(200, { user: alice, csrf_token: "tok-9" }) };
   async function open(extra: Record<string, Handler>) {
+    window.history.pushState({}, "", "/account"); // change password lives on the account page
     const fn = mockApi({ ...signedIn, ...extra });
     render(<App />);
     await screen.findByRole("heading", { level: 2, name: frCA.changePasswordTitle });

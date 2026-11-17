@@ -80,7 +80,8 @@ describe("App", () => {
     mockApi({ me: () => json(200, { user: alice, csrf_token: "tok" }) });
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Bonjour, alice");
-    expect(screen.getByText(new RegExp(frCA.role_admin))).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: frCA.navAccount })); // the role line is on the account page
+    expect(await screen.findByText(new RegExp(frCA.role_admin))).toBeInTheDocument();
   });
 
   it("logs out with the CSRF token and returns to the form", async () => {

@@ -35,12 +35,16 @@ const click = (name: string) => fireEvent.click(screen.getByRole("button", { nam
 
 const CODES = Array.from({ length: 10 }, (_, i) => `abcd${i}-efgh${i}`);
 
+const visitAccount = () => window.history.pushState({}, "", "/account"); // the security section lives there
+
 beforeEach(() => {
+  window.history.pushState({}, "", "/");
   window.localStorage.clear();
   mockApi({});
 });
 afterEach(async () => {
   cleanup();
+  window.history.pushState({}, "", "/");
   window.localStorage.clear();
   await act(() => i18n.changeLanguage("fr-CA"));
 });
@@ -113,6 +117,7 @@ describe("encouragement banner", () => {
   });
 
   it("shows no banner once two-step verification is on", async () => {
+    visitAccount();
     mockApi({ "GET /api/auth/me": session(boss, "ok", true) });
     render(<App />);
     await screen.findByText(frCA.mfaStatusOn);
@@ -127,6 +132,7 @@ describe("enrollment", () => {
   };
 
   it("shows the QR code and secret, then the recovery codes, then the signed-in page", async () => {
+    visitAccount();
     const fn = mockApi({ "GET /api/auth/me": session(), ...enrollmentApi });
     render(<App />);
     await screen.findByRole("button", { name: frCA.mfaSetupTitle });
@@ -159,6 +165,7 @@ describe("enrollment", () => {
   });
 
   it("explains when two-step verification is unavailable", async () => {
+    visitAccount();
     mockApi({ "GET /api/auth/me": session(), "POST /api/auth/mfa/setup": () => res(503, { error: "mfa_unavailable" }) });
     render(<App />);
     await screen.findByRole("button", { name: frCA.mfaSetupTitle });
@@ -171,6 +178,7 @@ describe("security section", () => {
   const enabled = { "GET /api/auth/me": session(alice, "ok", true) };
 
   async function open(extra: Record<string, Handler>) {
+    visitAccount();
     const fn = mockApi({ ...enabled, ...extra });
     render(<App />);
     await screen.findByText(frCA.mfaStatusOn);

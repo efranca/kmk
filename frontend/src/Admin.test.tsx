@@ -64,10 +64,10 @@ afterEach(async () => {
 });
 
 describe("reaching the page", () => {
-  it("is linked from the signed-in page for admins and opens the list", async () => {
+  it("is linked from the navigation for admins and opens the list", async () => {
     const fn = mockApi({ "GET /api/auth/me": me("admin"), "GET /api/admin/users": listOf([row({})]) });
     render(<App />);
-    fireEvent.click(await screen.findByRole("link", { name: frCA.adminOpen }));
+    fireEvent.click(await screen.findByRole("link", { name: frCA.navUsers }));
     expect(await screen.findByRole("heading", { level: 1, name: frCA.adminTitle })).toBeInTheDocument();
     expect(calls(fn, "GET /api/admin/users")).toHaveLength(1);
   });
@@ -77,7 +77,7 @@ describe("reaching the page", () => {
     const fn = mockApi({ "GET /api/auth/me": me("user") });
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1, name: "Bonjour, me" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: frCA.adminOpen })).toBeNull();
+    expect(screen.queryByRole("link", { name: frCA.navUsers })).toBeNull();
     expect(calls(fn, "GET /api/admin/users")).toHaveLength(0);
   });
 
