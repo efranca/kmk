@@ -1,3 +1,5 @@
+> **Status note:** this is the original plan. What is actually built, how to run it and what comes next is documented in [docs/README.md](docs/README.md); where they differ, `docs/` is right.
+
 # app.kmk-entretien.ca – Project Plan
 
 A secure internal web application with invite-only login, an admin page, and a static welcome page. Built to later host customer records and LiteLLM-powered AI features.

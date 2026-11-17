@@ -1,0 +1,86 @@
+# Documentation index
+
+What this is: the internal app for KMK Entretien Ménager at https://app.kmk-entretien.ca. These documents describe the system
+**as built**. The original plan is [../scope.md](../scope.md); where the two differ, `docs/` is right.
+
+| Document | Contents |
+| --- | --- |
+| [operations.md](operations.md) | Runbook: deploy, settings, database, CLI, backups, email, MFA switch, troubleshooting |
+| [security.md](security.md) | The security model as implemented, accepted risks, what is not covered |
+| [roadmap.md](roadmap.md) | What is next, deferred items, parked risks, open questions |
+| [superpowers/specs/](superpowers/specs/) | Design documents, one per phase (the reasoning and the decisions) |
+| [superpowers/plans/](superpowers/plans/) | Implementation plans, one per phase (the task lists that were executed) |
+
+## How a request travels
+
+```
+browser --HTTPS--> Cloudflare --tunnel (outbound from this machine)--> cloudflared (famillai-cloudflared container)
+   --> http://localhost:8081  Caddy (kmk-caddy): serves frontend/dist, proxies /api/* ---> http://127.0.0.1:8001  API (kmk-api, FastAPI)
+                                                                                    ---> 127.0.0.1:5432  PostgreSQL (shared container, database "kmk")
+```
+
+- Cloudflare terminates HTTPS and redirects `http://` to `https://` ("Always Use HTTPS"). The hops after the tunnel are plain HTTP on loopback.
+- The home connection has no public IP (CGNAT), so nothing is exposed except through the tunnel. The tunnel container belongs to the famillai project and is shared.
+- Caddy resolves the real visitor address from Cloudflare's `Cf-Connecting-Ip` header and passes it to the API as `X-Real-Client-Ip` (overwriting anything the browser sent).
+
+## Status
+
+| Phase | Content | State | Design | Plan |
+| --- | --- | --- | --- | --- |
+| Placeholder | "Under Construction" page behind the tunnel | done, replaced | [spec](superpowers/specs/2026-11-17-app-kmk-ca-placeholder-design.md) | [plan](superpowers/plans/2026-11-17-app-kmk-placeholder.md) |
+| 1 Foundation | repo, API health check, Alembic, React shell, Caddy wiring | done | [spec](superpowers/specs/2026-11-17-kmk-app-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase1-foundation.md) |
+| 2 Core auth | users, sessions, login/logout, rate limiting, audit log, minimal login page | done | [spec](superpowers/specs/2026-11-17-phase2-core-auth-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase2-core-auth.md) |
+| 3 Account flows | invite, password reset, password change, email layer (Resend or log) | done (email still in `log` mode) | [spec](superpowers/specs/2026-11-17-phase3-account-flows-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase3-account-flows.md) |
+| 4a TOTP | optional two-step verification, recovery codes, enforcement switch (off) | done | [spec](superpowers/specs/2026-11-17-phase4a-totp-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase4a-totp.md) |
+| 4b Admin | admin page, user lifecycle, role rules | next | not written | not written |
+| 5 Frontend | welcome page, language switcher, polish | planned | | |
+| 6 Hardening | security review, restore test, go-live checks | planned | | |
+
+## Data model (as built)
+
+Tables, all created by the migrations in `backend/alembic/versions/`:
+
+| Table | Purpose | Key columns |
+| --- | --- | --- |
+| `users` | accounts | `username`, `email` (both lowercase, unique), `password_hash` (Argon2id, null until an invite is accepted), `role` (`user`/`admin`/`superadmin`; one super admin allowed), `locale` (`fr-CA`/`en`/`pt-BR`), `status` (`invited`/`active`/`disabled`/`deleted`), `mfa_enabled`, `mfa_secret` (Fernet-encrypted), `mfa_last_step` |
+| `sessions` | server-side sessions | `token_hash` (primary key), `user_id`, `expires_at` (5 days), `revoked_at`, `ip`, `user_agent`, `mfa_verified` |
+| `tokens` | invite and reset links | `token_hash`, `user_id`, `purpose` (`invite`/`reset`), `expires_at`, `used_at` |
+| `recovery_codes` | TOTP recovery codes | `user_id`, `code_hash` (unique), `used_at` |
+| `login_attempts` | rate-limit bookkeeping | `ip`, `identifier`, `success`, `kind` (`login`/`reset_request`/`token`/`mfa`), `at` |
+| `audit_log` | append-only security events | `timestamp`, `actor_user_id`, `action`, `target_user_id`, `ip`, `details` (JSON) |
+| `alembic_version` | migration state | |
+
+Deletion is soft by design (`status = 'deleted'`, not implemented in the UI yet), so the audit log keeps its references.
+
+## API
+
+All routes are under `/api`. "Verified" means a signed-in session whose two-step state is `ok` (see [security.md](security.md)).
+Every mutating request needs an allowed `Origin` header; authenticated mutating requests also need the `X-CSRF-Token` header.
+
+| Method and path | Who | Purpose |
+| --- | --- | --- |
+| `GET /api/health` | anyone | liveness and database check |
+| `POST /api/auth/login` | anyone | username-or-email and password; returns the user, a CSRF token, and the two-step state |
+| `GET /api/auth/me` | any session state | current user, CSRF token, `mfa` state (`ok`/`verify`/`setup`), `mfa_enabled` |
+| `POST /api/auth/logout` | any session state | revoke the session |
+| `POST /api/auth/forgot-password` | anyone | request a reset email (always answers the same) |
+| `POST /api/auth/set-password` | anyone with a token | accept an invite or finish a reset |
+| `POST /api/auth/change-password` | verified | needs the current password |
+| `POST /api/auth/mfa/setup` | verified or `setup` state | start enrollment, returns the secret and `otpauth://` URI |
+| `POST /api/auth/mfa/enable` | verified or `setup` state | confirm a code, returns the 10 recovery codes once |
+| `POST /api/auth/mfa/verify` | `verify` state | second login step: a code or a recovery code |
+| `POST /api/auth/mfa/disable` | verified | needs password and a code; refused for roles in `MFA_REQUIRED_ROLES` |
+| `POST /api/auth/mfa/recovery-codes/regenerate` | verified | needs password and a code |
+| `POST /api/admin/users` | verified admin or super admin | create and invite a `user`-role account |
+| `POST /api/admin/users/{id}/invite` | verified admin or super admin | re-send an invite |
+| `POST /api/admin/users/{id}/reset` | verified admin or super admin | email a reset link (only the super admin may target the super admin) |
+
+The frontend pages are `/` (sign-in, signed-in page, two-step screens), `/forgot-password`, and `/set-password#token=...`.
+The server serves the single-page app for any non-`/api`, non-`/assets` path.
+
+## Pointers for the code
+
+- Backend entry: `backend/app/main.py` (`create_app`, Origin check middleware, error handler). Routers in `backend/app/auth/`.
+- The guard (`auth/guard.py`) decides what a session may call. MFA state logic is in `auth/service.py` (`state_for`, `mfa_state`).
+- Settings: `backend/app/config.py` (each one explained in [operations.md](operations.md)).
+- Frontend entry: `frontend/src/App.tsx` (switches between the screens); API client in `frontend/src/api.ts`.
