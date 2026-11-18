@@ -128,7 +128,7 @@ def test_run_produces_a_decryptable_archive(setup, add_user):
     assert (out / "deploy.env").read_text() == setup.envfile.read_text()
     manifest = dict(line.split(": ", 1) for line in (out / "MANIFEST.txt").read_text().splitlines() if ": " in line)
     assert manifest["rows.users"] == "3"
-    assert manifest["alembic_revision"] == "0004"
+    assert manifest["alembic_revision"] == psql("select version_num from alembic_version", "kmk_test")  # whatever the current revision is
     assert manifest["db"] == "kmk_test"
     import hashlib
 

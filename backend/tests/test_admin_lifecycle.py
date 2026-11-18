@@ -56,7 +56,7 @@ def test_list_shape_sorting_and_last_sign_in(make_client, add_user, owner_engine
     by = {u["username"]: u for u in rows}
     assert {"amy", "boss", "gone", "zed"} <= set(by)  # deleted accounts are listed too
     amy = by["amy"]
-    assert set(amy) == {"id", "username", "email", "role", "locale", "status", "mfa_enabled", "created_at", "last_sign_in", "actions"}
+    assert set(amy) == {"id", "username", "name", "email", "role", "locale", "status", "mfa_enabled", "created_at", "last_sign_in", "actions"}
     assert (amy["locale"], amy["status"], amy["mfa_enabled"]) == ("en", "active", False)
     datetime.fromisoformat(amy["last_sign_in"])
     assert by["zed"]["last_sign_in"] is None
@@ -145,7 +145,7 @@ def test_admin_cannot_touch_admins_or_the_superadmin(make_client, add_user, add_
 
 def test_inviting_admins_is_superadmin_only(make_client, add_user, outbox, owner_engine):
     c, h = signed_in(make_client, add_user, "admin")
-    body = {"username": "newadmin", "email": "na@example.com", "locale": "en", "role": "admin"}
+    body = {"name": "New Admin", "username": "newadmin", "email": "na@example.com", "locale": "en", "role": "admin"}
     assert c.post(URL, json=body, headers=h).status_code == 403
     assert c.post(URL, json={**body, "role": "superadmin"}, headers=h).status_code == 422
     assert c.post(URL, json={**body, "role": "user"}, headers=h).json()["user"]["role"] == "user"
@@ -211,7 +211,7 @@ def test_delete_keeps_identity_reserved_and_restore_works(make_client, add_user,
     assert bob.get("/api/auth/me").status_code == 401
     anon = make_client()
     assert anon.post("/api/auth/set-password", json={"token": token, "password": "Newpass1!"}, headers=ORIGIN).status_code == 400
-    body = {"username": "bob", "email": "other@example.com", "locale": "en"}
+    body = {"name": "Bob Reserved", "username": "bob", "email": "other@example.com", "locale": "en"}
     assert c.post(URL, json=body, headers=h).status_code == 409  # username stays reserved
     assert c.post(URL, json={**body, "username": "bob2", "email": "bob@example.com"}, headers=h).status_code == 409  # so does the email
     assert call(c, h, "restore", uid(owner_engine, "bob")).status_code == 200
@@ -309,7 +309,7 @@ def test_a_lone_admin_can_still_be_disabled_by_the_superadmin(make_client, add_u
 
 def test_correcting_an_invited_email_kills_the_first_invite_link(make_client, add_user, outbox, owner_engine):
     c, h = admin_client_for_lifecycle(make_client, add_user)
-    created = c.post(URL, json={"username": "marie", "email": "marie@gmial.com", "locale": "fr-CA"}, headers=h)
+    created = c.post(URL, json={"name": "Marie Tremblay", "username": "marie", "email": "marie@gmial.com", "locale": "fr-CA"}, headers=h)
     assert created.status_code == 201
     first = re.search(r"#token=([^&\s]+)", outbox[0].text).group(1)
     uid_marie = created.json()["user"]["id"]
@@ -346,3 +346,81 @@ def test_takeover_playbook_disable_reset_password_then_enable(make_client, add_u
     assert call(c, h, "enable", bob_id).status_code == 200
     assert login(make_client(), "bob", PW).status_code == 401  # the attacker's password no longer works
     assert login(make_client(), "bob", "Brandnew1!").status_code == 200
+
+
+# ======================= a name for every person =======================
+
+def invite(c, h, **kw):
+    body = {"name": "Marie Tremblay", "username": "marie", "email": "marie@example.com", "locale": "fr-CA", **kw}
+    body = {k: v for k, v in body.items() if v is not None}
+    return c.post(URL, json=body, headers=h)
+
+
+def test_invitation_requires_a_valid_name(make_client, add_user, outbox, owner_engine):
+    c, h = admin_client_for_lifecycle(make_client, add_user)
+    for bad in (None, "", "   ", "x" * 101, "<b>Marie</b>", "Marie\nTremblay", "Marie\u202eT", "m@x.com"):
+        r = invite(c, h, name=bad)
+        assert r.status_code == 422, repr(bad)
+    assert sql(owner_engine, "SELECT count(*) FROM users WHERE username = 'marie'")[0][0] == 0
+    assert outbox == []
+
+
+def test_the_name_is_cleaned_stored_and_returned(make_client, add_user, outbox, owner_engine):
+    c, h = admin_client_for_lifecycle(make_client, add_user)
+    r = invite(c, h, name="  Élise   Gagnon ")
+    assert r.status_code == 201 and r.json()["user"]["name"] == "Élise Gagnon"
+    assert sql(owner_engine, "SELECT name FROM users WHERE username = 'marie'")[0][0] == "Élise Gagnon"
+    rows = {u["username"]: u for u in c.get(URL).json()["users"]}
+    assert rows["marie"]["name"] == "Élise Gagnon" and rows["boss"]["name"] is None
+
+
+def test_the_list_is_sorted_by_name_ignoring_accents_and_capitals(make_client, add_user, owner_engine):
+    c, h = admin_client_for_lifecycle(make_client, add_user)  # "boss", no name
+    for username, name in (("u1", "Zoé Roy"), ("u2", "émile Côté"), ("u3", "anne Bélanger"), ("u4", None)):
+        add_user(username, f"{username}@example.com")
+        if name:
+            sql(owner_engine, "UPDATE users SET name = :n WHERE username = :u", n=name, u=username)
+    order = [u["username"] for u in c.get(URL).json()["users"]]
+    # anne, boss (no name: sorted by username), émile, u4 (no name), Zoé
+    assert order == ["u3", "boss", "u2", "u4", "u1"]
+
+
+def test_admins_and_the_superadmin_can_edit_names_within_their_authority(make_client, add_user, owner_engine):
+    add_user("plain1", "p1@example.com")
+    add_user("adm2", "adm2@example.com", role="admin")
+    c, h = admin_client_for_lifecycle(make_client, add_user)
+    ok = call(c, h, "edit", uid(owner_engine, "plain1"), json={"name": "Pat Plain"})
+    assert (ok.status_code, ok.json()["user"]["name"]) == (200, "Pat Plain")
+    assert call(c, h, "edit", uid(owner_engine, "adm2"), json={"name": "Nope"}).status_code == 403  # an admin cannot edit an admin
+    assert call(c, h, "edit", uid(owner_engine, "boss"), json={"name": "Nope"}).status_code == 403  # nor themselves
+    root_c, root_h = signed_in(make_client, add_user, "superadmin")
+    for name, new in (("plain1", "Pat P."), ("adm2", "Adam Admin"), ("root", "Rita Root")):  # everyone, including themselves
+        r = call(root_c, root_h, "edit", uid(owner_engine, name), json={"name": new})
+        assert (r.status_code, r.json()["user"]["name"]) == (200, new), name
+    plain_c, plain_h = signed_in(make_client, add_user, "user", "plain9")
+    assert call(plain_c, plain_h, "edit", uid(owner_engine, "plain1"), json={"name": "X"}).status_code == 403
+    assert call(root_c, root_h, "edit", uid(owner_engine, "plain1"), json={"name": "<i>x</i>"}).status_code == 422
+    assert call(root_c, root_h, "edit", uid(owner_engine, "plain1"), json={}).status_code == 422
+
+
+def test_the_super_admin_still_cannot_disable_delete_or_re_role_themselves(make_client, add_user, owner_engine):
+    root_c, root_h = signed_in(make_client, add_user, "superadmin")
+    me = uid(owner_engine, "root")
+    for action in ("disable", "delete", "set_role", "reset_mfa"):
+        assert call(root_c, root_h, action, me).json() == {"error": "cannot_target_self"}, action
+
+
+def test_a_name_edit_is_audited_without_the_name(make_client, add_user, owner_engine, caplog):
+    import logging
+
+    caplog.set_level(logging.DEBUG)
+    add_user("plain1", "p1@example.com")
+    c, h = admin_client_for_lifecycle(make_client, add_user)
+    secret_name = "Qwertyuiop Zxcvbnm"
+    invite(c, h, name=secret_name)
+    call(c, h, "edit", uid(owner_engine, "plain1"), json={"name": secret_name + " Jr"})
+    rows = sql(owner_engine, "SELECT action, details::text FROM audit_log ORDER BY id")
+    blob = "".join(f"{a} {d}" for a, d in rows) + caplog.text
+    assert "Qwertyuiop" not in blob and "Zxcvbnm" not in blob  # no name anywhere in audit rows or logs
+    updated = [d for a, d in rows if a == "user_updated"]
+    assert updated and '"name"' in updated[-1]  # the field name is recorded

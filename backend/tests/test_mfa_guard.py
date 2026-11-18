@@ -89,7 +89,7 @@ def test_default_settings_force_nobody(client, add_user, outbox):
     body = login(client, "boss").json()
     assert (body["mfa"], body["mfa_enabled"]) == ("ok", False)
     h = {**ORIGIN, "X-CSRF-Token": body["csrf_token"]}
-    created = client.post("/api/admin/users", json={"username": "newone", "email": "n@example.com", "locale": "en"}, headers=h)
+    created = client.post("/api/admin/users", json={"name": "New One", "username": "newone", "email": "n@example.com", "locale": "en"}, headers=h)
     assert created.status_code == 201
     changed = client.post("/api/auth/change-password", json={"current_password": PW, "new_password": "Another1!"}, headers=h)
     assert changed.status_code == 200

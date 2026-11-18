@@ -11,7 +11,7 @@ def test_login_by_username_and_email_case_insensitive(client, add_user):
     r = login(client, "Alice")
     assert r.status_code == 200
     body = r.json()
-    assert body["user"] == {"id": body["user"]["id"], "username": "alice", "email": "alice@example.com", "role": "user", "locale": "fr-CA"}
+    assert body["user"] == {"id": body["user"]["id"], "username": "alice", "name": None, "email": "alice@example.com", "role": "user", "locale": "fr-CA"}
     assert "password_hash" not in r.text and body["csrf_token"]
     assert "kmk_session" in r.cookies
     assert login(client, "ALICE@Example.com").status_code == 200
@@ -225,3 +225,14 @@ def test_parallel_guesses_from_one_address_cannot_exceed_the_address_limit(make_
     with ThreadPoolExecutor(n) as pool:
         codes = list(pool.map(attempt, enumerate(clients)))
     assert codes.count(401) <= 6, codes
+
+
+def test_login_and_me_carry_the_name(client, add_user, owner_engine):
+    add_user("alice", "alice@example.com")
+    add_user("bob", "bob@example.com")
+    sql(owner_engine, "UPDATE users SET name = 'Alice Roy' WHERE username = 'alice'")
+    body = login(client, "alice").json()
+    assert body["user"]["name"] == "Alice Roy"
+    assert client.get("/api/auth/me").json()["user"]["name"] == "Alice Roy"
+    other = login(client, "bob").json()
+    assert other["user"]["name"] is None  # an account without a name

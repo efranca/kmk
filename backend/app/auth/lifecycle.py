@@ -87,8 +87,11 @@ def change_role(db: Session, target: User, new_role: str) -> None:
     revoke_sessions(db, target.id)
 
 
-def update(db: Session, target: User, locale: str | None, email: str | None) -> list[str]:
-    """Edit locale (any time) and email (only while invited). Returns the names of the fields that changed."""
+def update(db: Session, target: User, locale: str | None, email: str | None, name: str | None = None) -> list[str]:
+    """Edit locale and name (any time) and email (only while invited). Returns the names of the fields that changed.
+
+    `name` must already be cleaned (app.names.clean_name); the database constraint is the second line of defense.
+    """
     if target.status == "deleted":
         raise ApiError(409, "invalid_state")
     if email is not None and target.status != "invited":
@@ -102,6 +105,9 @@ def update(db: Session, target: User, locale: str | None, email: str | None) -> 
         if email != target.email:
             target.email = email
             changed.append("email")
+    if name is not None and name != target.name:
+        target.name = name
+        changed.append("name")
     if changed:
         target.updated_at = _now()
         try:

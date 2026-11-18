@@ -187,3 +187,23 @@ def test_changing_the_email_cancels_the_old_invite_link(db, add_user, make_token
     assert lifecycle.update(db, load(db, "inv"), "en", None) == ["locale"]
     db.commit()
     assert tokens.redeem_token(db, new_link) is not None
+
+
+def test_update_can_change_the_name(db, add_user, owner_engine):
+    add_user("act", "act@example.com")
+    assert lifecycle.update(db, load(db, "act"), None, None, "Marie Tremblay") == ["name"]
+    db.commit()
+    assert sql(owner_engine, "SELECT name FROM users WHERE username = 'act'")[0][0] == "Marie Tremblay"
+    assert lifecycle.update(db, load(db, "act"), None, None, "Marie Tremblay") == []  # the same name is not a change
+    assert lifecycle.update(db, load(db, "act"), "en", None, "Marie T.") == ["locale", "name"]
+    db.commit()
+
+
+def test_a_name_can_be_changed_in_any_live_state_but_not_when_deleted(db, add_user):
+    add_user("inv", "inv@example.com", password=None, status="invited")
+    add_user("dis", "dis@example.com", status="disabled")
+    add_user("del", "del@example.com", status="deleted")
+    assert lifecycle.update(db, load(db, "inv"), None, None, "Invited Person") == ["name"]
+    assert lifecycle.update(db, load(db, "dis"), None, None, "Disabled Person") == ["name"]
+    db.commit()
+    assert refused(db, lifecycle.update, load(db, "del"), None, None, "Nope") == "409 invalid_state"

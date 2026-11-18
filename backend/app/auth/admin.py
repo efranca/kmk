@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app import names
 from app.auth import audit, lifecycle, policy, service, tokens
 from app.auth.account import queue_email
 from app.auth.deps import get_db, get_settings_dep
@@ -33,10 +34,16 @@ def clean_email(v: str) -> str:
 
 
 class NewUser(BaseModel):
+    name: str
     username: str
     email: str
     locale: Locale
     role: Literal["user", "admin"] = "user"
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str) -> str:
+        return names.clean_name(v)
 
     @field_validator("username")
     @classmethod
@@ -55,6 +62,12 @@ class NewUser(BaseModel):
 class EditUser(BaseModel):
     locale: Locale | None = None
     email: str | None = None
+    name: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str | None) -> str | None:
+        return None if v is None else names.clean_name(v)
 
     @field_validator("email")
     @classmethod
@@ -63,8 +76,8 @@ class EditUser(BaseModel):
 
     @model_validator(mode="after")
     def _something_to_change(self):
-        if self.locale is None and self.email is None:
-            raise ValueError("send locale and/or email")
+        if self.locale is None and self.email is None and self.name is None:
+            raise ValueError("send locale, email and/or name")
         return self
 
 
@@ -97,6 +110,7 @@ def row_payload(actor: User, user: User, last_sign_in) -> dict:
     return {
         "id": user.id,
         "username": user.username,
+        "name": user.name,
         "email": user.email,
         "role": user.role,
         "locale": user.locale,
@@ -110,7 +124,7 @@ def row_payload(actor: User, user: User, last_sign_in) -> dict:
 
 @router.get("/users")
 def list_users(actor: User = Depends(admin_reader), db: Session = Depends(get_db)):
-    users = db.scalars(select(User).order_by(User.username)).all()
+    users = sorted(db.scalars(select(User)).all(), key=lambda u: names.sort_key(u.name, u.username))
     last = dict(db.execute(select(UserSession.user_id, func.max(UserSession.created_at)).group_by(UserSession.user_id)).all())
     return {"users": [row_payload(actor, u, last.get(u.id)) for u in users]}
 
@@ -126,7 +140,7 @@ def create_user(
 ):
     if not policy.can_invite_role(actor, body.role):
         raise ApiError(403, "forbidden")
-    user = User(username=body.username, email=body.email, locale=body.locale, role=body.role, status="invited", password_hash=None)
+    user = User(name=body.name, username=body.username, email=body.email, locale=body.locale, role=body.role, status="invited", password_hash=None)
     db.add(user)
     try:
         db.flush()
@@ -151,7 +165,7 @@ def edit_user(
 ):
     target = get_target(db, user_id)
     policy.check(actor, target, "edit")
-    changed = lifecycle.update(db, target, body.locale, body.email)
+    changed = lifecycle.update(db, target, body.locale, body.email, body.name)
     if changed:
         # Field names only: values (such as an email address) never go into the audit log.
         audit.log(db, "user_updated", actor_user_id=actor.id, target_user_id=target.id, ip=request_ip(request, settings), details={"fields": changed})

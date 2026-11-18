@@ -51,6 +51,7 @@ def expected(actor_role, target_role, same):
                 out[a] = None
         if target_role == "superadmin" and same:
             out["reset_password"] = None
+            out["edit"] = None  # the super admin may fix their own name and language
             for a in SELF_DESTRUCTIVE:
                 out[a] = SELF
     return out
@@ -136,7 +137,7 @@ def test_available_actions_examples():
     assert policy.available_actions(admin, user(4, status="deleted")) == ["view", "restore"]
     assert policy.available_actions(admin, user(6, status="disabled")) == ["view", "edit", "reset_password", "enable", "delete"]
     assert policy.available_actions(admin, root) == ["view"]
-    assert policy.available_actions(root, root) == ["view", "reset_password"]
+    assert policy.available_actions(root, root) == ["view", "edit", "reset_password"]
     assert policy.available_actions(admin, admin) == ["view", "reset_password"]  # admins can reset their own password too
     assert policy.available_actions(user(5), user(2)) == []  # a plain user has no admin powers at all
 

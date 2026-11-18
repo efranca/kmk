@@ -118,3 +118,17 @@ def test_mfa_kind_and_defaults(owner_engine):
         )
         assert c.execute(text("SELECT mfa_verified FROM sessions")).scalar() is True
         assert c.execute(text("SELECT mfa_last_step FROM users")).scalar() is None
+
+
+def test_name_column_and_constraint(owner_engine, app_engine):
+    with app_engine.begin() as c:
+        add_user(c)
+        c.execute(text("UPDATE users SET name = 'Marie Tremblay' WHERE username = 'alice'"))
+        assert c.execute(text("SELECT name FROM users WHERE username = 'alice'")).scalar() == "Marie Tremblay"
+        c.execute(text("UPDATE users SET name = NULL WHERE username = 'alice'"))  # no name is allowed (existing rows)
+    for bad in ("'   '", "''", "'" + "x" * 101 + "'"):
+        with pytest.raises(IntegrityError):
+            with owner_engine.begin() as c:
+                c.execute(text(f"UPDATE users SET name = {bad} WHERE username = 'alice'"))
+    with owner_engine.begin() as c:
+        c.execute(text("UPDATE users SET name = '" + "x" * 100 + "' WHERE username = 'alice'"))

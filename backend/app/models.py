@@ -17,11 +17,13 @@ class User(Base):
         CheckConstraint("role in ('user','admin','superadmin')", name="users_role_valid"),
         CheckConstraint("locale in ('fr-CA','en','pt-BR')", name="users_locale_valid"),
         CheckConstraint("status in ('invited','active','disabled','deleted')", name="users_status_valid"),
+        CheckConstraint("name IS NULL OR char_length(btrim(name)) BETWEEN 1 AND 100", name="users_name_valid"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     username: Mapped[str] = mapped_column(Text, unique=True)
     email: Mapped[str] = mapped_column(Text, unique=True)
+    name: Mapped[str | None] = mapped_column(Text, nullable=True)  # display name; people without one show their username
     password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     role: Mapped[str] = mapped_column(Text, default="user")
     locale: Mapped[str] = mapped_column(Text, default="fr-CA")

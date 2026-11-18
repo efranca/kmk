@@ -15,7 +15,7 @@ def admin_client(make_client, add_user, role="admin", username="boss"):
 
 
 def create(c, h, **kw):
-    body = {"username": "Maria", "email": "MARIA@Example.com", "locale": "pt-BR", **kw}
+    body = {"name": "Maria Silva", "username": "Maria", "email": "MARIA@Example.com", "locale": "pt-BR", **kw}
     return c.post("/api/admin/users", json=body, headers=h)
 
 
@@ -26,7 +26,7 @@ def user_id(owner_engine, username):
 @pytest.mark.parametrize(
     "method_path_body",
     [
-        ("/api/admin/users", {"username": "x1x", "email": "x@example.com", "locale": "en"}),
+        ("/api/admin/users", {"name": "X One", "username": "x1x", "email": "x@example.com", "locale": "en"}),
         ("/api/admin/users/1/invite", None),
         ("/api/admin/users/1/reset", None),
     ],

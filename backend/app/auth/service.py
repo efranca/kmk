@@ -66,7 +66,7 @@ def current_session(db: Session, token: str | None) -> tuple[User, UserSession] 
 
 
 def user_payload(user: User) -> dict:
-    return {"id": user.id, "username": user.username, "email": user.email, "role": user.role, "locale": user.locale}
+    return {"id": user.id, "username": user.username, "name": user.name, "email": user.email, "role": user.role, "locale": user.locale}
 
 
 def state_for(user: User, verified: bool, settings: Settings) -> str:
