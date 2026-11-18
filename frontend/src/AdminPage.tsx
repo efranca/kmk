@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { adminList, type AdminResult, type AdminUser, type Session } from "./api";
 import AdminInvite from "./AdminInvite";
 import AdminUserRow from "./AdminUserRow";
+import { fold } from "./person";
 
 const ERRORS = {
   forbidden: "errForbidden",
@@ -11,6 +12,7 @@ const ERRORS = {
   invalid_state: "errInvalidState",
   last_admin: "errLastAdmin",
   exists: "errExists",
+  invalid: "errInvalidInput",
   network: "networkError",
 } as const;
 
@@ -47,9 +49,9 @@ export default function AdminPage({ session }: { session: Session }) {
     return false;
   }
 
-  const needle = search.trim().toLowerCase();
+  const needle = fold(search);
   const visible = (users ?? []).filter(
-    (u) => (showDeleted || u.status !== "deleted") && (!needle || u.username.toLowerCase().includes(needle) || u.email.toLowerCase().includes(needle)),
+    (u) => (showDeleted || u.status !== "deleted") && (!needle || fold(u.username).includes(needle) || fold(u.email).includes(needle) || fold(u.name ?? "").includes(needle)),
   );
 
   return (

@@ -1,6 +1,7 @@
 export type User = {
   id: number;
   username: string;
+  name: string | null;
   email: string;
   role: "user" | "admin" | "superadmin";
   locale: "fr-CA" | "en" | "pt-BR";
@@ -205,6 +206,7 @@ export const mfaRegenerate = (csrfToken: string, password: string, code: string)
 export type AdminUser = {
   id: number;
   username: string;
+  name: string | null;
   email: string;
   role: "user" | "admin" | "superadmin";
   locale: "fr-CA" | "en" | "pt-BR";
@@ -215,7 +217,7 @@ export type AdminUser = {
   actions: string[];
 };
 
-export type AdminError = "forbidden" | "self" | "invalid_state" | "last_admin" | "exists" | "network";
+export type AdminError = "forbidden" | "self" | "invalid_state" | "last_admin" | "exists" | "invalid" | "network";
 export type AdminResult = { ok: true } | { ok: false; reason: AdminError };
 
 export async function adminList(): Promise<AdminUser[] | null> {
@@ -226,6 +228,7 @@ export async function adminList(): Promise<AdminUser[] | null> {
     return body.users.map((u: Record<string, unknown>) => ({
       id: u.id,
       username: u.username,
+      name: u.name ?? null,
       email: u.email,
       role: u.role,
       locale: u.locale,
@@ -250,6 +253,7 @@ async function adminCall(csrfToken: string, method: string, path: string, body?:
     });
     if (r.ok) return { ok: true };
     const error = (await r.json().catch(() => ({}))).error;
+    if (r.status === 422) return { ok: false, reason: "invalid" }; // for example a name the server refuses
     if (r.status === 403) return { ok: false, reason: error === "cannot_target_self" ? "self" : "forbidden" };
     if (r.status === 409) {
       if (error === "last_admin") return { ok: false, reason: "last_admin" };
@@ -262,12 +266,12 @@ async function adminCall(csrfToken: string, method: string, path: string, body?:
   }
 }
 
-export const adminInvite = (csrf: string, v: { username: string; email: string; locale: string; role: "user" | "admin" }) =>
+export const adminInvite = (csrf: string, v: { name: string; username: string; email: string; locale: string; role: "user" | "admin" }) =>
   adminCall(csrf, "POST", "users", v);
 export const adminAct = (csrf: string, id: number, action: "invite" | "reset" | "disable" | "enable" | "delete" | "restore" | "reset-mfa") =>
   adminCall(csrf, "POST", `users/${id}/${action}`);
 export const adminSetRole = (csrf: string, id: number, role: "user" | "admin") => adminCall(csrf, "POST", `users/${id}/role`, { role });
-export const adminEdit = (csrf: string, id: number, v: { locale?: string; email?: string }) => adminCall(csrf, "PATCH", `users/${id}`, v);
+export const adminEdit = (csrf: string, id: number, v: { locale?: string; email?: string; name?: string }) => adminCall(csrf, "PATCH", `users/${id}`, v);
 
 export async function setLocale(csrfToken: string, locale: string): Promise<{ ok: true; user: User } | { ok: false }> {
   try {

@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { adminAct, adminEdit, adminSetRole, type AdminResult, type AdminUser } from "./api";
+import { displayName } from "./person";
 
 // Actions that need an inline "confirm" step before they are sent.
 const CONFIRMED = new Set(["reset_password", "reset_mfa", "disable", "delete", "set_role"]);
@@ -20,6 +21,7 @@ export default function AdminUserRow({
   const [editing, setEditing] = useState(false);
   const [locale, setLocale] = useState<string>(user.locale);
   const [email, setEmail] = useState(user.email);
+  const [name, setName] = useState(user.name ?? "");
 
   const label = (action: string) => (action === "set_role" ? (user.role === "admin" ? t("act_make_user") : t("act_make_admin")) : t(`act_${action}`));
 
@@ -56,8 +58,9 @@ export default function AdminUserRow({
 
   async function save(e: FormEvent) {
     e.preventDefault();
-    const changes: { locale?: string; email?: string } = {};
+    const changes: { locale?: string; email?: string; name?: string } = {};
     if (locale !== user.locale) changes.locale = locale;
+    if (name.trim() && name.trim() !== (user.name ?? "")) changes.name = name.trim();
     if (user.status === "invited" && email !== user.email) changes.email = email;
     const ok = Object.keys(changes).length ? await run(adminEdit(csrfToken, user.id, changes)) : true;
     if (ok) setEditing(false);
@@ -67,10 +70,10 @@ export default function AdminUserRow({
   const privilegedWithoutMfa = user.role !== "user" && !user.mfaEnabled && user.status !== "deleted";
 
   return (
-    <article className={`user-row status-${user.status}`} aria-label={user.username}>
+    <article className={`user-row status-${user.status}`} aria-label={displayName(user)}>
       <div className="who">
-        <strong>{user.username}</strong>
-        <span className="muted">{user.email}</span>
+        <strong>{displayName(user)}</strong>
+        <span className="muted">{user.name ? `${user.username} · ${user.email}` : user.email}</span>
       </div>
       <div className="badges">
         <span className="badge">{t(`role_${user.role}`)}</span>
@@ -84,6 +87,10 @@ export default function AdminUserRow({
       <div className="row-actions">
         {editing ? (
           <form onSubmit={save} className="form inline">
+            <label>
+              {t("adminName")}
+              <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" maxLength={100} />
+            </label>
             <label>
               {t("adminLanguage")}
               <select value={locale} onChange={(e) => setLocale(e.target.value)}>

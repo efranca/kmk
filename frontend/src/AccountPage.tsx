@@ -40,7 +40,7 @@ export default function AccountPage({
     <>
       <h1>{t("navAccount")}</h1>
       <p className="status">
-        {user.username} · {t("roleLabel")}: {t(`role_${user.role}`)}
+        {user.name ? `${user.name} · ${user.username}` : user.username} · {t("roleLabel")}: {t(`role_${user.role}`)}
       </p>
       {recoveryCodesLeft !== null && <p className="notice" role="status">{t("codesRemaining", { count: recoveryCodesLeft })}</p>}
       {!mfaEnabled && <MfaBanner role={user.role} />}

@@ -13,6 +13,7 @@ export default function AdminInvite({
   run: (p: Promise<AdminResult>, okKey?: string) => Promise<boolean>;
 }) {
   const { t } = useTranslation();
+  const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [locale, setLocale] = useState("fr-CA");
@@ -23,9 +24,10 @@ export default function AdminInvite({
     e.preventDefault();
     setBusy(true);
     // Only the super admin may pick a role; the server enforces it too.
-    const ok = await run(adminInvite(csrfToken, { username, email, locale, role: viewerRole === "superadmin" ? role : "user" }), "adminInviteSent");
+    const ok = await run(adminInvite(csrfToken, { name, username, email, locale, role: viewerRole === "superadmin" ? role : "user" }), "adminInviteSent");
     setBusy(false);
     if (ok) {
+      setName("");
       setUsername("");
       setEmail("");
       setRole("user");
@@ -36,6 +38,10 @@ export default function AdminInvite({
     <section className="section">
       <h2>{t("adminInviteTitle")}</h2>
       <form onSubmit={submit} className="form">
+        <label>
+          {t("adminName")}
+          <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required maxLength={100} />
+        </label>
         <label>
           {t("adminUsername")}
           <input value={username} onChange={(e) => setUsername(e.target.value)} autoCapitalize="none" required maxLength={32} />

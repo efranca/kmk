@@ -111,5 +111,7 @@
   "notFoundTitle": "Page introuvable",
   "notFoundText": "Cette page n'existe pas.",
   "notFoundHome": "Retour à l'accueil",
-  "skipToContent": "Aller au contenu"
+  "skipToContent": "Aller au contenu",
+  "adminName": "Nom complet",
+  "errInvalidInput": "Vérifiez les champs : le nom doit compter de 1 à 100 caractères, sans symboles spéciaux."
 }

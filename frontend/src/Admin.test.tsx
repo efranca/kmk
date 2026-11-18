@@ -239,6 +239,7 @@ describe("editing", () => {
 
 describe("inviting", () => {
   const fill = () => {
+    fireEvent.change(screen.getByLabelText(frCA.adminName), { target: { value: "Nadia Newbie" } });
     fireEvent.change(screen.getByLabelText(frCA.adminUsername), { target: { value: "newbie" } });
     fireEvent.change(screen.getByLabelText(frCA.adminEmail), { target: { value: "newbie@example.com" } });
     fireEvent.change(screen.getByLabelText(frCA.adminLanguage), { target: { value: "pt-BR" } });
@@ -251,7 +252,7 @@ describe("inviting", () => {
     fill();
     submit();
     expect(await screen.findByText(frCA.adminInviteSent)).toBeInTheDocument();
-    expect(bodyOf(calls(fn, "POST /api/admin/users")[0])).toEqual({ username: "newbie", email: "newbie@example.com", locale: "pt-BR", role: "user" });
+    expect(bodyOf(calls(fn, "POST /api/admin/users")[0])).toEqual({ name: "Nadia Newbie", username: "newbie", email: "newbie@example.com", locale: "pt-BR", role: "user" });
     expect(calls(fn, "GET /api/admin/users")).toHaveLength(2);
   });
 
