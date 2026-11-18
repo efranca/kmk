@@ -88,3 +88,14 @@ All entries below were decided on 2026-11-17 during the build (phase noted).
 
 ### D16. The documentation in `docs/` describes what is built; `scope.md` is the original plan (phase 4a)
 - **Decision:** `docs/` is kept accurate when behavior changes and is verified against the running system before each phase is called done; every phase has a design document and a plan under `docs/superpowers/`.
+
+---
+
+## People
+
+### D17. Every person has one display name; admins and the super admin fix it, people cannot change their own (user name feature)
+- **Decision:** one `name` field ("Marie Tremblay"), shown wherever a person is identified (greeting, account page, admin list, emails, command-line tools); the username stays the sign-in handle and is shown next to the name where two people could share one. It is required on invitation, with a fallback to the username for accounts without one (the first super admin predates the feature).
+- **Who can edit it:** an admin for plain users; the **super admin for everyone, including their own account** (the owner's requirement: this is the one exception to "nobody edits the super admin"; the self rules still forbid the super admin from disabling, deleting or re-roling themselves). People cannot change their own name for now, because the name is how admins identify people.
+- **Rejected:** separate first and last names (more fields, and splitting names such as double names or "de la" is error-prone; the greeting uses the whole name instead).
+- **Privacy:** a name is personal information: visible only to the person and to admins, never in audit details, error messages or normal logs; emails carry it in the body only, escaped. Deletion is soft, so a name stays in the database and the encrypted backups; a real erasure feature is not built (a known limit for the privacy review).
+- **Revisit when:** people should edit their own name, or the privacy review asks for erasure.

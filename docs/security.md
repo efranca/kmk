@@ -61,9 +61,9 @@ Counting uses the submitted identifier whether or not the account exists, so the
 
 | Actor | May act on | Notes |
 | --- | --- | --- |
-| super admin | `user` and `admin` accounts | everything; role changes only between `user` and `admin`; never creates a second super admin (that is the server command) |
+| super admin | `user` and `admin` accounts, and **their own account for edits** | everything; role changes only between `user` and `admin`; may fix anyone's name and language, including their own; never creates a second super admin (that is the server command) |
 | admin | `user` accounts only | invite (role `user`), edit, resend invite, reset password, reset two-step, disable, enable, delete, restore; cannot change roles |
-| anyone | the super admin account | nothing, except the super admin's own password reset |
+| anyone | the super admin account | nothing, except the super admin's own password reset and own edits (name, language) |
 | admin or super admin | their own account | reset their own password only (never disable, delete, change role or reset two-step on themselves) |
 | plain user | nobody | no admin powers |
 
@@ -80,7 +80,7 @@ A deleted account keeps its username and email reserved (nothing new can take th
 
 **Last-admin invariant:** demoting, disabling or deleting an active admin or super admin is refused (`409 last_admin`) if no other active admin or super admin would remain; the privileged rows are locked in the same transaction, so two simultaneous requests cannot both succeed (tested with a race). Because the super admin is untouchable and always active, this cannot trigger through the API today; it is a safety net.
 
-**Edit rules:** the language can change at any time; the email only while the account is still `invited` (to fix a typo before the person accepts). The page's "last sign-in" comes from the `sessions` table because the app cannot read the audit log.
+**Edit rules:** the name and the language can change at any time (not on deleted accounts); the email only while the account is still `invited` (to fix a typo before the person accepts). The page's "last sign-in" comes from the `sessions` table because the app cannot read the audit log.
 
 ## Audit log
 
@@ -91,6 +91,12 @@ Details never contain passwords, hashes, tokens, links, TOTP secrets, codes or r
 ## Secrets
 
 Only in git-ignored `.env` files with mode 600: database passwords, `SESSION_SECRET`, `RESEND_API_KEY`, `MFA_ENCRYPTION_KEY`. The Docker image does not contain them (they are passed at run time). The compose file gives each container only the variables it needs: the database **owner's** URL reaches only the one-shot `migrate` container, never the long-running API. The development email backend (`log`) prints full messages, links included, to the API log, so it must not be used once real users exist.
+
+## Names are personal information
+
+Each person has a display name. It is shown to the person themselves (greeting, account page) and to admins (the user list); regular users cannot see other people. It is never written to audit details (a name edit records only that the `name` field changed), error messages or normal logs; emails carry it only in the body, escaped, never in a subject or header.
+(The development email backend, `EMAIL_BACKEND=log`, prints whole messages, so with it the greeting appears in the API log: it must not be used with real people, as already noted for links.) The name is validated (1-100 characters: letters, digits, spaces, apostrophes, hyphens, periods; no markup, line breaks or invisible characters), and the database enforces the length as a second check.
+Deleting an account is soft, so a deleted person's name stays in the database and in the encrypted backups; an erasure feature does not exist yet and belongs to the privacy review before customer data is stored.
 
 ## Backups
 

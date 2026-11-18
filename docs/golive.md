@@ -32,7 +32,7 @@ Fix what you learn, then continue.
 
 ## 3. Invite everyone
 
-1. Use the admin page: one invitation per person: username (lowercase, 3-32 characters of `a-z 0-9 . _ -`), their email address, and **their language** (it decides the language of the email and of their first page).
+1. Use the admin page: one invitation per person: their **name** (as they want to be addressed: it appears in the greeting and in the user list), username (lowercase, 3-32 characters of `a-z 0-9 . _ -`), their email address, and **their language** (it decides the language of the email and of their first page).
 2. Invitations are valid for 48 hours and work once. If one expires, open the person's row and use "Resend invitation". If you correct a mistyped email address on a person who has not accepted yet, the first link stops working at once: press "Resend invitation" so the corrected address gets a new one. A forgotten password is recovered with the "Mot de passe oublié ?" link.
 3. Tell people what to expect, for example: "You will receive an email from KMK Entretien. Click the link within 2 days, choose a password (at least 8 characters with letters, digits and a special character), then sign in at https://app.kmk-entretien.ca. We recommend turning on two-step verification under 'My account'."
 4. Only the super admin can create admins. If you do, enroll them in two-step verification first (section 1, check 6).
@@ -53,8 +53,8 @@ The application cannot read the audit log (by design); you read it as the databa
 `docker exec -i postgres psql -U postgres -d kmk` (then paste a query), or one-off: `docker exec -i postgres psql -U postgres -d kmk -c "<query>"`. These queries were run against the live database when this document was written.
 
 ```sql
--- Everything done by or to one person (change the name)
-select a.id, a.timestamp, a.action, a.ip, a.details
+-- Everything done by or to one person (change the username)
+select u.name as person, a.id, a.timestamp, a.action, a.ip, a.details
 from audit_log a join users u on u.username = 'NAME'
 where a.actor_user_id = u.id or a.target_user_id = u.id
 order by a.id desc limit 50;
@@ -65,23 +65,23 @@ from audit_log where action in ('login_failed','login_rate_limited') and timesta
 group by ip order by failures desc limit 20;
 
 -- Admin actions, last day
-select a.timestamp, adm.username as actor, a.action, t.username as target, a.details
+select a.timestamp, adm.username as actor, adm.name as actor_name, a.action, t.username as target, t.name as target_name, a.details
 from audit_log a left join users adm on adm.id = a.actor_user_id left join users t on t.id = a.target_user_id
 where a.timestamp > now() - interval '1 day'
   and a.action in ('user_invited','invite_resent','user_disabled','user_enabled','user_deleted','user_restored','user_role_changed','user_updated','mfa_reset')
 order by a.id desc;
 
 -- Every reset of two-step verification
-select a.timestamp, adm.username as actor, t.username as target, a.details
+select a.timestamp, adm.username as actor, adm.name as actor_name, t.username as target, t.name as target_name, a.details
 from audit_log a left join users adm on adm.id = a.actor_user_id left join users t on t.id = a.target_user_id
 where a.action = 'mfa_reset' order by a.id desc;
 
 -- Recent successful sign-ins
-select a.timestamp, u.username, a.ip from audit_log a join users u on u.id = a.actor_user_id
+select a.timestamp, u.username, u.name, a.ip from audit_log a join users u on u.id = a.actor_user_id
 where a.action = 'login_success' order by a.id desc limit 20;
 
 -- Who is signed in right now (open, unexpired sessions)
-select u.username, s.created_at, s.expires_at, s.ip, left(s.user_agent, 60) as browser
+select u.username, u.name, s.created_at, s.expires_at, s.ip, left(s.user_agent, 60) as browser
 from sessions s join users u on u.id = s.user_id
 where s.revoked_at is null and s.expires_at > now() order by s.created_at desc;
 ```

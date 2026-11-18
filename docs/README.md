@@ -45,7 +45,7 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 
 | Table | Purpose | Key columns |
 | --- | --- | --- |
-| `users` | accounts | `username`, `email` (both lowercase, unique), `password_hash` (Argon2id, null until an invite is accepted), `role` (`user`/`admin`/`superadmin`; one super admin allowed), `locale` (`fr-CA`/`en`/`pt-BR`), `status` (`invited`/`active`/`disabled`/`deleted`), `mfa_enabled`, `mfa_secret` (Fernet-encrypted), `mfa_last_step` |
+| `users` | accounts | `username`, `name` (the person's display name, 1-100 characters, optional in the database for accounts that predate it), `email` (both lowercase, unique), `password_hash` (Argon2id, null until an invite is accepted), `role` (`user`/`admin`/`superadmin`; one super admin allowed), `locale` (`fr-CA`/`en`/`pt-BR`), `status` (`invited`/`active`/`disabled`/`deleted`), `mfa_enabled`, `mfa_secret` (Fernet-encrypted), `mfa_last_step` |
 | `sessions` | server-side sessions | `token_hash` (primary key), `user_id`, `expires_at` (5 days), `revoked_at`, `ip`, `user_agent`, `mfa_verified` |
 | `tokens` | invite and reset links | `token_hash`, `user_id`, `purpose` (`invite`/`reset`), `expires_at`, `used_at` |
 | `recovery_codes` | TOTP recovery codes | `user_id`, `code_hash` (unique), `used_at` |
@@ -63,7 +63,7 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | Method and path | Who | Purpose |
 | --- | --- | --- |
 | `GET /api/health` | anyone | liveness and database check |
-| `POST /api/auth/login` | anyone | username-or-email and password; returns the user, a CSRF token, and the two-step state |
+| `POST /api/auth/login` | anyone | username-or-email and password; returns the user (including `name`), a CSRF token, and the two-step state |
 | `GET /api/auth/me` | any session state | current user, CSRF token, `mfa` state (`ok`/`verify`/`setup`), `mfa_enabled` |
 | `POST /api/auth/logout` | any session state | revoke the session |
 | `POST /api/auth/forgot-password` | anyone | request a reset email (always answers the same) |
@@ -76,8 +76,8 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `POST /api/auth/mfa/disable` | verified | needs password and a code; refused for roles in `MFA_REQUIRED_ROLES` |
 | `POST /api/auth/mfa/recovery-codes/regenerate` | verified | needs password and a code |
 | `GET /api/admin/users` | verified admin or super admin | all accounts with role, status, two-step state, last sign-in, and the `actions` the caller may take on each row |
-| `POST /api/admin/users` | verified admin or super admin | create and invite an account; role `user`, or `admin` for the super admin only |
-| `PATCH /api/admin/users/{id}` | verified admin or super admin (per [authority](security.md#administration-authority-and-account-lifecycle)) | change language; change email only while the account is `invited` |
+| `POST /api/admin/users` | verified admin or super admin | create and invite an account: a **name** is required; role `user`, or `admin` for the super admin only |
+| `PATCH /api/admin/users/{id}` | verified admin or super admin (per [authority](security.md#administration-authority-and-account-lifecycle)) | change name or language; change email only while the account is `invited` (the super admin may also edit their own account) |
 | `POST /api/admin/users/{id}/invite` | as above | re-send an invite |
 | `POST /api/admin/users/{id}/reset` | as above | email a reset link (admins and the super admin may also do it for themselves) |
 | `POST /api/admin/users/{id}/reset-mfa` | as above | remove the target's two-step verification and sign them out |

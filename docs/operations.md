@@ -72,7 +72,9 @@ For local backend development and tests there is `backend/.env` (also git-ignore
 cd deploy
 docker compose exec api python -m app.cli --help
 # the first super admin (no sign-up exists). The password is typed at a hidden prompt; never put it on the command line.
-docker compose exec api python -m app.cli create-superadmin --username NAME --email ADDRESS [--locale fr-CA|en|pt-BR]
+docker compose exec api python -m app.cli create-superadmin --username NAME --email ADDRESS --name "Full Name" [--locale fr-CA|en|pt-BR]
+# set or change anyone's display name (for example the first name of the super admin; the super admin can also do it on the admin page)
+docker compose exec api python -m app.cli set-name --username NAME --name "Full Name"
 # lost phone: remove someone's two-step verification, recovery codes and sessions
 docker compose exec api python -m app.cli reset-mfa --username NAME
 ```
