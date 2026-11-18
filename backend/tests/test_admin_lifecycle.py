@@ -410,7 +410,8 @@ def test_the_super_admin_still_cannot_disable_delete_or_re_role_themselves(make_
         assert call(root_c, root_h, action, me).json() == {"error": "cannot_target_self"}, action
 
 
-def test_a_name_edit_is_audited_without_the_name(make_client, add_user, owner_engine, caplog):
+def test_a_name_edit_is_audited_without_the_name(make_client, add_user, owner_engine, outbox, caplog):
+    # (outbox replaces the development email backend, which prints whole messages, links and names included, by design)
     import logging
 
     caplog.set_level(logging.DEBUG)

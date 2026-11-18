@@ -6,6 +6,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app import names
 from app.auth import audit
 from app.config import get_settings
 from app.db import make_engine
@@ -23,7 +24,19 @@ def read_password() -> str:
     return sys.stdin.readline().rstrip("\n")
 
 
-def create_superadmin(username: str, email: str, locale: str) -> int:
+def _clean_name_or_report(raw: str) -> str | None:
+    """The cleaned name, or None after printing why it is refused (the reason never echoes the input)."""
+    try:
+        return names.clean_name(raw)
+    except ValueError as exc:
+        print(f"Invalid name: {exc}.", file=sys.stderr)
+        return None
+
+
+def create_superadmin(username: str, email: str, locale: str, name: str) -> int:
+    clean = _clean_name_or_report(name)
+    if clean is None:
+        return 1
     password = read_password()
     problems = validate_password_rules(password)
     if problems:
@@ -38,6 +51,7 @@ def create_superadmin(username: str, email: str, locale: str) -> int:
             username=username.strip().lower(),
             email=email.strip().lower(),
             password_hash=hash_password(password),
+            name=clean,
             role="superadmin",
             locale=locale,
         )
@@ -51,6 +65,27 @@ def create_superadmin(username: str, email: str, locale: str) -> int:
         audit.log(db, "user_created", target_user_id=user.id, details={"role": "superadmin", "via": "cli"})
         db.commit()
     print(f"Super admin '{username.strip().lower()}' created.")
+    return 0
+
+
+def set_name(username: str, name: str) -> int:
+    """Set or change anyone's name (handy before the first sign-in; the audit row records the field, never the value)."""
+    clean = _clean_name_or_report(name)
+    if clean is None:
+        return 1
+    engine = make_engine(get_settings().database_url)
+    with Session(engine) as db:
+        user = db.scalar(select(User).where(User.username == username.strip().lower()))
+        if user is None:
+            print("No such user.", file=sys.stderr)
+            return 1
+        if user.name == clean:
+            print("The name was already set: nothing to change.")
+            return 0
+        user.name = clean
+        audit.log(db, "user_updated", target_user_id=user.id, details={"fields": ["name"], "via": "cli"})
+        db.commit()
+    print(f"Name set for '{username.strip().lower()}'.")
     return 0
 
 
@@ -79,13 +114,19 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("create-superadmin")
     p.add_argument("--username", required=True)
     p.add_argument("--email", required=True)
+    p.add_argument("--name", required=True, help="the person's name, for example \"Marie Tremblay\"")
     p.add_argument("--locale", default="fr-CA", choices=["fr-CA", "en", "pt-BR"])
+    n = sub.add_parser("set-name", help="set or change a person's name")
+    n.add_argument("--username", required=True)
+    n.add_argument("--name", required=True)
     r = sub.add_parser("reset-mfa", help="remove a user's two-step verification (lost phone)")
     r.add_argument("--username", required=True)
     args = parser.parse_args(argv)
     if args.command == "reset-mfa":
         return reset_mfa(args.username)
-    return create_superadmin(args.username, args.email, args.locale)
+    if args.command == "set-name":
+        return set_name(args.username, args.name)
+    return create_superadmin(args.username, args.email, args.locale, args.name)
 
 
 if __name__ == "__main__":
