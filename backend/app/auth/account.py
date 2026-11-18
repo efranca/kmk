@@ -45,7 +45,7 @@ def weak_password(problems: list[str]) -> JSONResponse:
 
 
 def queue_email(background: BackgroundTasks, request: Request, settings: Settings, kind: str, user: User, raw_token: str) -> None:
-    message = render(kind, user.locale, build_link(settings, raw_token, user.locale), user.email)
+    message = render(kind, user.locale, build_link(settings, raw_token, user.locale), user.email, user.name)
     background.add_task(sender.deliver, request.app.state.engine, settings, message, user.id)
 
 

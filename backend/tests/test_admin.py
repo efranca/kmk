@@ -58,6 +58,7 @@ def test_create_user_invites(make_client, add_user, outbox, owner_engine):
     assert len(outbox) == 1
     m = outbox[0]
     assert m.to == "maria@example.com" and "horas" in m.text
+    assert m.text.startswith("Olá Maria Silva,")  # greeted by name, in the invitee's language
     token = re.search(r"/set-password#token=([^&\s]+)", m.text).group(1)
     actor = sql(owner_engine, "SELECT actor_user_id FROM audit_log WHERE action = 'user_invited'")[0][0]
     assert actor == user_id(owner_engine, "boss")

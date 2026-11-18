@@ -219,3 +219,13 @@ def test_next_email_uses_the_new_language(client, add_user, outbox):
     m = outbox[0]
     assert m.subject == render("reset", "en", "x", "y").subject
     assert re.search(r"#token=\S+&lang=en", m.text)
+
+
+def test_reset_email_greets_by_name_or_generically(client, add_user, outbox, owner_engine):
+    add_user("named", "named@example.com", locale="en")
+    add_user("anon", "anon@example.com", locale="en")
+    sql(owner_engine, "UPDATE users SET name = 'Marie Tremblay' WHERE username = 'named'")
+    forgot(client, "named")
+    forgot(client, "anon")
+    assert outbox[0].text.startswith("Hello Marie Tremblay,\n")
+    assert outbox[1].text.startswith("Hello,\n")  # an account without a name keeps the generic greeting

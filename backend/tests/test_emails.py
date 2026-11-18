@@ -114,3 +114,36 @@ def test_build_link_can_carry_the_language():
 def test_messages_end_with_the_brand_line(kind, locale):
     m = render(kind, locale, LINK, "a@b.c")
     assert "KMK Entretien Ménager, Québec" in m.text and "KMK Entretien Ménager, Québec" in m.html
+
+
+# ---- a person's name in the greeting ----
+
+GREETINGS = {"fr-CA": ("Bonjour {n},", "Bonjour,"), "en": ("Hello {n},", "Hello,"), "pt-BR": ("Olá {n},", "Olá,")}
+
+
+@pytest.mark.parametrize("kind,locale", list(EXPIRY))
+def test_greeting_uses_the_name_when_there_is_one(kind, locale):
+    named, generic = GREETINGS[locale]
+    with_name = render(kind, locale, LINK, "a@b.c", name="Zoë D’Amour")
+    plain = render(kind, locale, LINK, "a@b.c")
+    assert with_name.text.startswith(named.format(n="Zoë D’Amour") + "\n")
+    assert f"<p>{named.format(n='Zoë D’Amour')}</p>" in with_name.html
+    assert plain.text.startswith(generic + "\n") and f"<p>{generic}</p>" in plain.html  # unchanged wording without a name
+    assert with_name.subject == plain.subject  # a name never goes into the subject
+
+
+def test_the_name_is_escaped_in_the_html_and_stays_out_of_every_header():
+    m = render("invite", "en", LINK, "a@b.c", name="<b>x</b> O'Brien")
+    assert "&lt;b&gt;x&lt;/b&gt;" in m.html and "<b>x" not in m.html
+    assert "O&#x27;Brien" in m.html  # the apostrophe is escaped in markup, plain in the text part
+    assert "O'Brien" in m.text
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"id": "x"})
+
+    assert send_email(m, make_settings(email_backend="resend", resend_api_key="k"), transport=httpx.MockTransport(handler))
+    body = seen["body"]
+    for header_field in ("from", "to", "subject"):
+        assert "O'Brien" not in json.dumps(body[header_field])  # only the text and html parts carry the name
