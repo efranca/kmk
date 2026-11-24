@@ -17,7 +17,7 @@ const ITEMS: NavItem[] = [
   { id: "devices", to: "/devices", labelKey: "navDevices", icon: "devices", superAdminOnly: true },
 ];
 
-const PHONE = "(max-width: 767px)";
+const PHONE = "(max-width: 639px)";
 
 /** Width of the bar on a phone (0 elsewhere, or until measured): only there do pages ever move behind "More". Follows the breakpoint as it is crossed. */
 function useBarWidth(ref: React.RefObject<HTMLElement | null>): number {
@@ -44,7 +44,7 @@ function useBarWidth(ref: React.RefObject<HTMLElement | null>): number {
   return phone ? width : 0;
 }
 
-/** The main navigation: a bar along the bottom of a phone, an icon rail from 768px, the full sidebar (collapsible) from 1024px. */
+/** The main navigation: a bar along the bottom of a phone, an icon rail from 640px, the full sidebar (collapsible) from 1024px. */
 export default function Nav({
   active,
   isAdmin,
