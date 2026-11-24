@@ -378,5 +378,19 @@
   "aboutCommit": "Commit",
   "aboutBuilt": "Built",
   "aboutUnknown": "Unknown",
-  "aboutMismatch": "The app and the server are from different builds. Reload the page."
+  "aboutMismatch": "The app and the server are from different builds. Reload the page.",
+  "navDevices": "Devices",
+  "deviceTitle": "Connected devices",
+  "deviceNote": "Signing a device out ends that session only. To keep someone out, also reset their password or disable the account. Locations are approximate.",
+  "deviceNone": "No one is signed in.",
+  "deviceThisDevice": "This device",
+  "deviceSignOut": "Sign out",
+  "deviceSignOutAll": "Sign out all devices",
+  "deviceConfirmOne": "End this session? The device will have to sign in again.",
+  "deviceConfirmAll": "End every session of {{name}}? All their devices will have to sign in again.",
+  "deviceLastSeen": "Last seen {{when}}",
+  "deviceStarted": "Signed in {{when}}",
+  "deviceLocalNetwork": "Local network",
+  "deviceLocationUnknown": "Location unknown",
+  "deviceUnknownDevice": "Unknown device"
 }

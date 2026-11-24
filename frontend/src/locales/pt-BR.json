@@ -378,5 +378,19 @@
   "aboutCommit": "Commit",
   "aboutBuilt": "Compilada em",
   "aboutUnknown": "Desconhecido",
-  "aboutMismatch": "O aplicativo e o servidor são de versões diferentes. Recarregue a página."
+  "aboutMismatch": "O aplicativo e o servidor são de versões diferentes. Recarregue a página.",
+  "navDevices": "Dispositivos",
+  "deviceTitle": "Dispositivos conectados",
+  "deviceNote": "Desconectar um dispositivo encerra apenas essa sessão. Para barrar alguém, redefina também a senha ou desative a conta. Os locais são aproximados.",
+  "deviceNone": "Ninguém está conectado.",
+  "deviceThisDevice": "Este dispositivo",
+  "deviceSignOut": "Desconectar",
+  "deviceSignOutAll": "Desconectar todos os dispositivos",
+  "deviceConfirmOne": "Encerrar esta sessão? O dispositivo precisará entrar de novo.",
+  "deviceConfirmAll": "Encerrar todas as sessões de {{name}}? Todos os dispositivos dela precisarão entrar de novo.",
+  "deviceLastSeen": "Visto {{when}}",
+  "deviceStarted": "Conectado {{when}}",
+  "deviceLocalNetwork": "Rede local",
+  "deviceLocationUnknown": "Local desconhecido",
+  "deviceUnknownDevice": "Dispositivo desconhecido"
 }

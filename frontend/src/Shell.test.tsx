@@ -193,6 +193,25 @@ describe("navigation by role", () => {
     expect(!!screen.queryByRole("link", { name: frCA.navUsers })).toBe(sees);
   });
 
+  it.each([
+    ["user", false],
+    ["admin", false],
+    ["superadmin", true],
+  ])("%s sees Devices: %s", async (role, sees) => {
+    mockApi({ "GET /api/auth/me": signedIn(role) });
+    render(<App />);
+    await screen.findByRole("link", { name: frCA.navDashboard });
+    expect(!!screen.queryByRole("link", { name: frCA.navDevices })).toBe(sees);
+  });
+
+  it("sends an admin who types /devices to the Dashboard", async () => {
+    visit("/devices");
+    mockApi({ "GET /api/auth/me": signedIn("admin") });
+    render(<App />);
+    await screen.findByRole("link", { name: frCA.navDashboard });
+    expect(screen.queryByRole("heading", { name: frCA.deviceTitle })).toBeNull();
+  });
+
   it("opens the admin page for an admin from the nav", async () => {
     const fn = mockApi({ "GET /api/auth/me": signedIn("admin") });
     render(<App />);

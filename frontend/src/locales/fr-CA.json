@@ -378,5 +378,19 @@
   "aboutCommit": "Commit",
   "aboutBuilt": "Compilée le",
   "aboutUnknown": "Inconnu",
-  "aboutMismatch": "L’application et le serveur ne viennent pas de la même version. Rechargez la page."
+  "aboutMismatch": "L’application et le serveur ne viennent pas de la même version. Rechargez la page.",
+  "navDevices": "Appareils",
+  "deviceTitle": "Appareils connectés",
+  "deviceNote": "Déconnecter un appareil met fin à cette session seulement. Pour écarter quelqu’un, réinitialisez aussi son mot de passe ou désactivez le compte. Les lieux sont approximatifs.",
+  "deviceNone": "Personne n’est connecté.",
+  "deviceThisDevice": "Cet appareil",
+  "deviceSignOut": "Déconnecter",
+  "deviceSignOutAll": "Déconnecter tous les appareils",
+  "deviceConfirmOne": "Mettre fin à cette session? L’appareil devra se reconnecter.",
+  "deviceConfirmAll": "Mettre fin à toutes les sessions de {{name}}? Tous ses appareils devront se reconnecter.",
+  "deviceLastSeen": "Vu {{when}}",
+  "deviceStarted": "Connecté {{when}}",
+  "deviceLocalNetwork": "Réseau local",
+  "deviceLocationUnknown": "Lieu inconnu",
+  "deviceUnknownDevice": "Appareil inconnu"
 }

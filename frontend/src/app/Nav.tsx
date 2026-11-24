@@ -3,20 +3,22 @@ import { useTranslation } from "react-i18next";
 
 import { Icon, type IconName } from "../ui/Icon";
 
-export type NavId = "dashboard" | "schedule" | "tasks" | "admin";
-type NavItem = { id: NavId; to: string; labelKey: string; icon: IconName; adminOnly?: boolean };
+export type NavId = "dashboard" | "schedule" | "tasks" | "admin" | "devices";
+type NavItem = { id: NavId; to: string; labelKey: string; icon: IconName; adminOnly?: boolean; superAdminOnly?: boolean };
 
 const ITEMS: NavItem[] = [
   { id: "dashboard", to: "/", labelKey: "navDashboard", icon: "home" },
   { id: "schedule", to: "/schedule", labelKey: "schTitle", icon: "calendar" },
   { id: "tasks", to: "/tasks", labelKey: "taskTitle", icon: "tasks" },
   { id: "admin", to: "/admin", labelKey: "navUsers", icon: "users", adminOnly: true },
+  { id: "devices", to: "/devices", labelKey: "navDevices", icon: "devices", superAdminOnly: true },
 ];
 
 /** The main navigation: a bar along the bottom of a phone, an icon rail from 768px, the full sidebar (collapsible) from 1024px. */
 export default function Nav({
   active,
   isAdmin,
+  isSuperAdmin,
   collapsed,
   onToggle,
   footer,
@@ -24,6 +26,7 @@ export default function Nav({
 }: {
   active: NavId | null;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   collapsed: boolean;
   onToggle: () => void;
   /** Sits at the bottom of the sidebar (last in the phone bar): the account menu. */
@@ -52,7 +55,7 @@ export default function Nav({
       >
         <Icon name={collapsed ? "chev-right" : "chev-left"} size={18} />
       </button>
-      {ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => (
+      {ITEMS.filter((item) => (!item.adminOnly || isAdmin) && (!item.superAdminOnly || isSuperAdmin)).map((item) => (
         <a
           key={item.id}
           href={item.to}
