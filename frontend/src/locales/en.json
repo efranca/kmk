@@ -369,5 +369,6 @@
   "avatarChange": "Change picture",
   "avatarRemove": "Remove picture",
   "avatarInvalid": "This file cannot be used as a picture. Choose a JPEG, PNG or WebP image.",
-  "adminNoResults": "No one matches."
+  "adminNoResults": "No one matches.",
+  "taskMoveFailed": "That task could not be moved. Try again."
 }

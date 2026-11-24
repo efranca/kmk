@@ -1,5 +1,7 @@
 # Tasks: board view, "in progress", more categories (round 2)
 
+> Update: the view choice is a per-account preference (see 2026-11-24-users-avatars-widgets-design.md), not `localStorage`.
+
 ## Intent
 The team wants to see work moving, not only done or not done. Tasks get a third status ("in progress") and a Kanban board where cards are dragged between columns, next to the existing list.
 

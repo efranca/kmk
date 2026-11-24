@@ -29,6 +29,7 @@ export default function AccountMenu({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
   const panelId = useId();
   const name = displayName(user);
 
@@ -38,7 +39,10 @@ export default function AccountMenu({
       if (!root.current?.contains(e.target as Node)) setOpen(false);
     };
     const escape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        button.current?.focus();
+      }
     };
     document.addEventListener("pointerdown", away);
     document.addEventListener("keydown", escape);
@@ -51,10 +55,11 @@ export default function AccountMenu({
   return (
     <div className="accountmenu" ref={root}>
       <button
+        ref={button}
         type="button"
         className="accountmenu__button"
         data-account-menu
-        aria-label={t("accountMenu")}
+        aria-label={`${t("accountMenu")}: ${name}`}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((o) => !o)}

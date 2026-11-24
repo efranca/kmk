@@ -5,9 +5,10 @@ by the name or the declared type) and the size, and serves it with headers that 
 """
 
 import hashlib
+from typing import Annotated
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Path, Request, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,6 +22,7 @@ from app.config import Settings
 from app.models import User, UserAvatar, UserSession
 
 MAX_BYTES = 51200
+UserId = Annotated[int, Path(ge=1, le=2**63 - 1)]  # beyond bigint would be a database error, not a 404
 
 router = APIRouter()
 
@@ -99,7 +101,7 @@ def delete_own_avatar(
 
 @router.delete("/api/admin/users/{user_id}/avatar", status_code=204)
 def remove_avatar_of(
-    user_id: int,
+    user_id: UserId,
     request: Request,
     actor: User = Depends(admin_actor),
     db: Session = Depends(get_db),
@@ -117,7 +119,7 @@ def remove_avatar_of(
 
 @router.get("/api/people/{user_id}/avatar")
 def get_avatar(
-    user_id: int,
+    user_id: UserId,
     request: Request,
     auth: tuple[User, UserSession] = Depends(guard(csrf=False)),
     db: Session = Depends(get_db),

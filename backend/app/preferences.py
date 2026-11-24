@@ -41,8 +41,7 @@ class PreferencesIn(BaseModel):
 
 
 def _patch_of(model: PreferencesIn) -> dict:
-    patch = model.model_dump(exclude_none=True)
-    return patch
+    return model.model_dump(exclude_none=True)
 
 
 def _merge(base: dict, patch: dict) -> dict:
@@ -80,6 +79,8 @@ def patch_preferences(
     db: Session = Depends(get_db),
 ):
     user, _ = auth
+    # Lock the row: two quick changes (two tabs, two toggles) are merged one after the other, not over each other.
+    db.refresh(user, with_for_update=True)
     merged = _merge(normalize(user.preferences), _patch_of(body))
     user.preferences = merged  # assigned whole, so SQLAlchemy sees the change
     db.commit()

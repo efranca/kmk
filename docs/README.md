@@ -47,7 +47,7 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 
 | Table | Purpose | Key columns |
 | --- | --- | --- |
-| `users` | accounts | `username`, `name` (the person's display name, 1-100 characters, optional in the database for accounts that predate it), `email` (both lowercase, unique), `password_hash` (Argon2id, null until an invite is accepted), `role` (`user`/`admin`/`superadmin`; one super admin allowed), `locale` (`fr-CA`/`en`/`pt-BR`), `status` (`invited`/`active`/`disabled`/`deleted`), `mfa_enabled`, `mfa_secret` (Fernet-encrypted), `mfa_last_step` |
+| `users` | accounts | `username`, `name` (the person's display name, 1-100 characters, optional in the database for accounts that predate it), `email` (both lowercase, unique), `password_hash` (Argon2id, null until an invite is accepted), `role` (`user`/`admin`/`superadmin`; one super admin allowed), `locale` (`fr-CA`/`en`/`pt-BR`), `status` (`invited`/`active`/`disabled`/`deleted`), `mfa_enabled`, `mfa_secret` (Fernet-encrypted), `mfa_last_step`, `preferences` (JSON: theme, sidebar, tasks view, Schedule tasks switch, Dashboard widgets), `avatar_updated_at` (NULL = no picture) |
 | `sessions` | server-side sessions | `token_hash` (primary key), `user_id`, `expires_at` (5 days), `revoked_at`, `ip`, `user_agent`, `mfa_verified` |
 | `tokens` | invite and reset links | `token_hash`, `user_id`, `purpose` (`invite`/`reset`), `expires_at`, `used_at` |
 | `recovery_codes` | TOTP recovery codes | `user_id`, `code_hash` (unique), `used_at` |
@@ -58,7 +58,7 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 | `event_exceptions` | "this occurrence only" changes of a repeating event | `event_id`, `original_date`, `cancelled`, overrides of title, notes, date, time, length |
 | `event_reminders` | up to 10 per event ("2 hours before") | `event_id`, `amount` (1-99), `unit` (`hours`/`days`/`weeks`) |
 | `reminder_dismissals` | a person dismissed the reminder of one occurrence | `user_id`, `event_id`, `occurrence_date` |
-| `task_categories` | the labels of tasks | `name` (1-50, unique ignoring case), `icon` (one emoji, optional), `created_by` |
+| `task_categories` | the labels of tasks | `name` (1-50, unique ignoring case), `icon` (one emoji, optional), `created_by` (NULL for the ten starter categories the migration adds) |
 | `tasks` | one task, to do or completed | `title`, `description`, `icon`, `category_id` (set null when the category is deleted), `status` (`pending`/`in_progress`/`completed`), `due_date` (a date in the company time zone, optional), `completed_at` and `completed_by` (set exactly when completed), `show_on_dashboard`, `created_by`, `updated_by` |
 | `task_people` | who a task is for (no rows = the whole team) | `task_id`, `user_id` |
 | `user_avatars` | a person's profile picture, at most 50 KB (JPEG, PNG or WebP); `users.avatar_updated_at` says whether there is one | `user_id`, `content_type`, `data`, `updated_at` |
@@ -103,7 +103,7 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `POST /api/schedule/events` | verified | create an event for yourself, anyone, or everyone; a repeating event starts on the first date its rule produces |
 | `PATCH` / `DELETE /api/schedule/events/{id}` | creator, a listed person, an admin (for "everyone" events: creator or admin) | `scope` = `this` / `following` / `all` and `occurrence_date` for a repeating event |
 | `GET /api/schedule/people` | verified | the people who can appear on an event (`id`, `name`, `color`, `active`): active users first, then disabled or deleted ones flagged `active: false` (shown muted, never offered for new events) |
-| `GET /api/tasks?status&person` | verified | the tasks (`status` = `pending`/`completed`/`all`; `person` = a user id, or `none` for the tasks for the whole team), to do first, then by due date, at most 1000; everyone sees every task in full |
+| `GET /api/tasks?status&person` | verified | the tasks (`status` = `pending`/`in_progress`/`completed`/`all`; `person` = a user id, or `none` for the tasks for the whole team), to do first, then by due date, at most 1000; everyone sees every task in full |
 | `POST /api/tasks` | verified | create a task for yourself, anyone, or the whole team |
 | `GET` / `PATCH` / `DELETE /api/tasks/{id}` | read: verified; change or delete: the creator, a person on it, an admin | `PATCH` takes the whole form |
 | `POST /api/tasks/{id}/complete`, `/start` (in progress), `/reopen` (back to to do) | whoever may edit it; anyone for a task for the whole team | idempotent: a task that already has that status is returned unchanged |
@@ -118,7 +118,7 @@ The frontend pages (React Router in `frontend/src/App.tsx`; the card pages and t
 | --- | --- | --- |
 | `/` | signed in: everyone; otherwise the sign-in form | the Dashboard: "My events" and "All events" for today and the next 7 days, and "My tasks" (your tasks and the whole team's: overdue, today, no date, tomorrow) (plus the two-step encouragement and the recovery-codes notice) |
 | `/schedule` | signed in | the calendar: Day, Week, Month and Year views, event dialog, search, people filter, drag to move (`?view=week&date=2026-11-12&people=3,5&q=...`) |
-| `/tasks` | signed in | the task list: status tabs, people filter (`?people=3,5`), category chips, search, task dialog, category manager |
+| `/tasks` | signed in | the task list (or the board: To do, In progress, Done, with drag and drop): status tabs, people filter (`?people=3,5`), category chips, search, task dialog, category manager |
 | `/account` | signed in | two-step verification, recovery codes, change password |
 | `/settings` | signed in: everyone; otherwise the sign-in form | theme choice |
 | `/admin` | admins and the super admin (a plain user sees the Dashboard) | the Users page: a list (face, name, email, role chip, a note when the account is not active) with search and a **+** that opens the invite dialog; tapping a row opens a dialog with that person's details and the actions the server allows |

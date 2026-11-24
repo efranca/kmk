@@ -369,5 +369,6 @@
   "avatarChange": "Changer la photo",
   "avatarRemove": "Retirer la photo",
   "avatarInvalid": "Ce fichier ne peut pas servir de photo. Choisissez une image JPEG, PNG ou WebP.",
-  "adminNoResults": "Personne ne correspond."
+  "adminNoResults": "Personne ne correspond.",
+  "taskMoveFailed": "Cette tâche n'a pas pu être déplacée. Réessayez."
 }

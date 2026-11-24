@@ -1,5 +1,7 @@
 # Shell, Layout and Themes Implementation Plan
 
+> Update: `kmk.sidebar.collapsed` was replaced by a per-account preference; only `kmk.theme` remains, as a first-paint mirror.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the top bar with a collapsible, responsive sidebar that holds the account menu, use the full page width, halve page titles, and add a Settings page with three themes (KMK, Light, Dark).

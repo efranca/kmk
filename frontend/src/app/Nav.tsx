@@ -47,6 +47,7 @@ export default function Nav({
         type="button"
         className="appnav__toggle"
         aria-label={t(collapsed ? "sidebarExpand" : "sidebarCollapse")}
+        aria-expanded={!collapsed}
         onClick={onToggle}
       >
         <Icon name={collapsed ? "chev-right" : "chev-left"} size={18} />

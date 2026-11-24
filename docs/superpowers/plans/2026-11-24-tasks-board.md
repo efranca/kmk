@@ -1,5 +1,7 @@
 # Tasks Board Implementation Plan
 
+> Update: `kmk.tasks.view` was replaced by a per-account preference.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans. Steps use checkbox syntax.
 
 **Goal:** Add the "in progress" status, a Kanban board with drag and drop, a List/Board view menu on the gear button, a default icon for new categories, and seeded starter categories.

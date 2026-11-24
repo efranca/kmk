@@ -62,4 +62,43 @@ describe("preferences", () => {
     render(<PreferencesProvider initial={{ theme: "light" } as never} csrfToken="t"><Probe /></PreferencesProvider>);
     expect(screen.getByTestId("out")).toHaveTextContent("light|list|true|true");
   });
+
+  it("keeps a newer successful change when an older one fails afterwards", async () => {
+    let failFirst!: () => void;
+    const first = new Promise<void>((r) => { failFirst = r; });
+    let calls = 0;
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) { await first; return reply(422, { error: "invalid" }); }
+      return reply(200, { preferences: DEFAULT_PREFERENCES });
+    }));
+    const Both = () => {
+      const { prefs, update } = usePreferences();
+      return (
+        <>
+          <p data-testid="t">{prefs.theme}</p>
+          <p data-testid="w">{`${prefs.dashboard_widgets.my_events}|${prefs.dashboard_widgets.all_events}`}</p>
+          <button onClick={() => { update({ theme: "dark" }); update({ theme: "light" }); }}>themes</button>
+          <button onClick={() => { update({ dashboard_widgets: { my_events: false } }); update({ dashboard_widgets: { all_events: false } }); }}>widgets</button>
+        </>
+      );
+    };
+    render(<PreferencesProvider initial={DEFAULT_PREFERENCES} csrfToken="t"><Both /></PreferencesProvider>);
+    fireEvent.click(screen.getByText("themes"));
+    await act(async () => { failFirst(); });
+    await waitFor(() => expect(calls).toBe(2));
+    expect(screen.getByTestId("t")).toHaveTextContent("light"); // the older failure must not bring back "kmk"
+
+    // the same for two toggles of the widgets object: only the failed one comes back
+    calls = 0;
+    const second = new Promise<void>((r) => { failFirst = r; });
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) { await second; return reply(422, { error: "invalid" }); }
+      return reply(200, { preferences: DEFAULT_PREFERENCES });
+    }));
+    fireEvent.click(screen.getByText("widgets"));
+    await act(async () => { failFirst(); });
+    await waitFor(() => expect(screen.getByTestId("w")).toHaveTextContent("true|false"));
+  });
 });
