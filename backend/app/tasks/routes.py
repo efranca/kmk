@@ -88,7 +88,7 @@ def _person(raw: str | None) -> tuple[int | None, bool]:
 
 @router.get("")
 def list_tasks(
-    status: Literal["pending", "completed", "all"] = "all",
+    status: Literal["pending", "in_progress", "completed", "all"] = "all",
     person: str | None = Query(default=None, max_length=30),
     auth: tuple[User, UserSession] = Depends(reader),
     db: Session = Depends(get_db),
@@ -161,6 +161,7 @@ def _status_route(path: str, status: str):
 
 
 _status_route("/{task_id}/complete", "completed")
+_status_route("/{task_id}/start", "in_progress")
 _status_route("/{task_id}/reopen", "pending")
 
 

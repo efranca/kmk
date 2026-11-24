@@ -79,3 +79,28 @@ def test_app_role_has_dml_on_task_tables(owner_engine, app_engine):
         for table in ("task_categories", "tasks", "task_people"):
             for priv in ("SELECT", "INSERT", "UPDATE", "DELETE"):
                 assert c.execute(text("SELECT has_table_privilege('kmk_app', :t, :p)"), dict(t=table, p=priv)).scalar()
+
+
+def test_in_progress_is_a_valid_status_and_bogus_is_not(owner_engine):
+    with owner_engine.begin() as c:
+        add_task(c, add_user(c), status="in_progress")
+    with pytest.raises(IntegrityError):
+        with owner_engine.begin() as c:
+            add_task(c, add_user(c, "u2"), status="bogus")
+
+
+def test_starter_categories_are_seeded_once(owner_engine):
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0008_task_in_progress.py"
+    spec = importlib.util.spec_from_file_location("m0008", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    with owner_engine.begin() as c:
+        c.execute(text("INSERT INTO task_categories (name) VALUES ('cleaning')"))
+        c.execute(text(mod.SEED_SQL))
+        c.execute(text(mod.SEED_SQL))
+        names = [r[0] for r in c.execute(text("SELECT name FROM task_categories ORDER BY name"))]
+    assert len(names) == 10 and len(set(n.lower() for n in names)) == 10
+    assert "cleaning" in names and "Cleaning" not in names  # an existing name (any case) is kept, not duplicated

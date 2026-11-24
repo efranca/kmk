@@ -38,7 +38,7 @@ browser --HTTPS--> Cloudflare --tunnel (outbound from this machine)--> cloudflar
 | 4b Admin | admin page, user lifecycle, authority rules (only the super admin manages admins) | done | [spec](superpowers/specs/2026-11-17-phase4b-admin-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase4b-admin.md) |
 | 5 Frontend | app shell, welcome page (placeholder, since replaced by the Dashboard), per-user language switching, polish | done | [spec](superpowers/specs/2026-11-17-phase5-frontend-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase5-frontend.md) |
 | 7 Schedule and Dashboard | shared calendar (Day, Week, Month, Year, repeating events, reminders, drag to move) and the Dashboard home page with the "My events" and "All events" widgets, in a FamillAI-style layout | done | [spec](superpowers/specs/2026-11-24-schedule-dashboard-design.md) | [plan](superpowers/plans/2026-11-24-schedule-dashboard.md) |
-| 8 Tasks | the team's to-do list: tasks for people or the whole team with a due date, categories with icons, status tabs, people filter, search, "Clear completed"; a "My tasks" Dashboard card; an optional "Show tasks" switch on the Schedule. No repeating tasks, rewards or AI | done | [spec](superpowers/specs/2026-11-24-tasks-design.md) | [plan](superpowers/plans/2026-11-24-tasks.md) |
+| 8 Tasks | the team's to-do list: tasks for people or the whole team with a due date, categories with icons, status tabs (To do, In progress, Done), a List/Board view menu (the board moves cards by drag and drop or a "Move to" control), people filter, search, "Clear completed"; a "My tasks" Dashboard card; an optional "Show tasks" switch on the Schedule. No repeating tasks, rewards or AI | done | [spec](superpowers/specs/2026-11-24-tasks-design.md) | [plan](superpowers/plans/2026-11-24-tasks.md) |
 | 6 Hardening | encrypted verified backups, container limits and health checks, dependency scan, independent security review, go-live runbook | built; go-live waits for the owner's steps (key, Resend, two-step, pilot) | [spec](superpowers/specs/2026-11-17-phase6-hardening-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase6-hardening.md) |
 
 ## Data model (as built)
@@ -59,7 +59,7 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 | `event_reminders` | up to 10 per event ("2 hours before") | `event_id`, `amount` (1-99), `unit` (`hours`/`days`/`weeks`) |
 | `reminder_dismissals` | a person dismissed the reminder of one occurrence | `user_id`, `event_id`, `occurrence_date` |
 | `task_categories` | the labels of tasks | `name` (1-50, unique ignoring case), `icon` (one emoji, optional), `created_by` |
-| `tasks` | one task, to do or completed | `title`, `description`, `icon`, `category_id` (set null when the category is deleted), `status` (`pending`/`completed`), `due_date` (a date in the company time zone, optional), `completed_at` and `completed_by` (set exactly when completed), `show_on_dashboard`, `created_by`, `updated_by` |
+| `tasks` | one task, to do or completed | `title`, `description`, `icon`, `category_id` (set null when the category is deleted), `status` (`pending`/`in_progress`/`completed`), `due_date` (a date in the company time zone, optional), `completed_at` and `completed_by` (set exactly when completed), `show_on_dashboard`, `created_by`, `updated_by` |
 | `task_people` | who a task is for (no rows = the whole team) | `task_id`, `user_id` |
 | `alembic_version` | migration state | |
 
@@ -101,7 +101,7 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `GET /api/tasks?status&person` | verified | the tasks (`status` = `pending`/`completed`/`all`; `person` = a user id, or `none` for the tasks for the whole team), to do first, then by due date, at most 1000; everyone sees every task in full |
 | `POST /api/tasks` | verified | create a task for yourself, anyone, or the whole team |
 | `GET` / `PATCH` / `DELETE /api/tasks/{id}` | read: verified; change or delete: the creator, a person on it, an admin | `PATCH` takes the whole form |
-| `POST /api/tasks/{id}/complete`, `POST /api/tasks/{id}/reopen` | whoever may edit it; anyone for a task for the whole team | idempotent: a task that already has that status is returned unchanged |
+| `POST /api/tasks/{id}/complete`, `/start` (in progress), `/reopen` (back to to do) | whoever may edit it; anyone for a task for the whole team | idempotent: a task that already has that status is returned unchanged |
 | `DELETE /api/tasks/completed` | verified | deletes the completed tasks the caller may delete; answers `{"deleted": n}` |
 | `GET /api/tasks/categories`, `POST /api/tasks/categories` | verified | list (by name) and add a category |
 | `PATCH` / `DELETE /api/tasks/categories/{id}` | admins and the super admin | rename, change the icon, or delete (its tasks are kept without a category) |
@@ -126,6 +126,8 @@ Signed-in pages sit inside the **layout** (`app/Layout.tsx`, wrapped by `Shell.t
 A signed-in user's language is stored on the server (`users.locale`, changed with `POST /api/auth/locale`) and is also used for their emails; signing in applies it and saves it as the browser's preference. A user who still has to enter or set up two-step verification sees those screens on every path.
 
 **Schedule code:** the backend is `backend/app/schedule/` (`recurrence.py` the repeat rule and series dates through `dateutil.rrule`, `occurrences.py` the expansion with one-off changes, `service.py`, `routes.py`); the repeat rule's JSON shape is `{"freq": "weekly", "interval": 1, "weekdays": ["THU"], "month_day": null, "nth_weekdays": [{"nth": 4, "day": "SAT"}]}`. The front end is `frontend/src/schedule/` (views, event dialog, drag, reminders), `frontend/src/dashboard/` (the two widgets) and `frontend/src/ui/` (shared pieces: buttons, dialog, avatars).
+**Tasks:** `0008` adds the `in_progress` status and seeds ten starter categories (Cleaning, Supplies, Equipment, Clients, Vehicle, Maintenance, Training, Safety, Admin, Other; created by no one). A new category with no matching icon gets ✅. The view (list or board) is per device (`localStorage` key `kmk.tasks.view`).
+
 **Tasks code:** the backend is `backend/app/tasks/` (`schemas.py`, `service.py`, `routes.py`); the rules are `can_change_task`, `can_set_task_status` and `can_manage_task_categories` in `backend/app/auth/policy.py`. The front end is `frontend/src/tasks/` (page, row, dialog, categories, hooks), `frontend/src/dashboard/TasksCard.tsx` and the task chips in `frontend/src/schedule/` (`TaskChip.tsx`, `taskItems.ts`). Task strings start with `task` in the locale files.
 The server serves the single-page app for any non-`/api`, non-`/assets` path.
 

@@ -21,6 +21,10 @@ export async function completeTask(id: number, csrf: string): Promise<Task> {
   return (await request<{ task: Task }>("POST", `${BASE}/${id}/complete`, csrf)).task;
 }
 
+export async function startTask(id: number, csrf: string): Promise<Task> {
+  return (await request<{ task: Task }>("POST", `${BASE}/${id}/start`, csrf)).task;
+}
+
 export async function reopenTask(id: number, csrf: string): Promise<Task> {
   return (await request<{ task: Task }>("POST", `${BASE}/${id}/reopen`, csrf)).task;
 }

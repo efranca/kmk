@@ -349,5 +349,13 @@
   "settingsTheme": "Thème",
   "themeKmk": "KMK",
   "themeLight": "Clair",
-  "themeDark": "Sombre"
+  "themeDark": "Sombre",
+  "taskViewMenu": "Affichage et catégories",
+  "taskView": "Affichage",
+  "taskViewList": "Liste",
+  "taskViewBoard": "Tableau",
+  "taskStatusInProgress": "En cours",
+  "taskEmptyInProgress": "Rien en cours.",
+  "taskMoveTo": "Déplacer {{title}} vers",
+  "taskBoardEmpty": "Rien ici."
 }

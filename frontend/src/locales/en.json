@@ -349,5 +349,13 @@
   "settingsTheme": "Theme",
   "themeKmk": "KMK",
   "themeLight": "Light",
-  "themeDark": "Dark"
+  "themeDark": "Dark",
+  "taskViewMenu": "View and categories",
+  "taskView": "View",
+  "taskViewList": "List",
+  "taskViewBoard": "Board",
+  "taskStatusInProgress": "In progress",
+  "taskEmptyInProgress": "Nothing in progress.",
+  "taskMoveTo": "Move {{title}} to",
+  "taskBoardEmpty": "Nothing here."
 }
