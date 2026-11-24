@@ -129,14 +129,14 @@
 
 /* toasts */
 .toasts { position: fixed; z-index: 50; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom)); display: grid; gap: 8px; width: min(420px, 100vw - 24px); pointer-events: none; }
-@media (min-width: 768px) { .toasts { bottom: 24px; } }
+@media (min-width: 640px) { .toasts { bottom: 24px; } }
 .toast { pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: 12px; background: var(--deep); color: #fff; box-shadow: var(--shadow-m); }
 .toast--error { background: #8c1d18; }
 .toast__action { margin: 0; padding: 4px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--spark); font: inherit; font-weight: 700; cursor: pointer; }
 
 /* avatars: a round face, the person's initials on their color */
 .avatar { --avatar-color: var(--ev-teal); display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 50%; background: var(--avatar-color); color: #fff; font-weight: 700; letter-spacing: 0.02em; border: 2px solid var(--surface); }
-.avatar--sm { width: 26px; height: 26px; font-size: 0.65rem; }
+.avatar--sm { width: 26px; height: 26px; font-size: 0.8125rem; }
 .avatar--md { width: 36px; height: 36px; font-size: 0.8rem; }
 .avatar--lg { width: 52px; height: 52px; font-size: 1.1rem; }
 .avatar--muted { filter: grayscale(1); opacity: 0.55; }
@@ -144,7 +144,7 @@
 .avatargroup { --overlap: 14px; display: inline-flex; align-items: center; }
 .avatargroup--md { --overlap: 17px; }
 .avatargroup > * + * { margin-left: calc(-1 * var(--overlap)); }
-.avatarmore { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 6px; margin-left: calc(-1 * var(--overlap, 14px)); border-radius: 999px; border: 2px solid var(--surface); background: var(--surface-2); color: var(--text); font-size: 0.7rem; font-weight: 700; }
+.avatarmore { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 6px; margin-left: calc(-1 * var(--overlap, 14px)); border-radius: 999px; border: 2px solid var(--surface); background: var(--surface-2); color: var(--text); font-size: 0.8125rem; font-weight: 700; }
 
 /* people filter: pickable faces */
 .avatarfilter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -167,7 +167,7 @@
 .avatargroup--apart > * + * { margin-left: 0; }
 .avatarfilter--names { flex-wrap: nowrap; }
 .avatarfilter--names .avatarpick { flex-direction: column; align-items: center; gap: 4px; line-height: normal; border-radius: 10px; padding: 2px; }
-.avatarpick__name { max-width: 4.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; line-height: 16px; color: var(--text-muted); }
+.avatarpick__name { max-width: 4.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8125rem; line-height: 16px; color: var(--text-muted); }
 .avatarfilter--names .avatarpick[aria-pressed="true"] .avatarpick__name { color: var(--text); font-weight: 700; }
 .avatarfilter--names .avatarpop-host { margin-left: 0; }
 

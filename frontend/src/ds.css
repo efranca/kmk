@@ -1,0 +1,91 @@
+/* KMK Admin design system (tokens.json of the shared design system), loaded last: it maps the system's colors,
+   type, spacing and touch sizes onto the variables the rest of the app already uses. */
+:root {
+  --brand: #007a78; --brand-hover: #006461; --brand-pressed: #005250; --brand-tint: #e8f4f3; --brand-tint-strong: #c5e3e1; --on-brand: #ffffff;
+  --ds-bg: #edf5f4; --ds-surface: #ffffff; --ds-sunken: #e2eceb; --ink: #14201f; --ink-muted: #4f5b5a;
+  --border: #c3d3d1; --border-strong: #6f7d7c;
+  --success: #1b7a3a; --success-tint: #e4f4e9; --warning: #8a4b00; --warning-tint: #fff1d6; --danger: #b42318; --danger-tint: #fdeceb;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-7: 48px;
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-pill: 999px;
+  --touch-target: 44px; --nav-width: 240px; --nav-rail: 72px; --bar-height: 64px; --content-max: 1280px; --form-max: 520px;
+  --shadow-card: 0 1px 2px rgba(20, 32, 31, 0.06), 0 1px 1px rgba(20, 32, 31, 0.04);
+  --shadow-dialog: 0 12px 32px rgba(20, 32, 31, 0.18);
+}
+:root[data-theme="light"] { --ds-bg: #f4f5f7; --border: #d9dedd; --border-strong: #7a8786; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --brand: #3cb7b3; --brand-hover: #5ccfcb; --brand-pressed: #86e0dc; --brand-tint: #123635; --brand-tint-strong: #1e4a48; --on-brand: #04201f;
+    --ds-bg: #0f1716; --ds-surface: #172221; --ds-sunken: #1d2b2a; --ink: #eaf1f0; --ink-muted: #a6b4b2; --border: #2b3c3b; --border-strong: #6f8381;
+    --success: #6ad28a; --success-tint: #14301d; --warning: #f5b95c; --warning-tint: #3a2a0f; --danger: #ff8f86; --danger-tint: #3a1a18;
+    --shadow-card: none;
+  }
+}
+:root[data-theme="dark"] {
+  --brand: #3cb7b3; --brand-hover: #5ccfcb; --brand-pressed: #86e0dc; --brand-tint: #123635; --brand-tint-strong: #1e4a48; --on-brand: #04201f;
+  --ds-bg: #0f1716; --ds-surface: #172221; --ds-sunken: #1d2b2a; --ink: #eaf1f0; --ink-muted: #a6b4b2; --border: #2b3c3b; --border-strong: #6f8381;
+  --success: #6ad28a; --success-tint: #14301d; --warning: #f5b95c; --warning-tint: #3a2a0f; --danger: #ff8f86; --danger-tint: #3a1a18;
+  --shadow-card: none;
+}
+
+/* the app's own variables follow the tokens */
+:root, :root[data-theme] {
+  --bg: var(--ds-bg); --surface: var(--ds-surface); --surface-2: var(--ds-sunken);
+  --text: var(--ink); --text-muted: var(--ink-muted); --line: var(--border);
+  --accent: var(--brand); --accent-ink: var(--on-brand);
+  --pine: var(--brand); --pine-dk: var(--brand-hover); --paper: var(--ds-bg); --card: var(--ds-surface); --mist: var(--brand-tint); --slate: var(--ink-muted);
+  --shadow-m: var(--shadow-dialog);
+}
+:root, :root[data-theme] body { color: var(--ink); }
+input, select, textarea { border-color: var(--border-strong); background: var(--surface); font-size: 1rem; min-height: var(--touch-target); }
+input[type="checkbox"], input[type="radio"] { min-height: 0; }
+.error { color: var(--danger); }
+.status.down::before { background: var(--danger); }
+
+/* page titles: one style on every page, 28px (24px on a phone) */
+.app h1, .page__header h1, .page--dashboard > h1 { font-family: Montserrat, Inter, system-ui, sans-serif; font-size: 1.5rem; line-height: 1.3; font-weight: 700; color: var(--ink); }
+@media (min-width: 640px) { .app h1, .page__header h1, .page--dashboard > h1 { font-size: 1.75rem; } }
+
+/* touch targets: 44px */
+.btn { min-height: var(--touch-target); }
+.btn--icon { width: var(--touch-target); }
+button { min-height: var(--touch-target); }
+.btn--primary:hover:not(:disabled), button:hover:not(:disabled) { background: var(--brand-hover); filter: none; }
+.btn--secondary:hover:not(:disabled), .btn--ghost:hover:not(:disabled), button.secondary:hover:not(:disabled) { background: var(--brand-tint); color: var(--brand); }
+.btn--danger:hover:not(:disabled) { background: var(--danger-tint); }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* cards: 16px, soft shadow, 16px padding on a phone and 24px from 640px */
+.settings-card, .dcard { border-radius: var(--radius-lg); border-color: var(--border); box-shadow: var(--shadow-card); padding: var(--space-4); }
+@media (min-width: 640px) { .settings-card, .dcard { padding: var(--space-5); } }
+.banner, .notice { background: var(--warning-tint); color: var(--ink); border: 1px solid var(--warning); border-radius: var(--radius-md); }
+.btn, .accountmenu__item { border-radius: var(--radius-md); }
+.btn--icon { border-radius: var(--radius-pill); }
+
+/* navigation: phone bar (64px), icon rail (72px) from 640px, sidebar (240px) from 1024px */
+.appnav { min-height: var(--bar-height); }
+.appnav > a:not(.appnav__brand), .appnav > .appnav__more { min-height: var(--touch-target); border-radius: var(--radius-md); color: var(--ink-muted); font-size: 0.8125rem; }
+.appnav > a:not(.appnav__brand):hover, .appnav > .appnav__more:hover { background: var(--brand-tint); color: var(--ink); }
+.appnav > a[aria-current="page"], .appnav > .appnav__more[aria-current="page"] { background: var(--brand-tint); color: var(--brand); }
+@media (min-width: 640px) { .appnav > a[aria-current="page"] span { font-weight: 700; } }
+.more-sheet__link:hover, .more-sheet__link[aria-current="page"], .accountmenu__item[aria-current="page"] { background: var(--brand-tint); }
+.accountmenu__item { min-height: var(--touch-target); }
+.accountmenu__item:hover:not(:disabled):not(.accountmenu__item--static) { background: var(--brand-tint); }
+@media (min-width: 640px) {
+  .app { grid-template-columns: var(--nav-rail) minmax(0, 1fr); }
+  .appnav { min-height: 0; }
+  .app__main { padding: var(--space-5); max-width: var(--content-max); }
+}
+@media (min-width: 1024px) { .app:not(.app--collapsed) { grid-template-columns: var(--nav-width) minmax(0, 1fr); } }
+@media (max-width: 639px) { .app__main { padding-bottom: calc(var(--bar-height) + 24px + env(safe-area-inset-bottom)); } .reminders { bottom: calc(var(--bar-height) + 12px + env(safe-area-inset-bottom)); } }
+/* a form column stops stretching */
+.form { max-width: var(--form-max); }
+
+/* dialogs: 16px radius, bottom sheet on a phone */
+.dialog__panel { border-radius: var(--radius-lg); box-shadow: var(--shadow-dialog); }
+@media (max-width: 639px) {
+  .dialog { margin: auto 0 0; width: 100%; max-width: 100vw; }
+  .dialog__panel { width: 100%; border-radius: var(--radius-lg) var(--radius-lg) 0 0; max-height: 92dvh; }
+}
+@media (prefers-reduced-motion: no-preference) { .btn, .appnav > a, .accountmenu__item { transition: background-color 150ms ease-out, color 150ms ease-out; } }
+/* the phone bar holds six tabs and the account face: its labels use the 12px overline size so they all fit */
+@media (max-width: 639px) { .appnav > a:not(.appnav__brand), .appnav > .appnav__more { font-size: 0.75rem; } }

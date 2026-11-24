@@ -8,7 +8,7 @@ import Nav from "./Nav";
 let resize: (width: number) => void;
 
 function phone(width: number) {
-  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("max-width: 767px"), addEventListener: () => undefined, removeEventListener: () => undefined }));
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("max-width: 639px"), addEventListener: () => undefined, removeEventListener: () => undefined }));
   vi.stubGlobal("ResizeObserver", class {
     constructor(private callback: (entries: { contentRect: { width: number } }[]) => void) {}
     observe() { resize = (w) => this.callback([{ contentRect: { width: w } }]); resize(width); }

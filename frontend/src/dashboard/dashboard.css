@@ -12,7 +12,7 @@
 .dash__row { display: grid; grid-template-columns: 4.2rem minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; margin: 0; padding: 8px 10px; border: 0; border-left: 4px solid var(--ev, var(--accent)); border-radius: 10px; background: color-mix(in srgb, var(--ev, var(--accent)) 12%, var(--surface)); color: var(--text); font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
 .dash__row:hover:not(:disabled) { background: color-mix(in srgb, var(--ev, var(--accent)) 22%, var(--surface)); }
 .dash__when { display: flex; flex-direction: column; line-height: 1.2; font-size: 0.85rem; }
-.dash__when small { color: var(--text-muted); font-size: 0.7rem; text-transform: capitalize; }
+.dash__when small { color: var(--text-muted); font-size: 0.8125rem; text-transform: capitalize; }
 .dash__title { overflow-wrap: anywhere; font-weight: 600; }
 .dash__who { display: flex; }
 .dash__more { margin: 4px 0 0; padding: 4px 6px; border: 0; background: none; color: var(--text-muted); font: inherit; font-size: 0.8rem; cursor: pointer; }
