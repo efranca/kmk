@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.auth.deps import get_db, get_settings_dep
@@ -11,7 +11,7 @@ from app.auth.routes import request_ip
 from app.config import Settings
 from app.models import User, UserSession
 from app.schedule import service
-from app.schedule.schemas import EventIn
+from app.schedule.schemas import DismissIn, EventIn
 
 router = APIRouter(prefix="/api/schedule")
 
@@ -92,3 +92,15 @@ def remove_event(
 @router.get("/people")
 def list_people(auth: tuple[User, UserSession] = Depends(reader), db: Session = Depends(get_db)):
     return {"people": service.selectable_people(db)}
+
+
+@router.get("/reminders/due")
+def due_reminders(auth: tuple[User, UserSession] = Depends(reader), db: Session = Depends(get_db)):
+    return {"reminders": service.due_reminders(db, auth[0])}
+
+
+@router.post("/reminders/dismiss", status_code=204)
+def dismiss_reminder(body: DismissIn, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db)):
+    service.dismiss_reminder(db, auth[0], body.event_id, body.occurrence_date)
+    db.commit()
+    return Response(status_code=204)

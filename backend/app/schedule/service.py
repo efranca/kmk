@@ -4,7 +4,7 @@ Authority comes from `app.auth.policy`; every change is audited with ids and fie
 """
 
 import unicodedata
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, func, or_, select
@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app import names
 from app.auth import audit, policy
 from app.auth.errors import ApiError
-from app.models import Event, EventException, EventPerson, EventReminder, User
+from app.models import Event, EventException, EventPerson, EventReminder, ReminderDismissal, User
 from app.schedule.occurrences import EventData, ExceptionData, Occurrence, expand, own_dates
 from app.schedule.recurrence import MAX_RANGE_DAYS, RecurrenceRule, first_date_on_or_after, series_dates
 from app.schedule.schemas import EventIn
@@ -352,4 +352,67 @@ def delete_event(db: Session, actor: User, event_id: int, scope: str, occurrence
     if occurrence_date is not None and effective != "all":
         details["occurrence_date"] = occurrence_date.isoformat()
     audit.log(db, "event_deleted", actor_user_id=actor.id, ip=ip, details=details)
+    db.flush()
+
+
+# ---- reminders ----------------------------------------------------------------------------------------------------
+
+LEAD = {"hours": timedelta(hours=1), "days": timedelta(days=1), "weeks": timedelta(weeks=1)}
+REMINDER_GRACE = timedelta(days=1)  # a reminder stays up to a day after its occurrence started
+
+
+def now_toronto() -> datetime:
+    """The company wall clock (naive), the one thing tests replace."""
+    return datetime.now(COMPANY_TZ).replace(tzinfo=None)
+
+
+def due_reminders(db: Session, user: User) -> list[dict]:
+    """One entry per occurrence (of an event for this user or for everyone) whose earliest reminder has passed, that
+    started no more than a day ago and that the user has not dismissed. Dismissing hides all its reminders."""
+    now = now_toronto()
+    leads: dict[int, list[timedelta]] = {}
+    for event_id, amount, unit in db.execute(select(EventReminder.event_id, EventReminder.amount, EventReminder.unit)):
+        leads.setdefault(event_id, []).append(LEAD[unit] * amount)
+    if not leads:
+        return []
+    events = db.scalars(select(Event).where(Event.id.in_(leads))).all()
+    people_of = _people_of(db, list(leads))
+    exceptions_of = _exceptions_of(db, list(leads))
+    dismissed = set(
+        db.execute(select(ReminderDismissal.event_id, ReminderDismissal.occurrence_date).where(ReminderDismissal.user_id == user.id)).all()
+    )
+    first_day = (now - REMINDER_GRACE).date()
+    found = []
+    for event in events:
+        who = people_of[event.id]
+        if who and user.id not in who:
+            continue
+        last_day = min((now + max(leads[event.id])).date(), first_day + timedelta(days=MAX_RANGE_DAYS - 1))
+        if last_day < first_day:
+            continue
+        for o in expand(_data(event), [_exception_data(x) for x in exceptions_of[event.id]], first_day, last_day):
+            start = datetime.combine(o.date, o.start_time or time.min)
+            if start < now - REMINDER_GRACE or (event.id, o.original_date) in dismissed:
+                continue
+            remind_at = min(start - lead for lead in leads[event.id])
+            if remind_at <= now:
+                found.append((start, o, remind_at))
+    found.sort(key=lambda item: (item[0], item[1].event_id))
+    return [
+        {
+            "event_id": o.event_id,
+            "occurrence_date": o.original_date.isoformat(),
+            "title": o.title,
+            "start_date": o.date.isoformat(),
+            "start_time": _hhmm(o.start_time),
+            "all_day": o.all_day,
+            "remind_at": remind_at.strftime("%Y-%m-%dT%H:%M"),
+        }
+        for _, o, remind_at in found
+    ]
+
+
+def dismiss_reminder(db: Session, user: User, event_id: int, occurrence_date: date) -> None:
+    get_event(db, event_id)
+    db.merge(ReminderDismissal(user_id=user.id, event_id=event_id, occurrence_date=occurrence_date))
     db.flush()

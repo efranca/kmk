@@ -74,3 +74,8 @@ class EventIn(BaseModel):
         if self.recurrence is None and (self.ends_on is not None or self.max_count is not None):
             raise ValueError("only a repeating event can have an end")
         return self
+
+
+class DismissIn(BaseModel):
+    event_id: int
+    occurrence_date: date
