@@ -1,12 +1,13 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DEFAULT_PREFERENCES, type Preferences } from "../preferences";
 import { Providers, openAccountMenu, testUser } from "../testUtils";
 import Layout from "./Layout";
 
-function setup(onNavigate = vi.fn()) {
+function setup(onNavigate = vi.fn(), preferences?: Preferences) {
   const view = render(
-    <Providers>
+    <Providers preferences={preferences}>
       <Layout user={testUser} active="tasks" csrfToken="t" onNavigate={onNavigate} onLanguageChanged={vi.fn()} onSignOut={vi.fn()}>
         <p>content</p>
       </Layout>
@@ -15,8 +16,11 @@ function setup(onNavigate = vi.fn()) {
   return { ...view, onNavigate };
 }
 
-beforeEach(() => localStorage.clear());
-afterEach(cleanup);
+beforeEach(() => vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200 }))));
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe("Layout", () => {
   it("has no top bar and keeps the account menu inside the navigation", () => {
@@ -30,15 +34,12 @@ describe("Layout", () => {
     expect(container.querySelector(".app--collapsed")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /collapse menu|réduire le menu/i }));
     expect(container.querySelector(".app--collapsed")).not.toBeNull();
-    expect(localStorage.getItem("kmk.sidebar.collapsed")).toBe("1");
     fireEvent.click(screen.getByRole("button", { name: /expand menu|agrandir le menu/i }));
     expect(container.querySelector(".app--collapsed")).toBeNull();
-    expect(localStorage.getItem("kmk.sidebar.collapsed")).toBe("0");
   });
 
-  it("starts collapsed when that was saved", () => {
-    localStorage.setItem("kmk.sidebar.collapsed", "1");
-    expect(setup().container.querySelector(".app--collapsed")).not.toBeNull();
+  it("starts collapsed when the account says so", () => {
+    expect(setup(vi.fn(), { ...DEFAULT_PREFERENCES, sidebar_collapsed: true }).container.querySelector(".app--collapsed")).not.toBeNull();
   });
 
   it("gives every nav link a title so the collapsed rail stays readable", () => {

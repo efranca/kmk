@@ -1,3 +1,5 @@
+import { DEFAULT_PREFERENCES, type Preferences } from "./preferences";
+
 export type User = {
   id: number;
   username: string;
@@ -5,11 +7,12 @@ export type User = {
   email: string;
   role: "user" | "admin" | "superadmin";
   locale: "fr-CA" | "en" | "pt-BR";
+  avatar_url?: string | null;
 };
 
 export type MfaState = "ok" | "verify" | "setup";
 
-export type Session = { user: User; csrfToken: string; mfa: MfaState; mfaEnabled: boolean };
+export type Session = { user: User; csrfToken: string; mfa: MfaState; mfaEnabled: boolean; preferences: Preferences };
 
 export type LoginResult =
   | ({ ok: true } & Session)
@@ -22,7 +25,7 @@ export async function me(): Promise<Session | null> {
     const r = await fetch("/api/auth/me", base);
     if (!r.ok) return null;
     const body = await r.json();
-    return { user: body.user, csrfToken: body.csrf_token, mfa: body.mfa ?? "ok", mfaEnabled: body.mfa_enabled ?? false };
+    return { user: body.user, csrfToken: body.csrf_token, mfa: body.mfa ?? "ok", mfaEnabled: body.mfa_enabled ?? false, preferences: body.preferences ?? DEFAULT_PREFERENCES };
   } catch {
     return null;
   }
@@ -39,7 +42,7 @@ export async function login(identifier: string, password: string): Promise<Login
     if (r.status === 429) return { ok: false, reason: "rate_limited" };
     if (!r.ok) return { ok: false, reason: "invalid" };
     const body = await r.json();
-    return { ok: true, user: body.user, csrfToken: body.csrf_token, mfa: body.mfa ?? "ok", mfaEnabled: body.mfa_enabled ?? false };
+    return { ok: true, user: body.user, csrfToken: body.csrf_token, mfa: body.mfa ?? "ok", mfaEnabled: body.mfa_enabled ?? false, preferences: body.preferences ?? DEFAULT_PREFERENCES };
   } catch {
     return { ok: false, reason: "network" };
   }

@@ -257,6 +257,7 @@ describe("SchedulePage tasks", () => {
       "GET /api/tasks": () => ({ tasks: [dueTask] }),
       "GET /api/tasks/categories": () => ({ categories: [] }),
       "POST /api/tasks/11/complete": () => ({ task: { ...dueTask, status: "completed" } }),
+      "PATCH /api/me/preferences": () => ({ preferences: {} }),
     });
     renderWithProviders(<><SchedulePage /><Probe /></>, { route });
     return api;

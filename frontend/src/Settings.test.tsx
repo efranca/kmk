@@ -1,9 +1,10 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import i18n from "./i18n";
 import { forgetToken } from "./route";
+import { DEFAULT_PREFERENCES } from "./preferences";
 import SettingsPage from "./SettingsPage";
 import { Providers } from "./testUtils";
 import frCA from "./locales/fr-CA.json";
@@ -34,8 +35,7 @@ afterEach(async () => {
 
 describe("Settings page", () => {
   it("offers the three themes with the saved one selected", () => {
-    localStorage.setItem("kmk.theme", "light");
-    render(<Providers><SettingsPage /></Providers>);
+    render(<Providers preferences={{ ...DEFAULT_PREFERENCES, theme: "light" }}><SettingsPage /></Providers>);
     expect(screen.getByRole("radio", { name: frCA.themeKmk })).toHaveAttribute("aria-checked", "false");
     expect(screen.getByRole("radio", { name: frCA.themeLight })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: frCA.themeDark })).toBeInTheDocument();
@@ -47,6 +47,20 @@ describe("Settings page", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(localStorage.getItem("kmk.theme")).toBe("dark");
     expect(screen.getByRole("radio", { name: frCA.themeDark })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("has a switch per Dashboard card, on by default, and saves a change to the account", async () => {
+    const fetchMock = vi.fn(async () => res(200, { preferences: {} }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Providers><SettingsPage /></Providers>);
+    for (const name of [frCA.settingsWidgetMyEvents, frCA.settingsWidgetAllEvents, frCA.settingsWidgetMyTasks]) {
+      expect(screen.getByRole("switch", { name })).toBeChecked();
+    }
+    fireEvent.click(screen.getByRole("switch", { name: frCA.settingsWidgetMyTasks }));
+    expect(screen.getByRole("switch", { name: frCA.settingsWidgetMyTasks })).not.toBeChecked();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const init = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect(JSON.parse(String(init.body))).toEqual({ dashboard_widgets: { my_tasks: false } });
   });
 
   it("is a page of its own for signed-in people", async () => {

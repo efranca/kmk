@@ -184,7 +184,7 @@ describe("TasksPage", () => {
 
   it("the view menu switches to the board and a card moves to in progress on the server", async () => {
     localStorage.removeItem("kmk.tasks.view");
-    const { calls } = api([task({ title: "Mop the floor" })], { "POST /api/tasks/1/start": { task: {} } });
+    const { calls } = api([task({ title: "Mop the floor" })], { "POST /api/tasks/1/start": { task: {} }, "PATCH /api/me/preferences": { preferences: {} } });
     n = 0;
     page();
     await screen.findByText("Mop the floor");

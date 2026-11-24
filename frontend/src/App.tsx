@@ -14,6 +14,7 @@ import LoginForm from "./LoginForm";
 import MfaSetup from "./MfaSetup";
 import MfaVerify from "./MfaVerify";
 import NotFound from "./NotFound";
+import { PreferencesProvider } from "./preferences";
 import { makeQueryClient } from "./queryClient";
 import { useRoute } from "./route";
 import { SchedulePage } from "./schedule/SchedulePage";
@@ -179,6 +180,7 @@ function AppContent() {
 
   return (
     <SessionProvider value={{ user: session.user, csrfToken: session.csrfToken }}>
+    <PreferencesProvider key={session.user.id} initial={session.preferences} csrfToken={session.csrfToken}>
     <ToastProvider>
     <Shell
       user={session.user}
@@ -206,6 +208,7 @@ function AppContent() {
       {page === "notfound" && <NotFound onHome={() => navigate("/")} />}
     </Shell>
     </ToastProvider>
+    </PreferencesProvider>
     </SessionProvider>
   );
 }

@@ -2,6 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Task } from "../tasks/types";
+import { DEFAULT_PREFERENCES } from "../preferences";
+import { preferencesWrapper } from "../testUtils";
 import { tasksByDate, useShowTasks } from "./taskItems";
 
 let n = 0;
@@ -31,23 +33,17 @@ describe("tasksByDate", () => {
 });
 
 describe("useShowTasks", () => {
-  afterEach(() => { vi.restoreAllMocks(); localStorage.clear(); });
+  afterEach(() => vi.unstubAllGlobals());
 
-  it("starts off, and remembers what was chosen", () => {
-    const first = renderHook(() => useShowTasks());
-    expect(first.result.current[0]).toBe(false);
-    act(() => first.result.current[1](true));
-    expect(first.result.current[0]).toBe(true);
-    first.unmount();
-    expect(renderHook(() => useShowTasks()).result.current[0]).toBe(true);
-  });
-
-  it("is off, and still works for this visit, when the browser refuses to store anything", () => {
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
-    const { result } = renderHook(() => useShowTasks());
+  it("starts off and follows the preference", () => {
+    const { result } = renderHook(() => useShowTasks(), { wrapper: preferencesWrapper() });
     expect(result.current[0]).toBe(false);
     act(() => result.current[1](true));
     expect(result.current[0]).toBe(true);
+  });
+
+  it("starts on when the account says so", () => {
+    const wrapper = preferencesWrapper({ ...DEFAULT_PREFERENCES, show_tasks_on_schedule: true });
+    expect(renderHook(() => useShowTasks(), { wrapper }).result.current[0]).toBe(true);
   });
 });

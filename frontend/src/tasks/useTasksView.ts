@@ -1,26 +1,9 @@
-import { useState } from "react";
+import { usePreferences } from "../preferences";
 
 export type TasksView = "list" | "board";
-const KEY = "kmk.tasks.view";
 
-function read(): TasksView {
-  try {
-    return localStorage.getItem(KEY) === "board" ? "board" : "list";
-  } catch {
-    return "list";
-  }
-}
-
-/** List or board, remembered on this device (storage may be unavailable: the choice then lasts for the visit). */
+/** List or board: part of the person's preferences, so it follows the account. */
 export function useTasksView(): [TasksView, (view: TasksView) => void] {
-  const [view, setView] = useState<TasksView>(read);
-  const choose = (next: TasksView) => {
-    setView(next);
-    try {
-      localStorage.setItem(KEY, next);
-    } catch {
-      /* keep it for this visit */
-    }
-  };
-  return [view, choose];
+  const { prefs, update } = usePreferences();
+  return [prefs.tasks_view, (view) => update({ tasks_view: view })];
 }

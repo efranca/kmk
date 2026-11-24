@@ -357,5 +357,12 @@
   "taskStatusInProgress": "En cours",
   "taskEmptyInProgress": "Rien en cours.",
   "taskMoveTo": "Déplacer {{title}} vers",
-  "taskBoardEmpty": "Rien ici."
+  "taskBoardEmpty": "Rien ici.",
+  "settingsDashboard": "Tableau de bord",
+  "settingsDashboardHint": "Choisissez les cartes affichées sur le tableau de bord.",
+  "settingsWidgetMyEvents": "Mes événements",
+  "settingsWidgetAllEvents": "Tous les événements",
+  "settingsWidgetMyTasks": "Mes tâches",
+  "dashAllHidden": "Toutes les cartes du tableau de bord sont masquées.",
+  "dashAllHiddenLink": "Paramètres"
 }

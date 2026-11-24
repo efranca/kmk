@@ -357,5 +357,12 @@
   "taskStatusInProgress": "Em andamento",
   "taskEmptyInProgress": "Nada em andamento.",
   "taskMoveTo": "Mover {{title}} para",
-  "taskBoardEmpty": "Nada aqui."
+  "taskBoardEmpty": "Nada aqui.",
+  "settingsDashboard": "Painel",
+  "settingsDashboardHint": "Escolha quais cartões o painel mostra.",
+  "settingsWidgetMyEvents": "Meus eventos",
+  "settingsWidgetAllEvents": "Todos os eventos",
+  "settingsWidgetMyTasks": "Minhas tarefas",
+  "dashAllHidden": "Todos os cartões do painel estão ocultos.",
+  "dashAllHiddenLink": "Configurações"
 }

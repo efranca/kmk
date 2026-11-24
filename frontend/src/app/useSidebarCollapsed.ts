@@ -1,27 +1,7 @@
-import { useState } from "react";
+import { usePreferences } from "../preferences";
 
-const KEY = "kmk.sidebar.collapsed";
-
-function read(): boolean {
-  try {
-    return localStorage.getItem(KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-/** Whether the desktop sidebar is collapsed to icons: a per-device convenience (storage may be unavailable). */
+/** Whether the desktop sidebar is collapsed to icons: part of the person's preferences, so it follows the account. */
 export function useSidebarCollapsed(): [boolean, () => void] {
-  const [collapsed, setCollapsed] = useState(read);
-  const toggle = () =>
-    setCollapsed((was) => {
-      const next = !was;
-      try {
-        localStorage.setItem(KEY, next ? "1" : "0");
-      } catch {
-        /* still collapses for this visit */
-      }
-      return next;
-    });
-  return [collapsed, toggle];
+  const { prefs, update } = usePreferences();
+  return [prefs.sidebar_collapsed, () => update({ sidebar_collapsed: !prefs.sidebar_collapsed })];
 }
