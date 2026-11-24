@@ -10,8 +10,9 @@ The product plan is `scope.md`; what is actually built is described in `docs/`.
 ## Layout
 
 - `backend/app/` application code. `auth/` holds routes, the guard, services, rate limiting, audit, tokens, MFA. `emails/` is the mail layer. `mfa.py` and `security.py` are pure helpers. `cli.py` is the server-side admin tool.
-- `backend/alembic/versions/` migrations (`0001` to `0004`). `backend/tests/` is the test suite.
-- `frontend/src/` React app: `App.tsx` routes by path to the card pages (sign-in, recovery, two-step screens) or to the signed-in `Shell.tsx` (Welcome, Account, Admin pages); `lang.ts` has the language helpers; `welcomeContent.ts` lists the welcome page's content blocks; `locales/` has the three languages (every key must exist in all three).
+- `backend/app/schedule/` the shared calendar: `recurrence.py` (repeat rule, `rrule`), `occurrences.py` (expansion with one-off changes), `service.py`, `routes.py`.
+- `backend/alembic/versions/` migrations (`0001` to `0006`). `backend/tests/` is the test suite.
+- `frontend/src/` React app: `App.tsx` routes by path to the card pages (sign-in, recovery, two-step screens) or to the signed-in `Shell.tsx` / `app/Layout.tsx` (Dashboard, Schedule, Account, Admin pages); `schedule/` (views, event dialog, drag, reminders), `dashboard/` (the two widgets) and `ui/` (shared pieces) hold the calendar; `lang.ts` has the language helpers; `locales/` has the three languages (flat keys, every key must exist in all three; schedule strings start with `sch`).
 - `deploy/` compose, Caddyfile, `.env.example`; `deploy/backup/` the encrypted backup scripts (backup, status, restore, key ceremony, installer, failure notifier) and their systemd units; `scripts/audit-deps.sh` scans dependencies.
 - `docs/superpowers/specs/` design documents; `docs/superpowers/plans/` implementation plans. `.superpowers/` is git-ignored scratch (progress ledgers).
 
