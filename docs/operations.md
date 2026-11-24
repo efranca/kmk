@@ -167,6 +167,7 @@ Before doing it, make sure the key is backed up and `reset-mfa` works for you. T
 
 - Zero Trust, Networking, Tunnels, the existing tunnel, Published application routes: `app` + `kmk-entretien.ca` to `http://localhost:8081`.
 - SSL/TLS, Edge Certificates: **Always Use HTTPS** is on (so `http://` redirects with a 301).
+- Rules, Settings, **Managed Transforms**: turn on **Add visitor location headers** so the Devices page can show the city (without it only the country shows). Then `docker compose restart caddy` is not needed (the Caddyfile already passes the headers on).
 - The "Flexible/Full" SSL mode does not matter for the origin here (the tunnel carries the traffic).
 
 ## Host requirements
