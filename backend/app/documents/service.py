@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.auth import audit, policy
 from app.auth.errors import ApiError
 from app.documents import limits
-from app.documents.files import sniff_document
+from app.documents.files import detect_document
 from app.documents.schemas import CategoryIn, DocumentIn, DocumentPatch
 from app.documents.visibility import visible_levels
 from app.models import Document, DocumentCategory, DocumentFile, User
@@ -198,7 +198,7 @@ def store_file(db: Session, actor: User, document_id: int, data: bytes, file_nam
     """Check the bytes and the library limit, then save them (first file or a replacement) with the document's facts."""
     policy.check_documents(actor)
     document = get_document(db, actor, document_id)
-    content_type = sniff_document(data) if data else None
+    content_type = detect_document(data, file_name)
     if content_type is None:
         raise ApiError(422, "invalid_file")
     used = db.scalar(select(func.coalesce(func.sum(Document.size_bytes), 0)).where(Document.id != document.id)) or 0

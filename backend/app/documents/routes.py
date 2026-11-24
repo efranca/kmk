@@ -10,6 +10,7 @@ from app.auth.routes import request_ip
 from app.config import Settings
 from app.auth import policy
 from app.documents import service, uploads
+from app.documents.files import INLINE_TYPES, served_type
 from app.documents.schemas import CategoryIn, DocumentIn, DocumentPatch
 from app.models import User, UserSession
 from app.schedule.schemas import MAX_ID
@@ -158,11 +159,12 @@ def get_file(
     db: Session = Depends(get_db),
 ):
     document, data = service.read_file(db, auth[0], document_id)
-    disposition = "attachment" if download else "inline"
+    # Only what a browser can show safely opens in the tab; Office files, RTF, HEIC and TIFF are always downloads.
+    disposition = "attachment" if download or document.content_type not in INLINE_TYPES else "inline"
     name = document.file_name or "document"
     return Response(
         content=data,
-        media_type=document.content_type,
+        media_type=served_type(document.content_type),
         headers={
             "Content-Disposition": f"{disposition}; filename=\"{_ascii_fallback(name)}\"; filename*=UTF-8''{quote(name, safe='')}",
             "X-Content-Type-Options": "nosniff",

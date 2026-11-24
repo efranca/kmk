@@ -198,3 +198,39 @@ def test_no_database_transaction_is_held_while_the_body_streams(team, app_engine
     monkeypatch.setattr(uploads, "read_capped", watching)
     assert put(admin, h, did, PDF).status_code == 204
     assert idle == [0]
+
+
+def test_text_opens_inline_as_plain_text_even_if_it_looks_like_markup(team):
+    admin, h = team["admin"]
+    did = new_document(admin, h)
+    assert put(admin, h, did, b"# Title\n<script>alert(1)</script>\n", name="notes.md").status_code == 204
+    doc = admin.get(f"/api/documents/{did}").json()["document"]
+    assert doc["content_type"] == "text/markdown" and doc["file_name"] == "notes.md"
+    r = admin.get(f"/api/documents/{did}/file")
+    assert r.headers["content-type"] == "text/plain; charset=utf-8"
+    assert r.headers["content-disposition"].startswith("inline;")
+    assert r.headers["x-content-type-options"] == "nosniff" and r.headers["content-security-policy"] == "sandbox"
+
+
+def test_office_and_other_unshowable_types_are_always_downloads(team):
+    import io, zipfile
+
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as z:
+        z.writestr("[Content_Types].xml", "<T/>")
+        z.writestr("word/document.xml", "<w/>")
+    heic = b"\x00\x00\x00\x18ftypheic\x00\x00\x00\x00heic" + b"0" * 8
+    admin, h = team["admin"]
+    for data, name in ((out.getvalue(), "contract.docx"), (heic, "photo.heic")):
+        did = new_document(admin, h)
+        assert put(admin, h, did, data, name=name).status_code == 204
+        r = admin.get(f"/api/documents/{did}/file")  # no ?download=1
+        assert r.headers["content-disposition"].startswith("attachment;"), name
+
+
+def test_a_gif_opens_inline(team):
+    admin, h = team["admin"]
+    did = new_document(admin, h)
+    assert put(admin, h, did, b"GIF89a" + b"0" * 30, name="a.gif").status_code == 204
+    r = admin.get(f"/api/documents/{did}/file")
+    assert r.headers["content-type"] == "image/gif" and r.headers["content-disposition"].startswith("inline;")
