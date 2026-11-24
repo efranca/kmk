@@ -370,5 +370,13 @@
   "avatarRemove": "Remover a foto",
   "avatarInvalid": "Este arquivo não pode ser usado como foto. Escolha uma imagem JPEG, PNG ou WebP.",
   "adminNoResults": "Ninguém corresponde.",
-  "taskMoveFailed": "Não foi possível mover a tarefa. Tente novamente."
+  "taskMoveFailed": "Não foi possível mover a tarefa. Tente novamente.",
+  "settingsAbout": "Sobre",
+  "aboutApp": "Aplicativo",
+  "aboutServer": "Servidor",
+  "aboutVersion": "Versão",
+  "aboutCommit": "Commit",
+  "aboutBuilt": "Compilada em",
+  "aboutUnknown": "Desconhecido",
+  "aboutMismatch": "O aplicativo e o servidor são de versões diferentes. Recarregue a página."
 }

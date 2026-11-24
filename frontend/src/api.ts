@@ -293,3 +293,19 @@ export async function setLocale(csrfToken: string, locale: string): Promise<{ ok
     return { ok: false };
   }
 }
+
+// ---- version ----
+
+export type BuildInfo = { version: string; commit: string; builtAt: string | null };
+
+/** The server's build, or null when it cannot be read. */
+export async function fetchVersion(): Promise<BuildInfo | null> {
+  try {
+    const r = await fetch("/api/version", base);
+    if (!r.ok) return null;
+    const body = await r.json();
+    return { version: body.version, commit: body.commit ?? "", builtAt: body.built_at ?? null };
+  } catch {
+    return null;
+  }
+}

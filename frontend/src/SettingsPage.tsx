@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 
+import AboutSection from "./AboutSection";
 import { usePreferences, type Preferences } from "./preferences";
 import { PageHeader } from "./ui/PageHeader";
 import { Segmented } from "./ui/Segmented";
@@ -38,6 +39,7 @@ export default function SettingsPage() {
           ))}
         </div>
       </section>
+      <AboutSection />
     </>
   );
 }
