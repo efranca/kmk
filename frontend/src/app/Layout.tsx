@@ -13,20 +13,16 @@ export type LayoutPage = NavId | "account" | "settings" | "other";
 export default function Layout({
   user,
   active,
-  csrfToken,
   bare = false,
   onNavigate,
-  onLanguageChanged,
   onSignOut,
   children,
 }: {
   user: User;
   active: LayoutPage;
-  csrfToken: string;
   /** Pages that draw their own surfaces (Dashboard, Schedule) skip the white card the older pages sit in. */
   bare?: boolean;
   onNavigate: (path: string) => void;
-  onLanguageChanged: (user: User) => void;
   onSignOut: () => void;
   children: ReactNode;
 }) {
@@ -41,11 +37,9 @@ export default function Layout({
         footer={
           <AccountMenu
             user={user}
-            csrfToken={csrfToken}
             active={active === "account"}
             settingsActive={active === "settings"}
             onNavigate={onNavigate}
-            onLanguageChanged={onLanguageChanged}
             onSignOut={onSignOut}
           />
         }

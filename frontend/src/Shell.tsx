@@ -11,18 +11,14 @@ const PAGE_TO_LAYOUT: Record<ShellPage, LayoutPage> = { welcome: "dashboard", sc
 export default function Shell({
   user,
   active,
-  csrfToken,
   onNavigate,
-  onLanguageChanged,
   onSignOut,
   bare,
   children,
 }: {
   user: User;
   active: ShellPage;
-  csrfToken: string;
   onNavigate: (path: string) => void;
-  onLanguageChanged: (user: User) => void;
   onSignOut: () => void;
   /** Pages that draw their own surfaces skip the white card. */
   bare?: boolean;
@@ -32,9 +28,7 @@ export default function Shell({
     <Layout
       user={user}
       active={PAGE_TO_LAYOUT[active]}
-      csrfToken={csrfToken}
       onNavigate={onNavigate}
-      onLanguageChanged={onLanguageChanged}
       onSignOut={onSignOut}
       bare={bare}
     >

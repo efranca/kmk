@@ -35,14 +35,14 @@ afterEach(async () => {
 
 describe("Settings page", () => {
   it("offers the three themes with the saved one selected", () => {
-    render(<Providers preferences={{ ...DEFAULT_PREFERENCES, theme: "light" }}><SettingsPage /></Providers>);
+    render(<Providers preferences={{ ...DEFAULT_PREFERENCES, theme: "light" }}><SettingsPage onLanguageChanged={vi.fn()} /></Providers>);
     expect(screen.getByRole("radio", { name: frCA.themeKmk })).toHaveAttribute("aria-checked", "false");
     expect(screen.getByRole("radio", { name: frCA.themeLight })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: frCA.themeDark })).toBeInTheDocument();
   });
 
   it("applies and remembers the chosen theme", () => {
-    render(<Providers><SettingsPage /></Providers>);
+    render(<Providers><SettingsPage onLanguageChanged={vi.fn()} /></Providers>);
     fireEvent.click(screen.getByRole("radio", { name: frCA.themeDark }));
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(localStorage.getItem("kmk.theme")).toBe("dark");
@@ -52,7 +52,7 @@ describe("Settings page", () => {
   it("has a switch per Dashboard card, on by default, and saves a change to the account", async () => {
     const fetchMock = vi.fn(async () => res(200, { preferences: {} }));
     vi.stubGlobal("fetch", fetchMock);
-    render(<Providers><SettingsPage /></Providers>);
+    render(<Providers><SettingsPage onLanguageChanged={vi.fn()} /></Providers>);
     for (const name of [frCA.settingsWidgetMyEvents, frCA.settingsWidgetAllEvents, frCA.settingsWidgetMyTasks]) {
       expect(screen.getByRole("switch", { name })).toBeChecked();
     }

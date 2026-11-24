@@ -24,7 +24,7 @@ export default function AboutSection() {
   const info = server.data ?? null;
   const mismatch = Boolean(__BUILD_COMMIT__ && info?.commit && info.commit !== __BUILD_COMMIT__);
   return (
-    <section className="section">
+    <section className="section settings-card">
       <h2>{t("settingsAbout")}</h2>
       <h3 className="about__title">{t("aboutApp")}</h3>
       <dl className="about">

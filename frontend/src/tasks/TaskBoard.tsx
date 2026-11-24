@@ -103,7 +103,6 @@ export function TaskBoard({
                     </button>
                     <div className="card-task__foot">
                       {category && <span className="task__category" title={category.name} aria-hidden="true">{category.icon ?? DEFAULT_CATEGORY_ICON}</span>}
-                      <AvatarGroup people={faces} everyone={task.people.length === 0} mutedIds={new Set(faces.filter((p) => p.active === false).map((p) => p.id))} />
                       {movable && (
                         <select
                           className="card-task__move"
@@ -114,6 +113,9 @@ export function TaskBoard({
                           {COLUMNS.map((c) => <option key={c.status} value={c.status}>{t(c.label)}</option>)}
                         </select>
                       )}
+                      <span className="card-task__people">
+                        <AvatarGroup people={faces} everyone={task.people.length === 0} mutedIds={new Set(faces.filter((p) => p.active === false).map((p) => p.id))} />
+                      </span>
                     </div>
                   </li>
                 );

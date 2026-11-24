@@ -66,7 +66,7 @@ describe("About", () => {
 
   it("is part of the Settings page", async () => {
     mockVersion(() => res(200, server));
-    renderWithProviders(<SettingsPage />);
+    renderWithProviders(<SettingsPage onLanguageChanged={vi.fn()} />);
     expect(screen.getByRole("heading", { name: en.settingsAbout })).toBeInTheDocument();
     await screen.findByText("0.2.58");
   });

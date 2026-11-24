@@ -51,9 +51,9 @@ describe("signed-in pages", () => {
     expect(screen.getByRole("region", { name: frCA.dashAllEvents })).toBeInTheDocument();
     expect((await screen.findAllByText(frCA.dashEmpty)).length).toBe(2);
     expect(screen.getByRole("navigation")).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: frCA.language })).toBeNull(); // language and sign-out sit behind the account menu
+    expect(screen.queryByRole("combobox", { name: frCA.language })).toBeNull(); // language lives in Settings; sign-out sits behind the account menu
     openAccountMenu();
-    expect(screen.getByRole("combobox", { name: frCA.language })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: frCA.language })).toBeNull();
     expect(screen.getByRole("button", { name: frCA.signOut })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: frCA.changePasswordTitle })).toBeNull(); // that lives on /account now
     expect(screen.queryByRole("group", { name: frCA.language })).toBeNull(); // the pre-login picker is not shown here
@@ -156,14 +156,13 @@ describe("schedule page", () => {
 });
 
 describe("account menu", () => {
-  it("holds the account page, the language and sign out, and closes on Escape", async () => {
+  it("holds the account page and sign out, and closes on Escape", async () => {
     mockApi({ "GET /api/auth/me": signedIn() });
     render(<App />);
     await screen.findByRole("link", { name: frCA.navDashboard });
     const button = openAccountMenu();
     expect(button).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("link", { name: frCA.navAccount })).toHaveAttribute("href", "/account");
-    expect(screen.getByRole("combobox", { name: frCA.language })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: frCA.signOut })).toBeInTheDocument();
     fireEvent.keyDown(document.body, { key: "Escape" });
     expect(screen.queryByRole("button", { name: frCA.signOut })).toBeNull();
