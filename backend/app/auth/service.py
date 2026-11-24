@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.config import Settings
@@ -33,7 +33,14 @@ def authenticate(db: Session, identifier: str, password: str) -> User | None:
 
 
 def create_session(
-    db: Session, user: User, settings: Settings, ip: str, user_agent: str | None, mfa_verified: bool = True
+    db: Session,
+    user: User,
+    settings: Settings,
+    ip: str,
+    user_agent: str | None,
+    mfa_verified: bool = True,
+    country: str | None = None,
+    city: str | None = None,
 ) -> tuple[str, str]:
     """Returns (raw cookie token, stored token hash)."""
     token = new_session_token()
@@ -44,6 +51,9 @@ def create_session(
             user_id=user.id,
             expires_at=datetime.now(timezone.utc) + timedelta(days=settings.session_days),
             ip=ip,
+            last_ip=ip,
+            country=country,
+            city=city,
             user_agent=(user_agent or "")[:512] or None,
             mfa_verified=mfa_verified,
         )
@@ -65,6 +75,20 @@ def current_session(db: Session, token: str | None) -> tuple[User, UserSession] 
         )
     ).first()
     return (row[0], row[1]) if row else None
+
+
+SEEN_EVERY = timedelta(minutes=5)
+
+
+def touch_session(db: Session, session: UserSession, ip: str, country: str | None, city: str | None) -> None:
+    """Record last access, address and place, at most once every 5 minutes per session (a GET is not a write each time)."""
+    result = db.execute(
+        update(UserSession)
+        .where(UserSession.token_hash == session.token_hash, UserSession.last_seen_at < datetime.now(timezone.utc) - SEEN_EVERY)
+        .values(last_seen_at=func.now(), last_ip=ip, country=country, city=city)
+    )
+    if result.rowcount:
+        db.commit()
 
 
 def user_payload(user: User) -> dict:

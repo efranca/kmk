@@ -41,6 +41,12 @@ def check(actor: User, target: User, action: str) -> None:
         raise error
 
 
+def check_super_admin(actor: User) -> None:
+    """Actions that concern the whole app rather than one person (for example connected devices): the super admin only."""
+    if actor.role != "superadmin":
+        raise ApiError(403, "forbidden")
+
+
 def state_allows(target: User, action: str) -> bool:
     status = target.status
     if action == "view":
@@ -104,6 +110,16 @@ def can_set_task_status(actor: User, creator_id: int, person_ids: frozenset[int]
 def can_manage_task_categories(actor: User) -> bool:
     """Anyone adds a category; only admins rename, re-icon or delete one."""
     return actor.role in PRIVILEGED
+
+
+def can_manage_documents(actor: User) -> bool:
+    """Who adds, edits, replaces and deletes company documents and manages their categories."""
+    return actor.role in PRIVILEGED
+
+
+def check_documents(actor: User) -> None:
+    if not can_manage_documents(actor):
+        raise ApiError(403, "forbidden")
 
 
 def check_task(actor: User, creator_id: int, person_ids: frozenset[int]) -> None:

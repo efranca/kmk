@@ -1,0 +1,14 @@
+.docs { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.doc { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 14px; border: 1px solid var(--border, var(--mist)); border-radius: 12px; background: var(--surface, var(--card)); color: var(--text, var(--ink)); cursor: pointer; font: inherit; }
+.doc:hover { border-color: var(--accent, var(--green)); }
+.doc__icon { font-size: 1.4rem; }
+.doc__main { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.doc__main strong { overflow-wrap: anywhere; }
+.doc__main .muted { font-size: 0.85rem; }
+.doc-form { display: grid; gap: 12px; }
+.doc-links { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.doc-progress { width: 100%; }
+.doc-facts { display: grid; gap: 8px; margin: 0; }
+.doc-facts dt { color: var(--text-muted, var(--slate)); font-size: 0.85rem; }
+.doc-facts dd { margin: 0; }
+.dialog__spacer { flex: 1; }

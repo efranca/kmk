@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.auth import audit, ratelimit, service
+from app.auth import audit, geo, ratelimit, service
 from app.auth.deps import get_db, get_settings_dep  # noqa: F401  (re-exported for other modules)
 from app.auth.guard import guard
 from app.config import Settings
@@ -53,7 +53,8 @@ def login(body: LoginBody, request: Request, db: Session = Depends(get_db), sett
         return error(401, "invalid_credentials")
 
     verified = not user.mfa_enabled  # a user with TOTP must still prove a code before this session is fully usable
-    token, token_hash = service.create_session(db, user, settings, ip, request.headers.get("user-agent"), mfa_verified=verified)
+    country, city = geo.from_request(request, settings)
+    token, token_hash = service.create_session(db, user, settings, ip, request.headers.get("user-agent"), mfa_verified=verified, country=country, city=city)
     ratelimit.record_attempt(db, ip, identifier, True)
     audit.log(db, "login_success", actor_user_id=user.id, target_user_id=user.id, ip=ip)
     db.commit()

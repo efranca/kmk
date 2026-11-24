@@ -7,6 +7,17 @@
 	}
 }
 
+(api_proxy) {
+	reverse_proxy 127.0.0.1:8001 {
+		# Overwrites anything the client sent; resolved from Cf-Connecting-Ip for the trusted tunnel peer.
+		header_up X-Real-Client-Ip {client_ip}
+		# Approximate place from Cloudflare (informational, shown to the super admin). Always overwritten here, so a
+		# browser cannot choose them; the city only exists when the "Add visitor location headers" transform is on.
+		header_up X-Geo-Country {http.request.header.Cf-Ipcountry}
+		header_up X-Geo-City {http.request.header.Cf-Ipcity}
+	}
+}
+
 http://app.kmk-entretien.ca:8081 {
 	bind 127.0.0.1
 	encode zstd gzip
@@ -20,15 +31,24 @@ http://app.kmk-entretien.ca:8081 {
 		-Server
 	}
 
+	# A document file goes up as the raw body of this one request. Everything else under /api is tiny JSON.
+	@docfile {
+		method PUT
+		path_regexp ^/api/documents/[0-9]+/file$
+	}
+	handle @docfile {
+		request_body {
+			max_size 51MiB
+		}
+		import api_proxy
+	}
+
 	handle /api/* {
-		# Every API request body is tiny JSON: refuse anything bigger before it reaches the application.
+		# Every other API request body is tiny JSON: refuse anything bigger before it reaches the application.
 		request_body {
 			max_size 64KB
 		}
-		reverse_proxy 127.0.0.1:8001 {
-			# Overwrites anything the client sent; resolved from Cf-Connecting-Ip for the trusted tunnel peer.
-			header_up X-Real-Client-Ip {client_ip}
-		}
+		import api_proxy
 	}
 
 	# Missing assets must 404, not fall back to index.html

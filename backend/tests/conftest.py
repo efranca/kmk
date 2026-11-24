@@ -66,7 +66,7 @@ def clean_db(request):
         return
     engine = request.getfixturevalue("owner_engine")
     with engine.begin() as c:
-        c.execute(text("TRUNCATE users, sessions, login_attempts, audit_log, tokens, recovery_codes, events, event_people, event_exceptions, event_reminders, reminder_dismissals, task_categories, tasks, task_people RESTART IDENTITY CASCADE"))
+        c.execute(text("TRUNCATE users, sessions, login_attempts, audit_log, tokens, recovery_codes, events, event_people, event_exceptions, event_reminders, reminder_dismissals, task_categories, tasks, task_people, document_categories, documents, document_files RESTART IDENTITY CASCADE"))
     yield
 
 

@@ -54,3 +54,26 @@ def test_logs_and_health_checks_are_still_configured(compose):
     for service in ("api", "caddy"):
         assert compose[service]["logging"]["options"] == {"max-size": "10m", "max-file": "5"}
         assert "healthcheck" in compose[service]
+
+
+def test_build_info_is_baked_into_the_api_image_not_passed_at_runtime(compose):
+    # Empty build args are dropped from `compose config`, so the build section is checked in the file itself.
+    text = (DEPLOY / "docker-compose.yml").read_text()
+    for name in ("APP_COMMIT", "APP_COMMIT_COUNT", "APP_BUILT_AT"):
+        assert f"{name}: ${{{name}:-}}" in text
+        assert name not in compose["api"]["environment"]
+
+
+CADDYFILE = DEPLOY / "caddy" / "Caddyfile"
+
+
+def test_only_the_document_upload_route_may_carry_a_large_body():
+    # Plain text check (works without docker): the 64 KB cap stays on /api/*, and 51 MiB appears exactly once, for the
+    # raw-body file upload of a document (50 MiB is the file limit in app/documents/limits.py).
+    text = CADDYFILE.read_text()
+    assert text.count("max_size 51MiB") == 1 and text.count("max_size 64KB") == 1
+    upload = text[text.index("@docfile {"):text.index("handle /api/*")]
+    assert "method PUT" in upload and "path_regexp ^/api/documents/[0-9]+/file$" in upload and "max_size 51MiB" in upload
+    from app.documents.limits import MAX_FILE_BYTES
+
+    assert MAX_FILE_BYTES < 51 * 1024 * 1024

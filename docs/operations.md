@@ -83,7 +83,7 @@ docker compose exec api python -m app.cli reset-mfa --username NAME
 
 ## Auto-deploy (optional)
 
-`infrastructure/deployments/` can deploy every new `origin/main` by itself (frontend build, `docker compose up -d --build`, smoke check on `/` and `/api/health`). It is **not installed**; steps, settings and troubleshooting are in `infrastructure/deployments/README.md`.
+`infrastructure/deployments/` can deploy every new `origin/main` by itself (frontend build, `docker compose up -d --build`, smoke check on `/` and `/api/health`). It is **not installed**; steps, settings and troubleshooting are in `infrastructure/deployments/README.md`. It also exports `APP_COMMIT`, `APP_COMMIT_COUNT` and `APP_BUILT_AT` so Settings > About shows the build (a hand-run `docker compose up -d --build` can export them the same way; without them the page says "Unknown").
 
 ## Backups
 
@@ -137,6 +137,10 @@ PY
 **Known limit:** `/mnt/shared` is on the same physical SSD as the system. The backups survive mistakes, a Linux reinstall and filesystem damage, but not an SSD failure, theft or fire. An off-site copy (external drive or cloud) is a future step; because the archives are encrypted, copying them anywhere is safe.
 The shared project scripts (`/home/evandro/projects/shared/scripts/pg-backup.sh`) are not used by kmk.
 
+## Documents: disk, backups and limits
+
+Document files are stored in the database, so the database and **every daily and weekly encrypted backup** grow with the library (at most 2 GB of files, plus the copies kept by the backup rotation). Check free space on the host (`df -h /`) before large uploads; the library cap is `MAX_LIBRARY_BYTES` in `backend/app/documents/limits.py` (raise it deliberately, and consider moving backups off this disk first). Only `PUT /api/documents/{id}/file` accepts a large body (Caddy, 51 MiB); the API container's `mem_limit` is 1536m because one upload holds a few copies of the file (at most 2 uploads at once). After a Caddyfile change auto-deploy restarts Caddy by itself; by hand: `docker compose restart caddy`.
+
 ## Container limits, logs and health
 
 - Logs: both containers keep at most 5 files of 10 MB (`docker inspect kmk-api --format '{{json .HostConfig.LogConfig}}'`). Health: `docker inspect --format '{{.Name}} {{.State.Health.Status}}' kmk-api kmk-caddy` (checks `/api/health` every 30 seconds).
@@ -167,6 +171,7 @@ Before doing it, make sure the key is backed up and `reset-mfa` works for you. T
 
 - Zero Trust, Networking, Tunnels, the existing tunnel, Published application routes: `app` + `kmk-entretien.ca` to `http://localhost:8081`.
 - SSL/TLS, Edge Certificates: **Always Use HTTPS** is on (so `http://` redirects with a 301).
+- Rules, Settings, **Managed Transforms**: turn on **Add visitor location headers** so the Devices page can show the city (without it only the country shows). Then `docker compose restart caddy` is not needed (the Caddyfile already passes the headers on).
 - The "Flexible/Full" SSL mode does not matter for the origin here (the tunnel carries the traffic).
 
 ## Host requirements

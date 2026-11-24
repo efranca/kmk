@@ -58,8 +58,9 @@ describe("Settings page", () => {
     }
     fireEvent.click(screen.getByRole("switch", { name: frCA.settingsWidgetMyTasks }));
     expect(screen.getByRole("switch", { name: frCA.settingsWidgetMyTasks })).not.toBeChecked();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const init = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1];
+    const patch = () => (fetchMock.mock.calls as unknown as [string, RequestInit][]).find(([url]) => url === "/api/me/preferences");
+    await waitFor(() => expect(patch()).toBeDefined());
+    const init = patch()![1];
     expect(JSON.parse(String(init.body))).toEqual({ dashboard_widgets: { my_tasks: false } });
   });
 

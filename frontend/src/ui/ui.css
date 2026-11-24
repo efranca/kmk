@@ -185,3 +185,9 @@
 .avatar-picker { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 12px 0; }
 .avatar-picker__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .avatar--xl { width: 84px; height: 84px; font-size: 1.6rem; }
+
+.about { display: grid; gap: 6px; max-width: 28rem; margin: 6px 0 14px; }
+.about > div { display: flex; justify-content: space-between; gap: 16px; }
+.about dt { color: var(--text-muted, var(--slate)); }
+.about dd { margin: 0; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.about__title { font-size: 0.85rem; margin: 12px 0 0; color: var(--text-muted, var(--slate)); }

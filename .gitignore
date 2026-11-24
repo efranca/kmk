@@ -9,3 +9,4 @@ __pycache__/
 infrastructure/deployments/logs/
 infrastructure/deployments/worktree/
 *.tsbuildinfo
+.claude/worktrees/

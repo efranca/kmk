@@ -31,7 +31,7 @@ export default function Layout({
   return (
     <div className={collapsed ? "app app--collapsed" : "app"}>
       <a className="skip" href="#main">{t("skipToContent")}</a>
-      <Nav active={active === "account" || active === "settings" || active === "other" ? null : active} isAdmin={user.role !== "user"} collapsed={collapsed}
+      <Nav active={active === "account" || active === "settings" || active === "other" ? null : active} isAdmin={user.role !== "user"} isSuperAdmin={user.role === "superadmin"} collapsed={collapsed}
         onToggle={toggle}
         onNavigate={onNavigate}
         footer={
