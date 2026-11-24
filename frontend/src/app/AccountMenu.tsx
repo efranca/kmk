@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { User } from "../api";
+import AboutSection from "../AboutSection";
 import { displayName } from "../person";
 import { Avatar } from "../ui/Avatar";
 import { Icon } from "../ui/Icon";
@@ -12,19 +13,18 @@ export default function AccountMenu({
   user,
   active,
   settingsActive = false,
-  aboutActive = false,
   onNavigate,
   onSignOut,
 }: {
   user: User;
   active: boolean;
   settingsActive?: boolean;
-  aboutActive?: boolean;
   onNavigate: (path: string) => void;
   onSignOut: () => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const panelId = useId();
@@ -94,25 +94,24 @@ export default function AccountMenu({
             <Icon name="settings" size={18} />
             {t("navSettings")}
           </a>
-          <a
-            href="/about"
-            aria-current={aboutActive ? "page" : undefined}
+          <button
+            type="button"
             className="accountmenu__item"
-            onClick={(e) => {
-              e.preventDefault();
+            onClick={() => {
               setOpen(false);
-              onNavigate("/about");
+              setAboutOpen(true);
             }}
           >
             <Icon name="info" size={18} />
             {t("navAbout")}
-          </a>
+          </button>
           <button type="button" className="accountmenu__item" onClick={onSignOut}>
             <Icon name="logout" size={18} />
             {t("signOut")}
           </button>
         </div>
       )}
+      <AboutSection open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </div>
   );
 }

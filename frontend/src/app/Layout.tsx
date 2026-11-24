@@ -8,7 +8,7 @@ import { useSidebarCollapsed } from "./useSidebarCollapsed";
 import { usePreferences } from "../preferences";
 import Nav, { type NavId } from "./Nav";
 
-export type LayoutPage = NavId | "account" | "settings" | "about" | "other";
+export type LayoutPage = NavId | "account" | "settings" | "other";
 
 /** The frame of every signed-in page: navigation (bar or rail), the account menu, and the page area. */
 export default function Layout({
@@ -33,7 +33,7 @@ export default function Layout({
   return (
     <div className={collapsed ? "app app--collapsed" : "app"}>
       <a className="skip" href="#main">{t("skipToContent")}</a>
-      <Nav active={active === "account" || active === "settings" || active === "about" || active === "other" ? null : active} isAdmin={user.role !== "user"} isSuperAdmin={user.role === "superadmin"} collapsed={collapsed} showLabels={prefs.show_menu_labels}
+      <Nav active={active === "account" || active === "settings" || active === "other" ? null : active} isAdmin={user.role !== "user"} isSuperAdmin={user.role === "superadmin"} collapsed={collapsed} showLabels={prefs.show_menu_labels}
         onToggle={toggle}
         onNavigate={onNavigate}
         footer={
@@ -41,7 +41,6 @@ export default function Layout({
             user={user}
             active={active === "account"}
             settingsActive={active === "settings"}
-            aboutActive={active === "about"}
             onNavigate={onNavigate}
             onSignOut={onSignOut}
           />

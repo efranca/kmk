@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { fetchVersion } from "./api";
+import { Dialog } from "./ui/Dialog";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -13,9 +14,9 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 /** Which build is running: the app (fixed when it was built) and the server (asked for). */
-export default function AboutSection() {
+export default function AboutSection({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t, i18n } = useTranslation();
-  const server = useQuery({ queryKey: ["version"], queryFn: fetchVersion, staleTime: 60_000 });
+  const server = useQuery({ queryKey: ["version"], queryFn: fetchVersion, staleTime: 60_000, enabled: open });
   const unknown = t("aboutUnknown");
   const when = (iso: string | null) => {
     const date = iso ? new Date(iso) : null;
@@ -24,7 +25,7 @@ export default function AboutSection() {
   const info = server.data ?? null;
   const mismatch = Boolean(__BUILD_COMMIT__ && info?.commit && info.commit !== __BUILD_COMMIT__);
   return (
-    <>
+    <Dialog open={open} title={t("navAbout")} onClose={onClose}>
       <div className="cards">
         <section className="section settings-card" aria-label={t("aboutApp")}>
           <h2>{t("aboutApp")}</h2>
@@ -44,6 +45,6 @@ export default function AboutSection() {
         </section>
       </div>
       {mismatch && <p className="error" role="status">{t("aboutMismatch")}</p>}
-    </>
+    </Dialog>
   );
 }

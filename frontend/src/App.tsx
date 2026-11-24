@@ -21,7 +21,6 @@ import { SchedulePage } from "./schedule/SchedulePage";
 import { TasksPage } from "./tasks/TasksPage";
 import { SessionProvider } from "./session";
 import { ToastProvider } from "./ui/Toast";
-import AboutPage from "./AboutPage";
 import SettingsPage from "./SettingsPage";
 import SetPassword from "./SetPassword";
 import { DocumentsPage } from "./documents/DocumentsPage";
@@ -29,7 +28,7 @@ import DevicesPage from "./devices/DevicesPage";
 import Shell, { type ShellPage } from "./Shell";
 
 type State = { kind: "checking" } | { kind: "anon" } | { kind: "auth"; session: Session };
-type Page = "checking" | "signin" | "forgot" | "setpw" | "verify" | "setup" | "welcome" | "schedule" | "tasks" | "documents" | "account" | "settings" | "about" | "admin" | "devices" | "notfound";
+type Page = "checking" | "signin" | "forgot" | "setpw" | "verify" | "setup" | "welcome" | "schedule" | "tasks" | "documents" | "account" | "settings" | "admin" | "devices" | "notfound";
 
 const BRAND = "KMK Entretien Ménager";
 const TITLE_KEYS: Record<Page, string | null> = {
@@ -45,7 +44,6 @@ const TITLE_KEYS: Record<Page, string | null> = {
   documents: "docTitle",
   account: "navAccount",
   settings: "settingsTitle",
-  about: "navAbout",
   admin: "adminTitle",
   devices: "deviceTitle",
   notfound: "notFoundTitle",
@@ -55,7 +53,7 @@ function pageFor(path: string, state: State): Page {
   if (path === "/set-password") return "setpw";
   if (path === "/forgot-password") return "forgot";
   if (state.kind === "checking") return "checking";
-  if (state.kind === "anon") return ["/", "/schedule", "/tasks", "/documents", "/account", "/settings", "/about", "/admin", "/devices"].includes(path) ? "signin" : "notfound";
+  if (state.kind === "anon") return ["/", "/schedule", "/tasks", "/documents", "/account", "/settings", "/admin", "/devices"].includes(path) ? "signin" : "notfound";
   if (state.session.mfa === "verify") return "verify";
   if (state.session.mfa === "setup") return "setup";
   if (path === "/") return "welcome";
@@ -64,7 +62,6 @@ function pageFor(path: string, state: State): Page {
   if (path === "/documents") return "documents";
   if (path === "/account") return "account";
   if (path === "/settings") return "settings";
-  if (path === "/about") return "about";
   if (path === "/admin") return state.session.user.role !== "user" ? "admin" : "welcome"; // plain users just see the welcome page
   if (path === "/devices") return state.session.user.role === "superadmin" ? "devices" : "welcome"; // the super admin only
   return "notfound";
@@ -192,7 +189,7 @@ function AppContent() {
 
   if (state.kind !== "auth") return null;
   const { session } = state;
-  const shellPage: ShellPage = page === "welcome" || page === "schedule" || page === "tasks" || page === "documents" || page === "account" || page === "settings" || page === "about" || page === "admin" || page === "devices" ? page : "notfound";
+  const shellPage: ShellPage = page === "welcome" || page === "schedule" || page === "tasks" || page === "documents" || page === "account" || page === "settings" || page === "admin" || page === "devices" ? page : "notfound";
 
   return (
     <SessionProvider value={{ user: session.user, csrfToken: session.csrfToken }}>
@@ -203,7 +200,7 @@ function AppContent() {
       active={shellPage}
       onNavigate={navigate}
       onSignOut={signOut}
-      bare={page === "schedule" || page === "welcome" || page === "tasks" || page === "documents" || page === "admin" || page === "devices" || page === "settings" || page === "about"}
+      bare={page === "schedule" || page === "welcome" || page === "tasks" || page === "documents" || page === "admin" || page === "devices" || page === "settings"}
     >
       {page === "welcome" && <DashboardPage user={session.user} mfaEnabled={session.mfaEnabled} recoveryCodesLeft={recoveryCodesLeft} />}
       {page === "account" && (
@@ -216,7 +213,6 @@ function AppContent() {
           onAvatarChanged={refreshUser}
         />
       )}
-      {page === "about" && <AboutPage />}
       {page === "settings" && <SettingsPage onLanguageChanged={(user) => updateSession({ user })} />}
       {page === "admin" && <UsersPage session={session} />}
       {page === "devices" && <DevicesPage />}
