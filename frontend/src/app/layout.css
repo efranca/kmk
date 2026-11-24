@@ -2,6 +2,14 @@
    which the toggle collapses back to the rail. Pages use all the width beside it. */
 body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 100dvh; }
 .app { min-height: 100dvh; color: var(--text); }
+/* The older pages are styled with the public site's fixed colors (ink, slate, paper, card...). Inside the signed-in frame
+   they follow the theme instead, so text, cards and inputs stay readable in Light and Dark. */
+.app { --ink: var(--text); --slate: var(--text-muted); --paper: var(--bg); --card: var(--surface); --mist: var(--surface-2); }
+:where(.app) a { color: var(--accent); }
+:where(.app) button.secondary, :where(.app) button.linklike { color: var(--accent); }
+:where(.app) button.secondary { border-color: var(--accent); }
+:where(.app) .error { color: var(--danger); }
+.app h1 { color: var(--text); }
 .app__body { min-width: 0; }
 .app__main { padding: 16px 16px calc(88px + env(safe-area-inset-bottom)); }
 .app__main > .card.page { max-width: none; margin: 0; text-align: left; }
@@ -14,10 +22,11 @@ body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 10
 .appnav__footer { display: flex; align-items: center; justify-content: center; padding: 0 4px; }
 
 .accountmenu { position: relative; }
-.accountmenu__button { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin: 0; padding: 2px 6px 2px 2px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); cursor: pointer; }
+.accountmenu__button { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin: 0; padding: 2px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); cursor: pointer; }
 .accountmenu__button:hover:not(:disabled) { background: var(--surface-2); }
 .accountmenu__button .avatar { border-color: transparent; flex: none; }
-.accountmenu__name { display: none; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; font-weight: 600; text-align: left; }
+.accountmenu__button > .icon { display: none; } /* the face (and name) says it is a menu; the rail has no room for an arrow */
+.accountmenu__name { display: none; padding-right: 10px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; font-weight: 600; text-align: left; }
 /* the menu opens upward: it lives at the bottom of the screen */
 .accountmenu__panel { position: absolute; right: 0; bottom: calc(100% + 12px); z-index: 30; min-width: 230px; display: grid; gap: 2px; padding: 8px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-m); }
 .accountmenu__who { margin: 4px 10px 6px; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
@@ -28,7 +37,7 @@ body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 10
 
 @media (min-width: 768px) {
   .app { display: grid; grid-template-columns: 72px minmax(0, 1fr); }
-  .appnav { position: sticky; top: 0; left: auto; right: auto; bottom: auto; height: 100dvh; flex-direction: column; align-items: stretch; gap: 4px; padding: 18px 10px; border-top: 0; border-right: 1px solid var(--line); overflow-y: auto; }
+  .appnav { position: sticky; top: 0; left: auto; right: auto; bottom: auto; height: 100dvh; flex-direction: column; align-items: stretch; gap: 4px; padding: 18px 10px; border-top: 0; border-right: 1px solid var(--line); }
   .appnav__brand { display: inline-flex; justify-content: center; margin: 0 0 14px; overflow: hidden; }
   /* the rail shows only the left part of the logo (its mark) */
   .appnav__brand img { height: 36px; width: 36px; object-fit: cover; object-position: left center; }
@@ -37,7 +46,8 @@ body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 10
   .appnav > a:not(.appnav__brand):hover { background: var(--surface-2); }
   .appnav > a[aria-current="page"] { background: var(--surface-2); }
   .appnav__footer { margin-top: auto; padding: 12px 0 0; justify-content: center; }
-  .accountmenu__panel { right: auto; left: 0; }
+  /* in the rail the menu opens beside it, bottom-aligned (the rail is too narrow to hold it) */
+  .accountmenu__panel { right: auto; left: calc(100% + 12px); bottom: 0; }
   .app__main { width: 100%; padding: 24px 28px 40px; }
 }
 
@@ -50,13 +60,12 @@ body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 10
   .app:not(.app--collapsed) .appnav > a:not(.appnav__brand) span { position: static; width: auto; height: auto; clip: auto; overflow: visible; }
   .app:not(.app--collapsed) .appnav__footer { justify-content: stretch; }
   .app:not(.app--collapsed) .accountmenu { width: 100%; }
+  .app:not(.app--collapsed) .accountmenu__panel { left: 0; right: 0; bottom: calc(100% + 12px); min-width: 0; }
   .app:not(.app--collapsed) .accountmenu__button { width: 100%; }
   .app:not(.app--collapsed) .accountmenu__name { display: block; }
-  .app:not(.app--collapsed) .accountmenu__button > .icon { display: none; }
-  .appnav__toggle { display: inline-flex; align-items: center; justify-content: center; align-self: flex-end; width: 28px; height: 28px; margin: 0 0 6px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--text-muted); }
-  .appnav__toggle:hover:not(:disabled) { background: var(--surface-2); }
-  .app--collapsed .appnav__toggle { align-self: center; }
-  .app:not(.app--collapsed) .appnav__brand { margin-top: 0; }
+  /* the toggle sits on the edge between the sidebar and the page, level with the logo */
+  .appnav__toggle { display: inline-flex; align-items: center; justify-content: center; position: absolute; top: 30px; right: -14px; z-index: 25; width: 28px; height: 28px; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--text-muted); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18); cursor: pointer; }
+  .appnav__toggle:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
 }
 
 /* reminders: on every signed-in page until dismissed */
@@ -67,3 +76,7 @@ body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 10
 .reminder__text b { overflow-wrap: anywhere; font-size: 0.95rem; }
 .reminder__text span { color: var(--text-muted); }
 @media (max-width: 767px) { .reminders { bottom: calc(76px + env(safe-area-inset-bottom)); } }
+
+/* the logo is dark teal: on a dark theme it is lightened so it stays visible */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-theme="dark"]) .appnav__brand img { filter: brightness(2.2) saturate(1.2); } }
+:root[data-theme="dark"] .appnav__brand img { filter: brightness(2.2) saturate(1.2); }
