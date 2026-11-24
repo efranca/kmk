@@ -38,9 +38,11 @@ def display_name(user: User) -> str:
 
 
 def selectable_people(db: Session) -> list[dict]:
-    users = db.scalars(select(User).where(User.status == "active")).all()
-    users.sort(key=lambda u: names.sort_key(u.name, u.username))
-    return [{"id": u.id, "name": display_name(u), "color": avatar_color(u.id)} for u in users]
+    """Everyone who can appear on an event: active users, plus disabled and deleted ones (flagged `active: false`) so
+    the events they are on still show who they are. Only active ones may be newly added."""
+    users = db.scalars(select(User).where(User.status.in_(("active", "disabled", "deleted")))).all()
+    users.sort(key=lambda u: (u.status != "active", *names.sort_key(u.name, u.username)))
+    return [{"id": u.id, "name": display_name(u), "color": avatar_color(u.id), "active": u.status == "active"} for u in users]
 
 
 def _rule(event: Event) -> RecurrenceRule | None:
@@ -186,11 +188,14 @@ def get_event(db: Session, event_id: int) -> Event:
 # ---- writing ----------------------------------------------------------------------------------------------------
 
 
-def _checked_people(db: Session, ids: list[int]) -> set[int]:
+def _checked_people(db: Session, ids: list[int], keep: frozenset[int] = frozenset()) -> set[int]:
+    """The people of an event. Only active users may be newly added; people already on the event stay even if their
+    account was disabled or deleted since (otherwise the event could not be edited at all)."""
     wanted = set(ids)
-    if wanted:
-        active = set(db.scalars(select(User.id).where(User.id.in_(wanted), User.status == "active")))
-        if active != wanted:
+    added = wanted - set(keep)
+    if added:
+        active = set(db.scalars(select(User.id).where(User.id.in_(added), User.status == "active")))
+        if active != added:
             raise ApiError(422, "unknown_person")
     return wanted
 
@@ -295,7 +300,7 @@ def update_event(db: Session, actor: User, event_id: int, data: EventIn, ip: str
     old_people = _people_of(db, [event.id])[event.id]
     policy.check_event(actor, event.created_by, old_people)
     scope = _effective_scope(event, data.scope, data.occurrence_date)
-    people = _checked_people(db, data.people)
+    people = _checked_people(db, data.people, keep=old_people)
     reminders = _checked_reminders(data)
     old_reminders = _reminder_pairs(db, event.id)
     details = {"event_id": event.id, "scope": scope}
@@ -325,7 +330,7 @@ def update_event(db: Session, actor: User, event_id: int, data: EventIn, ip: str
             used = len(series_dates(event.start_date, _rule(event), event.ends_on, event.max_count, event.start_date, data.occurrence_date - timedelta(days=1)))
             tail_data = data.model_copy(update={"max_count": max(1, event.max_count - used)})
         first = _first_date(tail_data, snap=True)
-        tail = Event(created_by=actor.id, updated_by=actor.id)
+        tail = Event(created_by=event.created_by, updated_by=actor.id)  # the creator keeps their rights on the new series
         _write(tail, tail_data, first)
         _end_series_before(db, event, data.occurrence_date, actor)
         db.add(tail)

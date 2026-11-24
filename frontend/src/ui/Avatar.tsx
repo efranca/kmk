@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import { eventColorVar, initials, type EventColor } from "./memberColor";
 
 /** A person as the schedule shows them: the API's `/people` entry. */
-export type Person = { id: number; name: string; color: EventColor };
+export type Person = { id: number; name: string; color: EventColor; /** false for a disabled or deleted account (shown muted, never offered for new events). */ active?: boolean };
 
 interface AvatarProps {
   person: Person;

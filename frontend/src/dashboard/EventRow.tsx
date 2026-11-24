@@ -29,7 +29,7 @@ export function EventRow({
           <b>{item.all_day ? t("schAllDay") : item.start_time}</b>
         </span>
         <span className="dash__title">{item.icon && <span aria-hidden="true">{item.icon} </span>}{item.title}</span>
-        {showFaces && <span className="dash__who"><AvatarGroup people={who} everyone={item.people.length === 0} max={3} /></span>}
+        {showFaces && <span className="dash__who"><AvatarGroup people={who} everyone={item.people.length === 0} max={3} mutedIds={new Set(who.filter((p) => p.active === false).map((p) => p.id))} /></span>}
       </button>
     </li>
   );

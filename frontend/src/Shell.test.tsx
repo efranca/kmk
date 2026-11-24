@@ -310,6 +310,30 @@ describe("titles and language", () => {
   });
 });
 
+describe("signing out", () => {
+  it("forgets what the previous person's pages had loaded (no reminder of theirs for the next sign-in)", async () => {
+    const reminder = { event_id: 1, occurrence_date: "2026-11-05", title: "Alice private visit", start_date: "2026-11-05", start_time: "09:00", all_day: false, remind_at: "2026-11-05T07:00" };
+    let reminders: unknown[] = [reminder];
+    mockApi({
+      "GET /api/auth/me": signedIn(),
+      "POST /api/auth/logout": () => res(204),
+      "POST /api/auth/login": signedIn(),
+      "GET /api/schedule/reminders/due": () => (reminders.length ? res(200, { reminders }) : new Promise(() => {})), // the next person's answer is slow
+    });
+    render(<App />);
+    expect(await screen.findByText("Alice private visit")).toBeInTheDocument();
+    openAccountMenu();
+    fireEvent.click(await screen.findByRole("button", { name: frCA.signOut }));
+    await screen.findByLabelText(frCA.identifier);
+    reminders = [];
+    fireEvent.change(screen.getByLabelText(frCA.identifier), { target: { value: "bob" } });
+    fireEvent.change(screen.getByLabelText(frCA.password), { target: { value: "pw" } });
+    fireEvent.click(screen.getByRole("button", { name: frCA.signIn }));
+    await screen.findByRole("heading", { level: 1, name: "Bonjour, alice" });
+    expect(screen.queryByText("Alice private visit")).toBeNull();
+  });
+});
+
 describe("reminders", () => {
   it("shows a due reminder on every signed-in page", async () => {
     visit("/account");

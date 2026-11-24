@@ -1,7 +1,7 @@
 from datetime import date
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, Path, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.auth.deps import get_db, get_settings_dep
@@ -11,7 +11,7 @@ from app.auth.routes import request_ip
 from app.config import Settings
 from app.models import User, UserSession
 from app.schedule import service
-from app.schedule.schemas import DismissIn, EventIn
+from app.schedule.schemas import MAX_ID, DismissIn, EventIn
 
 router = APIRouter(prefix="/api/schedule")
 
@@ -23,7 +23,10 @@ def _people_filter(raw: str | None) -> set[int] | None:
     if raw is None or not raw.strip():
         return None
     try:
-        return {int(part) for part in raw.split(",") if part.strip()}
+        ids = {int(part) for part in raw.split(",") if part.strip()}
+        if any(not 1 <= i <= MAX_ID for i in ids):
+            raise ValueError
+        return ids
     except ValueError:
         raise ApiError(422, "invalid_people")
 
@@ -41,7 +44,7 @@ def list_events(
 
 
 @router.get("/events/{event_id}")
-def read_event(event_id: int, auth: tuple[User, UserSession] = Depends(reader), db: Session = Depends(get_db)):
+def read_event(event_id: Annotated[int, Path(ge=1, le=MAX_ID)], auth: tuple[User, UserSession] = Depends(reader), db: Session = Depends(get_db)):
     return {"event": service.event_payload(db, service.get_event(db, event_id))}
 
 
@@ -61,7 +64,7 @@ def create_event(
 
 @router.patch("/events/{event_id}")
 def change_event(
-    event_id: int,
+    event_id: Annotated[int, Path(ge=1, le=MAX_ID)],
     body: EventIn,
     request: Request,
     auth: tuple[User, UserSession] = Depends(guard()),
@@ -76,7 +79,7 @@ def change_event(
 
 @router.delete("/events/{event_id}")
 def remove_event(
-    event_id: int,
+    event_id: Annotated[int, Path(ge=1, le=MAX_ID)],
     request: Request,
     scope: Literal["this", "following", "all"] = "all",
     occurrence_date: date | None = None,

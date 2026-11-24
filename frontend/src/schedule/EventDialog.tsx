@@ -184,7 +184,7 @@ function EventForm({ event, item, date, time, onClose }: EventFormProps) {
           <div className="field">
             <span className="field__label">{t("schFormPeople")}</span>
             <AvatarFilter
-              people={people}
+              people={people.filter((p) => p.active !== false || values.people.includes(p.id))}
               selected={values.people}
               onChange={(ids) => set("people", ids)}
               label={t("schFormPeople")}

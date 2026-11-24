@@ -1,4 +1,4 @@
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { BrowserRouter } from "react-router";
@@ -68,6 +68,7 @@ export default function App() {
 
 function AppContent() {
   const { t, i18n } = useTranslation();
+  const queryClient = useQueryClient();
   const [state, setState] = useState<State>({ kind: "checking" });
   const [recoveryCodesLeft, setRecoveryCodesLeft] = useState<number | null>(null);
   const { path, navigate } = useRoute();
@@ -113,6 +114,7 @@ function AppContent() {
 
   async function signOut() {
     if (state.kind === "auth") await logout(state.session.csrfToken);
+    queryClient.clear(); // the next person to sign in on this device must not see what this one had loaded
     void i18n.changeLanguage(savedLanguage() ?? "fr-CA");
     setRecoveryCodesLeft(null);
     setState({ kind: "anon" });

@@ -87,7 +87,7 @@ export function SchedulePage() {
         view={view}
         date={date}
         people={people}
-        everyone={everyone.data ?? []}
+        everyone={(everyone.data ?? []).filter((p) => p.active !== false)}
         label={rangeLabel(view, date, view === "week" ? [from, to] : gridDays, locale)}
         onView={(next) => set({ view: next })}
         onDate={(next) => set({ date: next })}

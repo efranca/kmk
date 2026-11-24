@@ -43,7 +43,7 @@ export function SearchResults({ query, locale, onOpen }: SearchResultsProps) {
                   </span>
                   <span className="search__title">{item.icon && <span aria-hidden="true">{item.icon} </span>}{item.title}</span>
                   <span className="search__who">
-                    {who.length > 0 ? who.map((p) => <Avatar key={p.id} person={p} size="sm" labelled />) : <EveryoneAvatar />}
+                    {who.length > 0 ? who.map((p) => <Avatar key={p.id} person={p} size="sm" labelled muted={p.active === false} />) : <EveryoneAvatar />}
                   </span>
                 </button>
               </li>

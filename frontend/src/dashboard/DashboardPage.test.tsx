@@ -12,6 +12,7 @@ const today = todayIn(COMPANY_TIME_ZONE);
 const inDays = (n: number) => addDays(today, n);
 const alice = person(1, "Alice Roy", "red"); // the signed-in user (testUser.id = 1)
 const leo = person(2, "Leo Tremblay", "green");
+const gone = { ...person(9, "Gaby Gone", "pink"), active: false }; // a disabled account
 
 const at = (day: number, over: Partial<Occurrence>) => occurrence({ date: inDays(day), original_date: inDays(day), ...over });
 
@@ -91,6 +92,18 @@ describe("DashboardPage", () => {
     expect(group.getAllByRole("button", { name: /^.*Job/ })).toHaveLength(4);
     await userEvent.click(group.getByRole("button", { name: "+3 more" }));
     expect(screen.getByTestId("where")).toHaveTextContent("/schedule");
+  });
+
+  it("an event of a disabled person still shows, in its own group, with a muted face", async () => {
+    mockApi({
+      "GET /api/schedule/events": () => ({ occurrences: [at(0, { title: "Old client visit", people: [9] })] }),
+      "GET /api/schedule/people": () => ({ people: [alice, leo, gone] }),
+    });
+    renderWithProviders(<DashboardPage user={testUser} mfaEnabled recoveryCodesLeft={null} />);
+    await screen.findAllByText("Old client visit");
+    const group = within(screen.getByRole("group", { name: "Gaby Gone" }));
+    expect(group.getByText("Old client visit")).toBeInTheDocument();
+    expect(document.querySelector(".avatar--muted")).not.toBeNull();
   });
 
   it("shows an empty state when nothing is planned", async () => {

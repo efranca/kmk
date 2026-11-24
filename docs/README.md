@@ -93,7 +93,7 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `GET /api/schedule/events/{id}` | verified | one event: its rule, people, reminders and one-off changes |
 | `POST /api/schedule/events` | verified | create an event for yourself, anyone, or everyone; a repeating event starts on the first date its rule produces |
 | `PATCH` / `DELETE /api/schedule/events/{id}` | creator, a listed person, an admin (for "everyone" events: creator or admin) | `scope` = `this` / `following` / `all` and `occurrence_date` for a repeating event |
-| `GET /api/schedule/people` | verified | the active users that can be put on an event (`id`, `name`, `color`) |
+| `GET /api/schedule/people` | verified | the people who can appear on an event (`id`, `name`, `color`, `active`): active users first, then disabled or deleted ones flagged `active: false` (shown muted, never offered for new events) |
 | `GET /api/schedule/reminders/due`, `POST /api/schedule/reminders/dismiss` | verified | reminders that are due for the signed-in person; dismissing hides all reminders of one occurrence |
 
 The frontend pages (React Router in `frontend/src/App.tsx`; the card pages and the signed-in pages share one router and one query client):

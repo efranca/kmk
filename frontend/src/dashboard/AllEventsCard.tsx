@@ -53,7 +53,7 @@ export function AllEventsCard({
       )}
       {byPerson.map(({ person, occurrences }) => (
         <div key={person.id} className="dash__group" role="group" aria-label={person.name}>
-          <h3 className="dash__heading"><Avatar person={person} size="sm" /> {person.name}</h3>
+          <h3 className="dash__heading"><Avatar person={person} size="sm" muted={person.active === false} /> {person.name}</h3>
           {list(occurrences)}
         </div>
       ))}

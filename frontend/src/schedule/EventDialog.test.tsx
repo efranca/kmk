@@ -317,6 +317,30 @@ describe("EventDialog: a single event", () => {
   });
 });
 
+describe("EventDialog: a person whose account was disabled", () => {
+  it("stays on the event and can be taken off it, but is not offered for new events", async () => {
+    const gone = { ...person(5, "Gaby Gone", "pink"), active: false };
+    mockApi({
+      "GET /api/schedule/people": () => ({ people: [alice, leo, gone] }),
+      [`GET ${E}/1`]: () => ({ event: { ...swimmingEvent, recurrence: null, reminders: [], people: [1, 5] } }),
+      [`PATCH ${E}/1`]: () => ({ event: swimmingEvent }),
+    });
+    renderWithProviders(<EventDialog target={{ kind: "item", item: occurrence({ event_id: 1, title: "Swimming", date: "2026-11-05", original_date: "2026-11-05" }) }} onClose={vi.fn()} />);
+    const face = await screen.findByRole("button", { name: "Gaby Gone" });
+    expect(face).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(face);
+    expect(screen.queryByRole("button", { name: "Gaby Gone" })).toBeNull(); // taken off, and not offered again
+  });
+
+  it("is not offered when adding a new event", async () => {
+    const gone = { ...person(5, "Gaby Gone", "pink"), active: false };
+    mockApi({ "GET /api/schedule/people": () => ({ people: [alice, leo, gone] }) });
+    renderWithProviders(<EventDialog target={newSwimming} onClose={vi.fn()} />);
+    await screen.findByRole("button", { name: "Leo" });
+    expect(screen.queryByRole("button", { name: "Gaby Gone" })).toBeNull();
+  });
+});
+
 describe("EventDialog: who may change an event", () => {
   const others = { ...swimmingEvent, recurrence: null, reminders: [], exceptions: [], created_by: 99, people: [2] } as EventDetail;
   const open = (event: EventDetail, session = {}) => {

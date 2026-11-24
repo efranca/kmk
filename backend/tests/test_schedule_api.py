@@ -327,7 +327,7 @@ def test_end_before_the_first_occurrence_rejected(alice):
     assert (r.status_code, r.json()) == (422, {"error": "before_start"})
 
 
-def test_people_lists_active_users_only(make_client, add_user, owner_engine):
+def test_people_lists_active_users_first_and_flags_inactive_ones(make_client, add_user, owner_engine):
     from app.schedule.service import PALETTE
 
     c, _ = session(make_client, add_user, "alice")
@@ -337,9 +337,54 @@ def test_people_lists_active_users_only(make_client, add_user, owner_engine):
     sql(owner_engine, "UPDATE users SET name = 'Bob Tremblay' WHERE username = 'bob'")
     people = c.get("/api/schedule/people").json()["people"]
     by_name = {p["name"]: p for p in people}
-    assert set(by_name) == {"alice", "Bob Tremblay"}
+    assert set(by_name) == {"alice", "Bob Tremblay", "gone"}  # invited accounts never appear on events
+    assert [by_name[n]["active"] for n in ("alice", "Bob Tremblay", "gone")] == [True, True, False]
     bob = by_name["Bob Tremblay"]
     assert bob["color"] == PALETTE[bob["id"] % 8]
+
+
+def test_editing_an_event_whose_person_was_later_disabled_still_works(make_client, add_user, owner_engine):
+    c, h = session(make_client, add_user, "alice")
+    add_user("bob", "bob@example.com")
+    a, b = uid(owner_engine, "alice"), uid(owner_engine, "bob")
+    eid = create(c, h, people=[a, b]).json()["event"]["id"]
+    sql(owner_engine, "UPDATE users SET status = 'disabled' WHERE id = :i", i=b)
+    r = c.patch(f"/api/schedule/events/{eid}", json=body(title="Renamed", people=[a, b]), headers=h)
+    assert r.status_code == 200, r.text
+    assert c.get(f"/api/schedule/events/{eid}").json()["event"]["people"] == [a, b]
+    # but a disabled person still cannot be newly added
+    add_user("carl", "carl@example.com", status="disabled")
+    r = c.patch(f"/api/schedule/events/{eid}", json=body(people=[a, b, uid(owner_engine, "carl")]), headers=h)
+    assert (r.status_code, r.json()) == (422, {"error": "unknown_person"})
+
+
+def test_splitting_a_series_keeps_its_creator(make_client, add_user, owner_engine):
+    c, h = session(make_client, add_user, "alice")
+    ac, ah = session(make_client, add_user, "boss", role="admin")
+    alice_id = uid(owner_engine, "alice")
+    first = create(c, h, recurrence=WEEKLY_THU, people=[alice_id]).json()["event"]["id"]
+    r = ac.patch(
+        f"/api/schedule/events/{first}",
+        json=body(recurrence=WEEKLY_THU, people=[alice_id], title="Later", start_date="2026-11-19", scope="following", occurrence_date="2026-11-19"),
+        headers=ah,
+    )
+    tail = r.json()["event"]
+    assert tail["created_by"] == alice_id and tail["updated_by"] == uid(owner_engine, "boss")
+    assert c.patch(f"/api/schedule/events/{tail['id']}", json=body(title="Mine"), headers=h).status_code == 200
+
+
+def test_out_of_range_numbers_are_422_not_500(alice):
+    c, h = alice
+    huge = 10**30
+    assert create(c, h, recurrence=WEEKLY_THU, max_count=10**12).status_code == 422
+    assert create(c, h, recurrence=WEEKLY_THU, start_date="9999-12-30").status_code == 422
+    assert create(c, h, people=[huge]).status_code == 422
+    assert c.get(f"/api/schedule/events/{huge}").status_code == 422
+    assert c.patch(f"/api/schedule/events/{huge}", json=body(), headers=h).status_code == 422
+    assert c.delete(f"/api/schedule/events/{huge}", headers=h).status_code == 422
+    r = c.post("/api/schedule/reminders/dismiss", json={"event_id": huge, "occurrence_date": "2026-11-05"}, headers=h)
+    assert r.status_code == 422
+    assert c.get("/api/schedule/events", params={"from": "2026-11-01", "to": "2026-11-30", "people": str(huge)}).status_code == 422
 
 
 def test_mutations_need_a_csrf_token_and_a_session(make_client, add_user):

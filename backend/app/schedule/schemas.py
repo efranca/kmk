@@ -2,7 +2,7 @@
 
 import unicodedata
 from datetime import date, time
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -13,6 +13,9 @@ Scope = Literal["this", "following", "all"]
 TITLE_MAX = 200
 NOTES_MAX = 5000
 PEOPLE_MAX = 100
+MAX_ID = 2**63 - 1  # the database's bigint
+MAX_COUNT = 1000
+FIRST_DAY, LAST_DAY = date(2000, 1, 1), date(2100, 12, 31)
 
 
 class ReminderIn(BaseModel):
@@ -33,8 +36,8 @@ class EventIn(BaseModel):
     duration_minutes: int | None = Field(default=None, ge=1, le=1440)
     recurrence: RecurrenceRule | None = None
     ends_on: date | None = None
-    max_count: int | None = Field(default=None, ge=1)
-    people: list[int] = Field(default_factory=list, max_length=PEOPLE_MAX)
+    max_count: int | None = Field(default=None, ge=1, le=MAX_COUNT)
+    people: list[Annotated[int, Field(ge=1, le=MAX_ID)]] = Field(default_factory=list, max_length=PEOPLE_MAX)
     reminders: list[ReminderIn] = Field(default_factory=list)
     scope: Scope = "all"
     occurrence_date: date | None = None
@@ -61,6 +64,13 @@ class EventIn(BaseModel):
     def _icon(cls, v: str | None) -> str | None:
         return v.strip() or None if v is not None else None
 
+    @field_validator("start_date", "ends_on", "occurrence_date")
+    @classmethod
+    def _sane_date(cls, v: date | None) -> date | None:
+        if v is not None and not FIRST_DAY <= v <= LAST_DAY:
+            raise ValueError("the date must be between the years 2000 and 2100")
+        return v
+
     @model_validator(mode="after")
     def _shape(self) -> "EventIn":
         if self.all_day and self.start_time is not None:
@@ -77,5 +87,5 @@ class EventIn(BaseModel):
 
 
 class DismissIn(BaseModel):
-    event_id: int
+    event_id: int = Field(ge=1, le=MAX_ID)
     occurrence_date: date
