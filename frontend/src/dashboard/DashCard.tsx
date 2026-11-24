@@ -13,15 +13,20 @@ export function dayLabelFor(date: string, today: string, locale: string, todayWo
 /** A dashboard widget: a titled card whose title opens the schedule. `state` (loading or an error) replaces the content. */
 export function DashCard({
   title,
-  onOpenSchedule,
+  onOpen,
+  href = "/schedule",
   state,
   empty,
+  emptyText,
   children,
 }: {
   title: string;
-  onOpenSchedule: () => void;
+  /** What the title opens: the schedule unless told otherwise. */
+  onOpen: () => void;
+  href?: string;
   state: ReactNode | null;
   empty: boolean;
+  emptyText?: string;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -31,17 +36,17 @@ export function DashCard({
       <header className="dcard__header">
         <h2 id={id}>
           <a
-            href="/schedule"
+            href={href}
             onClick={(e) => {
               e.preventDefault();
-              onOpenSchedule();
+              onOpen();
             }}
           >
             {title}
           </a>
         </h2>
       </header>
-      {state ?? (empty ? <EmptyState>{t("dashEmpty")}</EmptyState> : children)}
+      {state ?? (empty ? <EmptyState>{emptyText ?? t("dashEmpty")}</EmptyState> : children)}
     </section>
   );
 }

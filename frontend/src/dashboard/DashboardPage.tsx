@@ -10,6 +10,7 @@ import type { Occurrence } from "../schedule/types";
 import { ErrorNotice, Loading } from "../ui/Feedback";
 import { AllEventsCard } from "./AllEventsCard";
 import { MyEventsCard } from "./MyEventsCard";
+import { TasksCard } from "./TasksCard";
 
 /** Today and the next seven days. */
 const DAYS_AHEAD = 7;
@@ -27,6 +28,7 @@ export function DashboardPage({ user, mfaEnabled, recoveryCodesLeft }: { user: U
   const state = range.isPending ? <Loading /> : range.isError ? <ErrorNotice error={range.error} onRetry={() => void range.refetch()} /> : null;
   const openDay = (item: Occurrence) => navigate(`/schedule?view=day&date=${item.date}`);
   const openSchedule = () => navigate("/schedule");
+  const openTasks = () => navigate("/tasks");
   const items = range.data ?? [];
 
   return (
@@ -37,6 +39,7 @@ export function DashboardPage({ user, mfaEnabled, recoveryCodesLeft }: { user: U
       <div className="dash__grid">
         <MyEventsCard items={items} userId={user.id} people={byId} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />
         <AllEventsCard items={items} everyone={people} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />
+        <TasksCard userId={user.id} people={byId} today={today} onOpenTasks={openTasks} />
       </div>
     </div>
   );

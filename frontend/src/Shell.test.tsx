@@ -117,6 +117,21 @@ describe("schedule page", () => {
     expect(screen.getByRole("link", { name: frCA.navDashboard })).not.toHaveAttribute("aria-current");
   });
 
+  it("has a Tasks entry in the navigation that opens the task list", async () => {
+    mockApi({
+      "GET /api/auth/me": signedIn(),
+      "GET /api/tasks": () => res(200, { tasks: [] }),
+      "GET /api/tasks/categories": () => res(200, { categories: [] }),
+      "GET /api/schedule/people": () => res(200, { people: [] }),
+    });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("link", { name: frCA.taskTitle }));
+    expect(await screen.findByRole("heading", { level: 1, name: frCA.taskTitle })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/tasks");
+    expect(screen.getByRole("link", { name: frCA.taskTitle })).toHaveAttribute("aria-current", "page");
+    expect(document.title).toBe(`${frCA.taskTitle} · ${BRAND}`);
+  });
+
   it("is reachable directly, and sets the page title", async () => {
     visit("/schedule");
     mockApi({ "GET /api/auth/me": signedIn(), ...scheduleApi });

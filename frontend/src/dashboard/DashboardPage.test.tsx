@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { addDays, COMPANY_TIME_ZONE, todayIn } from "../schedule/scheduleDates";
 import type { Occurrence } from "../schedule/types";
 import { mockApi, occurrence, person, renderWithProviders, reply, resetLanguage, testUser, useEnglish } from "../testUtils";
+import type { Task } from "../tasks/types";
 import { DashboardPage } from "./DashboardPage";
 
 const today = todayIn(COMPANY_TIME_ZONE);
@@ -21,10 +22,14 @@ function Probe() {
   return <output data-testid="where">{location.pathname + location.search}</output>;
 }
 
+let tasks: Task[] = [];
+
 function setup(items: Occurrence[], props = {}) {
   const api = mockApi({
     "GET /api/schedule/events": () => ({ occurrences: items }),
     "GET /api/schedule/people": () => ({ people: [alice, leo] }),
+    "GET /api/tasks": () => ({ tasks }),
+    "GET /api/tasks/categories": () => ({ categories: [] }),
   });
   renderWithProviders(<><DashboardPage user={testUser} mfaEnabled recoveryCodesLeft={null} {...props} /><Probe /></>);
   return api;
@@ -33,6 +38,7 @@ function setup(items: Occurrence[], props = {}) {
 const card = (name: string) => screen.getByRole("region", { name });
 
 beforeEach(async () => {
+  tasks = [];
   await resetLanguage();
   await useEnglish();
 });
@@ -98,6 +104,8 @@ describe("DashboardPage", () => {
     mockApi({
       "GET /api/schedule/events": () => ({ occurrences: [at(0, { title: "Old client visit", people: [9] })] }),
       "GET /api/schedule/people": () => ({ people: [alice, leo, gone] }),
+      "GET /api/tasks": () => ({ tasks: [] }),
+      "GET /api/tasks/categories": () => ({ categories: [] }),
     });
     renderWithProviders(<DashboardPage user={testUser} mfaEnabled recoveryCodesLeft={null} />);
     await screen.findAllByText("Old client visit");
@@ -126,6 +134,8 @@ describe("DashboardPage", () => {
     mockApi({
       "GET /api/schedule/events": () => reply(500, { error: "internal_error" }),
       "GET /api/schedule/people": () => ({ people: [alice] }),
+      "GET /api/tasks": () => ({ tasks: [] }),
+      "GET /api/tasks/categories": () => ({ categories: [] }),
     });
     renderWithProviders(<DashboardPage user={testUser} mfaEnabled recoveryCodesLeft={null} />);
     expect((await screen.findAllByRole("button", { name: "Try again" })).length).toBeGreaterThan(0);
@@ -137,5 +147,55 @@ describe("DashboardPage", () => {
     expect(await screen.findByText(/two-step|vérification en deux/i)).toBeInTheDocument();
     expect(screen.getByText(/2 recovery code/)).toBeInTheDocument();
     await waitFor(() => expect(screen.getAllByText("Nothing planned.").length).toBe(2));
+  });
+
+  describe("My tasks", () => {
+    let n = 100;
+    const task = (over: Partial<Task>): Task => {
+      n += 1;
+      return {
+        id: n, title: `Task ${n}`, description: null, icon: null, category_id: null, people: [], status: "pending", due_date: null, completed_at: null,
+        show_on_dashboard: true, created_by: { id: 1, name: "Alice Roy" }, updated_by: { id: 1, name: "Alice Roy" }, created_at: "", updated_at: "", ...over,
+      };
+    };
+
+    it("lists my tasks and the team's, in sections, not other people's", async () => {
+      tasks = [
+        task({ title: "Late one", due_date: inDays(-1), people: [1] }), task({ title: "Due today", due_date: today }), task({ title: "Leo's task", due_date: today, people: [2] }),
+        task({ title: "Someday", people: [1] }), task({ title: "Due tomorrow", due_date: inDays(1) }), task({ title: "Hidden task", due_date: today, show_on_dashboard: false }),
+      ];
+      setup([]);
+      const mine = within(await screen.findByRole("region", { name: "My tasks" }));
+      await mine.findByText("Due today");
+      expect(mine.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Overdue", "Today", "No date", "Tomorrow"]);
+      for (const title of ["Late one", "Someday", "Due tomorrow"]) expect(mine.getByText(title)).toBeInTheDocument();
+      expect(mine.queryByText("Leo's task")).not.toBeInTheDocument();
+      expect(mine.queryByText("Hidden task")).not.toBeInTheDocument();
+    });
+
+    it("ticks a task right on the card", async () => {
+      tasks = [task({ id: 7, title: "Mop the floor", due_date: today })];
+      const api = setup([]);
+      const mine = within(await screen.findByRole("region", { name: "My tasks" }));
+      await userEvent.click(await mine.findByRole("checkbox", { name: "Mop the floor" }));
+      await waitFor(() => expect(api.calls.some((c) => c.method === "POST" && c.path === "/api/tasks/7/complete")).toBe(true));
+    });
+
+    it("shows how many more there are and opens the Tasks page", async () => {
+      tasks = Array.from({ length: 9 }, (_, i) => task({ title: `Due today ${i}`, due_date: today }));
+      setup([]);
+      const mine = within(await screen.findByRole("region", { name: "My tasks" }));
+      await mine.findByText("Due today 0");
+      expect(mine.getAllByRole("checkbox")).toHaveLength(6);
+      await userEvent.click(mine.getByRole("button", { name: "+3 more" }));
+      expect(screen.getByTestId("where")).toHaveTextContent("/tasks");
+      await userEvent.click(mine.getByRole("link", { name: "My tasks" }));
+      expect(screen.getByTestId("where")).toHaveTextContent("/tasks");
+    });
+
+    it("says when nothing is waiting", async () => {
+      setup([]);
+      expect(await within(await screen.findByRole("region", { name: "My tasks" })).findByText("Nothing waiting for you.")).toBeInTheDocument();
+    });
   });
 });

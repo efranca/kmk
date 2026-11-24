@@ -38,6 +38,7 @@ browser --HTTPS--> Cloudflare --tunnel (outbound from this machine)--> cloudflar
 | 4b Admin | admin page, user lifecycle, authority rules (only the super admin manages admins) | done | [spec](superpowers/specs/2026-11-17-phase4b-admin-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase4b-admin.md) |
 | 5 Frontend | app shell, welcome page (placeholder, since replaced by the Dashboard), per-user language switching, polish | done | [spec](superpowers/specs/2026-11-17-phase5-frontend-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase5-frontend.md) |
 | 7 Schedule and Dashboard | shared calendar (Day, Week, Month, Year, repeating events, reminders, drag to move) and the Dashboard home page with the "My events" and "All events" widgets, in a FamillAI-style layout | done | [spec](superpowers/specs/2026-11-24-schedule-dashboard-design.md) | [plan](superpowers/plans/2026-11-24-schedule-dashboard.md) |
+| 8 Tasks | the team's to-do list: tasks for people or the whole team with a due date, categories with icons, status tabs, people filter, search, "Clear completed"; a "My tasks" Dashboard card; an optional "Show tasks" switch on the Schedule. No repeating tasks, rewards or AI | done | [spec](superpowers/specs/2026-11-24-tasks-design.md) | [plan](superpowers/plans/2026-11-24-tasks.md) |
 | 6 Hardening | encrypted verified backups, container limits and health checks, dependency scan, independent security review, go-live runbook | built; go-live waits for the owner's steps (key, Resend, two-step, pilot) | [spec](superpowers/specs/2026-11-17-phase6-hardening-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase6-hardening.md) |
 
 ## Data model (as built)
@@ -57,6 +58,9 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 | `event_exceptions` | "this occurrence only" changes of a repeating event | `event_id`, `original_date`, `cancelled`, overrides of title, notes, date, time, length |
 | `event_reminders` | up to 10 per event ("2 hours before") | `event_id`, `amount` (1-99), `unit` (`hours`/`days`/`weeks`) |
 | `reminder_dismissals` | a person dismissed the reminder of one occurrence | `user_id`, `event_id`, `occurrence_date` |
+| `task_categories` | the labels of tasks | `name` (1-50, unique ignoring case), `icon` (one emoji, optional), `created_by` |
+| `tasks` | one task, to do or completed | `title`, `description`, `icon`, `category_id` (set null when the category is deleted), `status` (`pending`/`completed`), `due_date` (a date in the company time zone, optional), `completed_at` and `completed_by` (set exactly when completed), `show_on_dashboard`, `created_by`, `updated_by` |
+| `task_people` | who a task is for (no rows = the whole team) | `task_id`, `user_id` |
 | `alembic_version` | migration state | |
 
 Deletion is soft (`status = 'deleted'`, `deleted_at` set): the row stays, so the audit log keeps its references and the username and email stay reserved. An admin can restore a deleted account (it comes back `disabled`).
@@ -94,23 +98,32 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `POST /api/schedule/events` | verified | create an event for yourself, anyone, or everyone; a repeating event starts on the first date its rule produces |
 | `PATCH` / `DELETE /api/schedule/events/{id}` | creator, a listed person, an admin (for "everyone" events: creator or admin) | `scope` = `this` / `following` / `all` and `occurrence_date` for a repeating event |
 | `GET /api/schedule/people` | verified | the people who can appear on an event (`id`, `name`, `color`, `active`): active users first, then disabled or deleted ones flagged `active: false` (shown muted, never offered for new events) |
+| `GET /api/tasks?status&person` | verified | the tasks (`status` = `pending`/`completed`/`all`; `person` = a user id, or `none` for the tasks for the whole team), to do first, then by due date, at most 1000; everyone sees every task in full |
+| `POST /api/tasks` | verified | create a task for yourself, anyone, or the whole team |
+| `GET` / `PATCH` / `DELETE /api/tasks/{id}` | read: verified; change or delete: the creator, a person on it, an admin | `PATCH` takes the whole form |
+| `POST /api/tasks/{id}/complete`, `POST /api/tasks/{id}/reopen` | whoever may edit it; anyone for a task for the whole team | idempotent: a task that already has that status is returned unchanged |
+| `DELETE /api/tasks/completed` | verified | deletes the completed tasks the caller may delete; answers `{"deleted": n}` |
+| `GET /api/tasks/categories`, `POST /api/tasks/categories` | verified | list (by name) and add a category |
+| `PATCH` / `DELETE /api/tasks/categories/{id}` | admins and the super admin | rename, change the icon, or delete (its tasks are kept without a category) |
 | `GET /api/schedule/reminders/due`, `POST /api/schedule/reminders/dismiss` | verified | reminders that are due for the signed-in person; dismissing hides all reminders of one occurrence |
 
 The frontend pages (React Router in `frontend/src/App.tsx`; the card pages and the signed-in pages share one router and one query client):
 
 | Path | Who | Content |
 | --- | --- | --- |
-| `/` | signed in: everyone; otherwise the sign-in form | the Dashboard: "My events" and "All events" for today and the next 7 days (plus the two-step encouragement and the recovery-codes notice) |
+| `/` | signed in: everyone; otherwise the sign-in form | the Dashboard: "My events" and "All events" for today and the next 7 days, and "My tasks" (your tasks and the whole team's: overdue, today, no date, tomorrow) (plus the two-step encouragement and the recovery-codes notice) |
 | `/schedule` | signed in | the calendar: Day, Week, Month and Year views, event dialog, search, people filter, drag to move (`?view=week&date=2026-11-12&people=3,5&q=...`) |
+| `/tasks` | signed in | the task list: status tabs, people filter (`?people=3,5`), category chips, search, task dialog, category manager |
 | `/account` | signed in | two-step verification, recovery codes, change password |
 | `/admin` | admins and the super admin (a plain user sees the Dashboard) | user management |
 | `/forgot-password`, `/set-password#token=...&lang=...` | anyone | recovery and invitation pages; the link's `lang` opens the page in the recipient's language |
 | anything else | anyone | a friendly "page not found" |
 
-Signed-in pages sit inside the **layout** (`app/Layout.tsx`, wrapped by `Shell.tsx`): a bottom bar on a phone and a side rail from 768px (Dashboard, Schedule, Users for admins and the super admin), the account menu behind your avatar (Account, language, Sign out) and the on-screen reminders. People who are not signed in get a small FR / EN / PT picker instead; the choice is kept in this browser (`localStorage` key `kmk.lang`).
+Signed-in pages sit inside the **layout** (`app/Layout.tsx`, wrapped by `Shell.tsx`): a bottom bar on a phone and a side rail from 768px (Dashboard, Schedule, Tasks, Users for admins and the super admin), the account menu behind your avatar (Account, language, Sign out) and the on-screen reminders. People who are not signed in get a small FR / EN / PT picker instead; the choice is kept in this browser (`localStorage` key `kmk.lang`).
 A signed-in user's language is stored on the server (`users.locale`, changed with `POST /api/auth/locale`) and is also used for their emails; signing in applies it and saves it as the browser's preference. A user who still has to enter or set up two-step verification sees those screens on every path.
 
 **Schedule code:** the backend is `backend/app/schedule/` (`recurrence.py` the repeat rule and series dates through `dateutil.rrule`, `occurrences.py` the expansion with one-off changes, `service.py`, `routes.py`); the repeat rule's JSON shape is `{"freq": "weekly", "interval": 1, "weekdays": ["THU"], "month_day": null, "nth_weekdays": [{"nth": 4, "day": "SAT"}]}`. The front end is `frontend/src/schedule/` (views, event dialog, drag, reminders), `frontend/src/dashboard/` (the two widgets) and `frontend/src/ui/` (shared pieces: buttons, dialog, avatars).
+**Tasks code:** the backend is `backend/app/tasks/` (`schemas.py`, `service.py`, `routes.py`); the rules are `can_change_task`, `can_set_task_status` and `can_manage_task_categories` in `backend/app/auth/policy.py`. The front end is `frontend/src/tasks/` (page, row, dialog, categories, hooks), `frontend/src/dashboard/TasksCard.tsx` and the task chips in `frontend/src/schedule/` (`TaskChip.tsx`, `taskItems.ts`). Task strings start with `task` in the locale files.
 The server serves the single-page app for any non-`/api`, non-`/assets` path.
 
 ## Pointers for the code

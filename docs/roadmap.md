@@ -2,10 +2,16 @@
 
 Where the project stands and what to pick up next. Status of the phases is also in the table in [README.md](README.md).
 
+## Done recently: phase 8, Tasks
+
+The team's task list is built: tasks for people or the whole team with a due date, categories with icons, a "My tasks" Dashboard card and an optional "Show tasks" switch on the Schedule, ported from FamillAI without children, XP or rewards; see the [design](superpowers/specs/2026-11-24-tasks-design.md).
+**Not built, by choice:** repeating tasks (a recurring chore is a calendar event or a task made again), the AI assistant and voice (an AI project of its own: see below), uploaded icons (emoji only), reminders or push for tasks, paging beyond 1000 tasks ("Clear completed" is the release valve).
+**Follow-ups:** a review of the new French and Portuguese strings; scroll arrows on the category chips if a long row is hard to use on a desktop.
+
 ## Done recently: phase 7, Schedule and Dashboard
 
 The shared calendar (Day, Week, Month, Year; repeating events: daily, weekly on chosen weekdays, monthly by day or "the 4th Saturday", yearly; one-off changes with "this event / this and following / all"; on-screen reminders; drag to move and resize) and the Dashboard with "My events" and "All events" are built, in FamillAI's layout with KMK's colors; see the [design](superpowers/specs/2026-11-24-schedule-dashboard-design.md).
-**Decision recorded:** everyone sees every event in full (see the accepted risk in [security.md](security.md)). **Not built, by choice:** Tasks, Shopping, event categories, phone push for reminders, photo avatars, a settings screen for hours and time zone.
+**Decision recorded:** everyone sees every event in full (see the accepted risk in [security.md](security.md)). **Not built, by choice:** Shopping, event categories, phone push for reminders, photo avatars, a settings screen for hours and time zone.
 **Follow-ups:** a review of the new French and Portuguese strings (they come from FamillAI's translations); an admin-set company time zone if KMK ever works in another one; reminder email or push if on-screen reminders are not enough.
 
 ## Done recently: phase 4b, Admin

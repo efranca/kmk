@@ -6,12 +6,17 @@ import { EventDialog, type EventDialogTarget } from "./EventDialog";
 import { ErrorNotice, Loading } from "../ui/Feedback";
 import { PageHeader } from "../ui/PageHeader";
 import { useSession } from "../session";
+import { TaskDialog } from "../tasks/TaskDialog";
+import { useTasks, useToggleTask } from "../tasks/hooks";
+import { canSetTaskStatus } from "../tasks/permissions";
+import type { Task } from "../tasks/types";
 import { useOccurrences, usePeople } from "./hooks";
 import { canChangeEvent } from "./permissions";
 import { MonthView } from "./MonthView";
 import { COMPANY_TIME_ZONE, addDays, firstDayOf, todayIn, weekStart } from "./scheduleDates";
 import { ScheduleToolbar } from "./ScheduleToolbar";
 import { SearchResults } from "./SearchResults";
+import { tasksByDate, useShowTasks } from "./taskItems";
 import { shiftDate, useScheduleView, visibleRange, type ScheduleViewKind } from "./scheduleView";
 import { TimeGrid } from "./TimeGrid";
 import { useMoveEvent } from "./useMoveEvent";
@@ -48,7 +53,16 @@ export function SchedulePage() {
 
   const [from, to] = visibleRange(view, date, firstDay, narrow);
   const range = useOccurrences(from, to, { people });
-  const busyDates = useMemo(() => new Set((range.data ?? []).map((o) => o.date)), [range.data]);
+  // Tasks with a due date are only asked for, and drawn, while the switch is on.
+  const [showTasks, setShowTasks] = useShowTasks();
+  const allTasks = useTasks("all", undefined, showTasks);
+  const toggleTask = useToggleTask();
+  const [openTask, setOpenTask] = useState<Task | null>(null);
+  const dueTasks = useMemo(() => (showTasks ? tasksByDate(allTasks.data ?? [], from, to, people) : new Map<string, Task[]>()), [showTasks, allTasks.data, from, to, people]);
+  const taskLayer = showTasks
+    ? { on: (date: string) => dueTasks.get(date) ?? [], canToggle: (task: Task) => canSetTaskStatus(user, task), onToggle: (task: Task) => toggleTask.mutate(task), onOpen: setOpenTask }
+    : undefined;
+  const busyDates = useMemo(() => new Set([...(range.data ?? []).map((o) => o.date), ...dueTasks.keys()]), [range.data, dueTasks]);
 
   // The search box keeps its own text and writes it to the URL a moment after typing stops.
   const [text, setText] = useState(q);
@@ -79,6 +93,7 @@ export function SchedulePage() {
                 setSearchOpen(!searchOpen);
               }}
             />
+            <IconButton icon="tasks" label={t("schShowTasks")} aria-pressed={showTasks} onClick={() => setShowTasks(!showTasks)} />
             <IconButton icon="plus" variant="primary" label={t("schAdd")} onClick={() => onCreate(view === "day" ? date : today)} />
           </>
         }
@@ -115,13 +130,14 @@ export function SchedulePage() {
         ) : view === "year" ? (
           <YearView year={Number(date.slice(0, 4))} busyDates={busyDates} today={today} firstDay={firstDay} locale={locale} onOpenMonth={(first) => set({ view: "month", date: first })} />
         ) : view === "month" ? (
-          <MonthView year={Number(date.slice(0, 4))} month={Number(date.slice(5, 7))} items={range.data} today={today} firstDay={firstDay} locale={locale} onOpenDay={(day) => set({ view: "day", date: day })} onOpenItem={onOpenEvent} />
+          <MonthView year={Number(date.slice(0, 4))} month={Number(date.slice(5, 7))} items={range.data} today={today} firstDay={firstDay} locale={locale} onOpenDay={(day) => set({ view: "day", date: day })} onOpenItem={onOpenEvent} tasks={taskLayer} />
         ) : (
           <TimeGrid days={gridDays} items={range.data} today={today} locale={locale} onOpenItem={onOpenEvent} onCreateAt={(day, minutes) => onCreate(day, minutes)}
-            canMove={(item) => canChangeEvent(user, item)} onMoveEvent={(item, slot) => void moveEvent.move(item, slot)} />
+            canMove={(item) => canChangeEvent(user, item)} onMoveEvent={(item, slot) => void moveEvent.move(item, slot)} tasks={taskLayer} />
         )}
       </div>
       {moveEvent.dialog}
+      {openTask && <TaskDialog key={openTask.id} task={openTask} defaultPeople={[]} onClose={() => setOpenTask(null)} />}
       {dialog && <EventDialog key={dialog.kind === "item" ? `${dialog.item.event_id}-${dialog.item.original_date}` : `new-${dialog.date}-${dialog.minutes ?? ""}`} target={dialog} onClose={() => setDialog(null)} />}
     </div>
   );
