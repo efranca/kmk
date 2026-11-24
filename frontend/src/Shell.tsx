@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import type { User } from "./api";
 import Layout, { type LayoutPage } from "./app/Layout";
 
-export type ShellPage = "welcome" | "account" | "admin" | "notfound";
+export type ShellPage = "welcome" | "schedule" | "account" | "admin" | "notfound";
 
-const PAGE_TO_LAYOUT: Record<ShellPage, LayoutPage> = { welcome: "dashboard", account: "account", admin: "admin", notfound: "other" };
+const PAGE_TO_LAYOUT: Record<ShellPage, LayoutPage> = { welcome: "dashboard", schedule: "schedule", account: "account", admin: "admin", notfound: "other" };
 
 /** Frame for signed-in pages (see app/Layout): navigation by role, the account menu, and the page area. */
 export default function Shell({
@@ -15,6 +15,7 @@ export default function Shell({
   onNavigate,
   onLanguageChanged,
   onSignOut,
+  bare,
   children,
 }: {
   user: User;
@@ -23,6 +24,8 @@ export default function Shell({
   onNavigate: (path: string) => void;
   onLanguageChanged: (user: User) => void;
   onSignOut: () => void;
+  /** Pages that draw their own surfaces skip the white card. */
+  bare?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -33,6 +36,7 @@ export default function Shell({
       onNavigate={onNavigate}
       onLanguageChanged={onLanguageChanged}
       onSignOut={onSignOut}
+      bare={bare}
     >
       {children}
     </Layout>

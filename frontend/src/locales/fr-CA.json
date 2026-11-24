@@ -248,5 +248,12 @@
   "schRepeatNth2f": "2e",
   "schRepeatNth3f": "3e",
   "schRepeatNth4f": "4e",
-  "schRepeatNth5f": "5e"
+  "schRepeatNth5f": "5e",
+  "retry": "Réessayer",
+  "err_unknown": "Une erreur est survenue. Réessayez.",
+  "err_network": "Impossible de se connecter. Réessayez.",
+  "err_forbidden": "Vous n’avez pas le droit de faire cela.",
+  "err_not_found": "Cet événement n’existe plus.",
+  "err_range_too_large": "Cette période est trop longue.",
+  "err_bad_range": "La fin de la période précède son début."
 }

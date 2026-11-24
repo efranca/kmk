@@ -248,5 +248,12 @@
   "schRepeatNth2f": "2nd",
   "schRepeatNth3f": "3rd",
   "schRepeatNth4f": "4th",
-  "schRepeatNth5f": "5th"
+  "schRepeatNth5f": "5th",
+  "retry": "Try again",
+  "err_unknown": "Something went wrong. Try again.",
+  "err_network": "Unable to connect. Try again.",
+  "err_forbidden": "You may not do that.",
+  "err_not_found": "That event no longer exists.",
+  "err_range_too_large": "That period is too long.",
+  "err_bad_range": "The end of the period is before its start."
 }

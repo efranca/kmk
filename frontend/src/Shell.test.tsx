@@ -97,6 +97,37 @@ describe("signed-in pages", () => {
   });
 });
 
+describe("schedule page", () => {
+  const scheduleApi = {
+    "GET /api/schedule/events": () => res(200, { occurrences: [] }),
+    "GET /api/schedule/people": () => res(200, { people: [] }),
+  };
+
+  it("has a Schedule entry in the navigation that opens the calendar", async () => {
+    mockApi({ "GET /api/auth/me": signedIn(), ...scheduleApi });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("link", { name: frCA.schTitle }));
+    expect(await screen.findByRole("heading", { level: 1, name: frCA.schTitle })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/schedule");
+    expect(screen.getByRole("link", { name: frCA.schTitle })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: frCA.navDashboard })).not.toHaveAttribute("aria-current");
+  });
+
+  it("is reachable directly, and sets the page title", async () => {
+    visit("/schedule");
+    mockApi({ "GET /api/auth/me": signedIn(), ...scheduleApi });
+    render(<App />);
+    expect(await screen.findByRole("radio", { name: frCA.schViewsWeek })).toBeInTheDocument();
+    expect(document.title).toBe(`${frCA.schTitle} · ${BRAND}`);
+  });
+
+  it("asks anonymous visitors to sign in first", async () => {
+    visit("/schedule");
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1, name: frCA.signInTitle })).toBeInTheDocument();
+  });
+});
+
 describe("account menu", () => {
   it("holds the account page, the language and sign out, and closes on Escape", async () => {
     mockApi({ "GET /api/auth/me": signedIn() });

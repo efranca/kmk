@@ -2,11 +2,12 @@ import { useTranslation } from "react-i18next";
 
 import { Icon, type IconName } from "../ui/Icon";
 
-export type NavId = "dashboard" | "admin";
+export type NavId = "dashboard" | "schedule" | "admin";
 type NavItem = { id: NavId; to: string; labelKey: string; icon: IconName; adminOnly?: boolean };
 
 const ITEMS: NavItem[] = [
   { id: "dashboard", to: "/", labelKey: "navDashboard", icon: "home" },
+  { id: "schedule", to: "/schedule", labelKey: "schTitle", icon: "calendar" },
   { id: "admin", to: "/admin", labelKey: "navUsers", icon: "users", adminOnly: true },
 ];
 

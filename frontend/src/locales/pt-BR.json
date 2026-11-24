@@ -248,5 +248,12 @@
   "schRepeatNth2f": "2ª",
   "schRepeatNth3f": "3ª",
   "schRepeatNth4f": "4ª",
-  "schRepeatNth5f": "5ª"
+  "schRepeatNth5f": "5ª",
+  "retry": "Tentar novamente",
+  "err_unknown": "Algo deu errado. Tente novamente.",
+  "err_network": "Não foi possível conectar. Tente novamente.",
+  "err_forbidden": "Você não tem permissão para fazer isso.",
+  "err_not_found": "Esse evento não existe mais.",
+  "err_range_too_large": "Esse período é longo demais.",
+  "err_bad_range": "O fim do período é anterior ao início."
 }

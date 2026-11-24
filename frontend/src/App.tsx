@@ -15,12 +15,14 @@ import MfaVerify from "./MfaVerify";
 import NotFound from "./NotFound";
 import { makeQueryClient } from "./queryClient";
 import { useRoute } from "./route";
+import { SchedulePage } from "./schedule/SchedulePage";
+import { SessionProvider } from "./session";
 import SetPassword from "./SetPassword";
 import Shell, { type ShellPage } from "./Shell";
 import WelcomePage from "./WelcomePage";
 
 type State = { kind: "checking" } | { kind: "anon" } | { kind: "auth"; session: Session };
-type Page = "checking" | "signin" | "forgot" | "setpw" | "verify" | "setup" | "welcome" | "account" | "admin" | "notfound";
+type Page = "checking" | "signin" | "forgot" | "setpw" | "verify" | "setup" | "welcome" | "schedule" | "account" | "admin" | "notfound";
 
 const BRAND = "KMK Entretien Ménager";
 const TITLE_KEYS: Record<Page, string | null> = {
@@ -31,6 +33,7 @@ const TITLE_KEYS: Record<Page, string | null> = {
   verify: "mfaCodeTitle",
   setup: "mfaSetupTitle",
   welcome: "navDashboard",
+  schedule: "schTitle",
   account: "navAccount",
   admin: "adminTitle",
   notfound: "notFoundTitle",
@@ -40,10 +43,11 @@ function pageFor(path: string, state: State): Page {
   if (path === "/set-password") return "setpw";
   if (path === "/forgot-password") return "forgot";
   if (state.kind === "checking") return "checking";
-  if (state.kind === "anon") return ["/", "/account", "/admin"].includes(path) ? "signin" : "notfound";
+  if (state.kind === "anon") return ["/", "/schedule", "/account", "/admin"].includes(path) ? "signin" : "notfound";
   if (state.session.mfa === "verify") return "verify";
   if (state.session.mfa === "setup") return "setup";
   if (path === "/") return "welcome";
+  if (path === "/schedule") return "schedule";
   if (path === "/account") return "account";
   if (path === "/admin") return state.session.user.role !== "user" ? "admin" : "welcome"; // plain users just see the welcome page
   return "notfound";
@@ -162,9 +166,10 @@ function AppContent() {
 
   if (state.kind !== "auth") return null;
   const { session } = state;
-  const shellPage: ShellPage = page === "welcome" || page === "account" || page === "admin" ? page : "notfound";
+  const shellPage: ShellPage = page === "welcome" || page === "schedule" || page === "account" || page === "admin" ? page : "notfound";
 
   return (
+    <SessionProvider value={{ user: session.user, csrfToken: session.csrfToken }}>
     <Shell
       user={session.user}
       active={shellPage}
@@ -172,6 +177,7 @@ function AppContent() {
       onNavigate={navigate}
       onLanguageChanged={(user) => updateSession({ user })}
       onSignOut={signOut}
+      bare={page === "schedule"}
     >
       {page === "welcome" && <WelcomePage user={session.user} mfaEnabled={session.mfaEnabled} recoveryCodesLeft={recoveryCodesLeft} />}
       {page === "account" && (
@@ -184,7 +190,9 @@ function AppContent() {
         />
       )}
       {page === "admin" && <AdminPage session={session} />}
+      {page === "schedule" && <SchedulePage />}
       {page === "notfound" && <NotFound onHome={() => navigate("/")} />}
     </Shell>
+    </SessionProvider>
   );
 }
