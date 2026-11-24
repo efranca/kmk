@@ -29,3 +29,14 @@
 .task-fields__title { display: flex; align-items: flex-end; gap: 10px; }
 .task-fields__title > .field { flex: 1; }
 .task-meta { margin: 14px 0 0; font-size: 0.85rem; color: var(--text-muted); }
+.catchips { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.catchips .chip { flex: none; white-space: nowrap; }
+.catmanager__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.catmanager__head h2 { margin: 0; font-size: 1.1rem; }
+.catmanager__add, .catmanager__edit { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.catmanager__add > .field, .catmanager__edit > .field { flex: 1; min-width: 10rem; }
+.catmanager__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.catmanager__row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; color: var(--text); }
+.catmanager__edit { margin: 0; flex: 1; }
+.catmanager__icon { font-size: 1.3rem; }
+.catmanager__name { flex: 1; font-weight: 600; }

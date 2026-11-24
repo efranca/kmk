@@ -6,10 +6,10 @@ import { COMPANY_TIME_ZONE, addDays, todayIn } from "../schedule/scheduleDates";
 import { useNarrow } from "../schedule/useNarrow";
 import { AvatarFilter } from "../ui/AvatarFilter";
 import { ChoiceChip, ChoiceChips } from "../ui/ChoiceChips";
-import { SelectField, TextAreaField, TextField } from "../ui/Field";
+import { TextAreaField, TextField } from "../ui/Field";
 import { Icon } from "../ui/Icon";
 import { IconPicker } from "../ui/IconPicker";
-import { useCategories } from "./hooks";
+import { CategorySelect } from "./CategorySelect";
 import { DESCRIPTION_MAX, TITLE_MAX, type TaskFormErrors, type TaskFormValues } from "./taskForm";
 import { suggestIcon } from "./suggestIcon";
 
@@ -28,7 +28,6 @@ export function TaskFields({ values, errors, onChange, autoFocus, autoIcon }: Ta
   const group = useId();
   const narrow = useNarrow();
   const { data: people = [] } = usePeople();
-  const { data: categories = [] } = useCategories();
   const [picking, setPicking] = useState(false);
   const [iconPicked, setIconPicked] = useState(false);
   const today = todayIn(COMPANY_TIME_ZONE);
@@ -84,10 +83,7 @@ export function TaskFields({ values, errors, onChange, autoFocus, autoIcon }: Ta
         {showDate && <input type="date" className="input" aria-label={t("taskFieldDue")} value={values.dueDate} onChange={(e) => set("dueDate", e.target.value)} />}
       </div>
 
-      <SelectField label={t("taskFieldCategory")} value={values.categoryId ?? ""} onChange={(e) => set("categoryId", e.target.value ? Number(e.target.value) : null)}>
-        <option value="">{t("taskNoCategory")}</option>
-        {categories.map((c) => <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ` : ""}{c.name}</option>)}
-      </SelectField>
+      <CategorySelect value={values.categoryId} onChange={(id) => set("categoryId", id)} />
 
       <TextAreaField
         label={`${t("taskFieldDescription")} (${t("optional")})`}

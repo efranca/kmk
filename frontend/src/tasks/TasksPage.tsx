@@ -18,6 +18,8 @@ import { dueGroup, type DueGroup } from "./dueGroup";
 import { useCategories, useClearCompleted, useTasks, useToggleTask } from "./hooks";
 import { canChangeTask, canSetTaskStatus } from "./permissions";
 import { matchesSearch } from "./search";
+import { CategoryChips } from "./CategoryChips";
+import { CategoryManager } from "./CategoryManager";
 import { TaskDialog } from "./TaskDialog";
 import { TaskRow } from "./TaskRow";
 import type { StatusFilter, Task } from "./types";
@@ -41,6 +43,8 @@ export function TasksPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [text, setText] = useState("");
   const [clearing, setClearing] = useState(false);
+  const [managing, setManaging] = useState(false);
+  const [pick, setPick] = useState<number | null>(null);
   const [editing, setEditing] = useState<Task | "new" | null>(null);
   const toggle = useToggleTask();
   const clear = useClearCompleted();
@@ -67,7 +71,12 @@ export function TasksPage() {
     searching
       ? tasks.filter((x) => matchesSearch(text, x.title, x.description, x.category_id ? categoryById.get(x.category_id)?.name : "", ...x.people.map((id) => byId.get(id)?.name)))
       : tasks;
-  const visible = matching(ofPicked(shown.data ?? []));
+  const loaded = matching(ofPicked(shown.data ?? []));
+  // A picked category that was deleted falls back to All.
+  const selected = pick !== null && categoryById.has(pick) ? pick : null;
+  const countOf = new Map<number, number>();
+  for (const x of loaded) if (x.category_id !== null) countOf.set(x.category_id, (countOf.get(x.category_id) ?? 0) + 1);
+  const visible = selected !== null ? loaded.filter((x) => x.category_id === selected) : loaded;
 
   // What "Clear completed" removes is what the server will let this person remove, so the count says the same.
   const clearable = (all.data ?? []).filter((x) => x.status === "completed" && canChangeTask(user, x)).length;
@@ -90,12 +99,13 @@ export function TasksPage() {
         title={t("taskTitle")}
         actions={
           <>
-            <IconButton icon="search" label={t("taskSearchLabel")} aria-pressed={searchOpen} onClick={() => { if (searchOpen) setText(""); setSearchOpen(!searchOpen); }} />
+            <IconButton icon="search" label={t("taskSearchLabel")} aria-pressed={searchOpen} onClick={() => { setManaging(false); if (searchOpen) setText(""); setSearchOpen(!searchOpen); }} />
+            <IconButton icon="settings" label={t("taskCatManage")} aria-pressed={managing} onClick={() => { setSearchOpen(false); setText(""); setManaging(!managing); }} />
             <IconButton icon="plus" variant="primary" label={t("taskNew")} onClick={() => setEditing("new")} />
           </>
         }
       />
-      {noTasksAtAll ? (
+      {managing ? <CategoryManager onClose={() => setManaging(false)} /> : noTasksAtAll ? (
         <div className="tasks-empty">
           <EmptyState>{t("taskEmpty")}</EmptyState>
           <Button variant="primary" icon="plus" onClick={() => setEditing("new")}>{t("taskAddFirst")}</Button>
@@ -122,6 +132,11 @@ export function TasksPage() {
               </div>
               <span className="tasks-summary__meter" aria-hidden="true"><i style={{ width: `${total ? (doneCount / total) * 100 : 0}%` }} /></span>
             </section>
+          )}
+          {shown.data && (categories.data ?? []).length > 0 && (
+            <CategoryChips label={t("taskCatFilter")} allLabel={t("taskCatAll")} allCount={loaded.length}
+              options={(categories.data ?? []).map((c) => ({ id: c.id, name: c.name, icon: c.icon, count: countOf.get(c.id) ?? 0 }))}
+              selected={selected} onSelect={setPick} />
           )}
           {shown.isPending ? <Loading />
             : shown.isError ? <ErrorNotice error={shown.error} onRetry={() => void shown.refetch()} />

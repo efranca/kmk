@@ -138,4 +138,39 @@ describe("TasksPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Mop the floor/ }));
     expect(await screen.findByDisplayValue("Blue bucket")).toBeInTheDocument();
   });
+
+  it("category chips filter the list and count the tasks of each category", async () => {
+    mockApi({
+      "GET /api/schedule/people": { people: PEOPLE },
+      "GET /api/tasks/categories": { categories: [{ id: 1, name: "Office", icon: "🏢" }, { id: 2, name: "Shop", icon: "🛒" }] },
+      "GET /api/tasks": () => ({ tasks: [task({ title: "In office", category_id: 1 }), task({ title: "In shop", category_id: 2 }), task({ title: "In office 2", category_id: 1 })] }),
+    });
+    page();
+    await screen.findByText("In office");
+    expect(screen.getByRole("button", { name: "🏢 Office 2" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "🏢 Office 2" }));
+    expect(screen.queryByText("In shop")).not.toBeInTheDocument();
+    expect(screen.getByText("In office 2")).toBeInTheDocument();
+  });
+
+  it("falls back to All when the picked category is deleted", async () => {
+    let cats = [{ id: 1, name: "Office", icon: "🏢" }];
+    const { calls } = mockApi({
+      "GET /api/schedule/people": { people: PEOPLE },
+      "GET /api/tasks/categories": () => ({ categories: cats }),
+      "GET /api/tasks": () => ({ tasks: [task({ title: "In office", category_id: 1 }), task({ title: "Elsewhere", category_id: null })] }),
+      "DELETE /api/tasks/categories/1": () => { cats = []; return { ok: true, status: 204, json: async () => ({}) }; },
+    });
+    renderWithProviders(<TasksPage />, { route: "/tasks", session: { user: { id: 1, username: "a", name: "A", email: "a@x.ca", role: "admin", locale: "en" } } });
+    await screen.findByText("In office");
+    fireEvent.click(screen.getByRole("button", { name: "🏢 Office 1" }));
+    expect(screen.queryByText("Elsewhere")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Manage categories" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Delete Office" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "DELETE")).toBe(true));
+    fireEvent.click(await screen.findByRole("button", { name: "Back to tasks" }));
+    expect(await screen.findByText("Elsewhere")).toBeInTheDocument();
+    expect(screen.getByText("In office")).toBeInTheDocument();
+  });
 });

@@ -325,5 +325,16 @@
   "taskToastUpdated": "Tarefa alterada",
   "taskToastDeleted": "Tarefa excluída",
   "taskErrTitle": "Dê um título à tarefa (até 200 caracteres).",
-  "taskErrDescription": "A descrição é longa demais (no máximo 2000 caracteres)."
+  "taskErrDescription": "A descrição é longa demais (no máximo 2000 caracteres).",
+  "taskCategories": "Categorias",
+  "taskCatManage": "Gerenciar categorias",
+  "taskCatBack": "Voltar às tarefas",
+  "taskCatName": "Nome",
+  "taskCatAdd": "Adicionar categoria",
+  "taskCatEdit": "Editar {{name}}",
+  "taskCatDeleteNamed": "Excluir {{name}}",
+  "taskCatDeleteTitle": "Excluir “{{name}}”?",
+  "taskCatDeleteBody": "As tarefas dela são mantidas, sem categoria.",
+  "taskCatFilter": "Filtrar por categoria",
+  "taskCatAll": "Todas"
 }

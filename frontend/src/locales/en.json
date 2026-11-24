@@ -325,5 +325,16 @@
   "taskToastUpdated": "Task updated",
   "taskToastDeleted": "Task deleted",
   "taskErrTitle": "Give the task a title (up to 200 characters).",
-  "taskErrDescription": "The description is too long (2000 characters at most)."
+  "taskErrDescription": "The description is too long (2000 characters at most).",
+  "taskCategories": "Categories",
+  "taskCatManage": "Manage categories",
+  "taskCatBack": "Back to tasks",
+  "taskCatName": "Name",
+  "taskCatAdd": "Add category",
+  "taskCatEdit": "Edit {{name}}",
+  "taskCatDeleteNamed": "Delete {{name}}",
+  "taskCatDeleteTitle": "Delete “{{name}}”?",
+  "taskCatDeleteBody": "Its tasks are kept, without a category.",
+  "taskCatFilter": "Filter by category",
+  "taskCatAll": "All"
 }

@@ -325,5 +325,16 @@
   "taskToastUpdated": "Tâche modifiée",
   "taskToastDeleted": "Tâche supprimée",
   "taskErrTitle": "Donnez un titre à la tâche (200 caractères au plus).",
-  "taskErrDescription": "La description est trop longue (2000 caractères au plus)."
+  "taskErrDescription": "La description est trop longue (2000 caractères au plus).",
+  "taskCategories": "Catégories",
+  "taskCatManage": "Gérer les catégories",
+  "taskCatBack": "Retour aux tâches",
+  "taskCatName": "Nom",
+  "taskCatAdd": "Ajouter la catégorie",
+  "taskCatEdit": "Modifier {{name}}",
+  "taskCatDeleteNamed": "Supprimer {{name}}",
+  "taskCatDeleteTitle": "Supprimer « {{name}} » ?",
+  "taskCatDeleteBody": "Ses tâches sont conservées, sans catégorie.",
+  "taskCatFilter": "Filtrer par catégorie",
+  "taskCatAll": "Toutes"
 }
