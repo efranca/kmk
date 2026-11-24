@@ -12,3 +12,4 @@
 .doc-facts dt { color: var(--text-muted, var(--slate)); font-size: 0.85rem; }
 .doc-facts dd { margin: 0; }
 .dialog__spacer { flex: 1; }
+.doc-preview { display: block; max-width: 100%; max-height: 260px; margin: 0 auto 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; object-fit: contain; }

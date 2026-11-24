@@ -7,8 +7,9 @@ import { Dialog } from "../ui/Dialog";
 import { ErrorNotice } from "../ui/Feedback";
 import { SelectField, TextAreaField, TextField } from "../ui/Field";
 import { FALLBACK_CATEGORY_ICON } from "../tasks/CategoryChips";
-import { fileUrl, type DocumentCategory, type DocumentItem, type Visibility } from "./api";
+import { fileUrl, previewUrl, type DocumentCategory, type DocumentItem, type Visibility } from "./api";
 import { useDeleteDocument, useSaveDocument } from "./hooks";
+import { fileKind } from "./fileKind";
 import { DOCUMENT_ACCEPT, formatSize, levelsFor, prepareDocument } from "./prepareDocument";
 
 const LEVEL_KEYS = { everyone: "docLevelEveryone", admins: "docLevelAdmins", superadmin: "docLevelSuperadmin" } as const;
@@ -78,9 +79,12 @@ export function DocumentDialog({ document, categories, onClose }: { document: Do
 
   return (
     <Dialog open title={document ? (canManage ? t("docEditTitle") : document.title) : t("docNewTitle")} onClose={onClose} footer={footer}>
+      {document?.has_preview && <img className="doc-preview" src={previewUrl(document.id, document.updated_at)} alt="" loading="lazy" />}
       {document?.has_file && (
         <p className="doc-links">
-          <a className="btn btn--secondary" href={fileUrl(document.id)} target="_blank" rel="noopener noreferrer">{t("docOpen")}</a>{" "}
+          {fileKind(document.content_type, document.file_name).inline && (
+            <><a className="btn btn--secondary" href={fileUrl(document.id)} target="_blank" rel="noopener noreferrer">{t("docOpen")}</a>{" "}</>
+          )}
           <a className="btn btn--secondary" href={fileUrl(document.id, true)}>{t("docDownload")}</a>
           <span className="muted"> {document.file_name} · {formatSize(document.size_bytes ?? 0)}</span>
         </p>

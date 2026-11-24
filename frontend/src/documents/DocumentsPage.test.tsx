@@ -1,6 +1,8 @@
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("./previews", () => ({ makePreview: vi.fn(async () => new Blob(["jpeg"])) }));
+
 import i18n from "../i18n";
 import { DEFAULT_PREFERENCES } from "../preferences";
 import en from "../locales/en.json";
@@ -10,7 +12,7 @@ import { DocumentsPage } from "./DocumentsPage";
 const res = (status: number, body: unknown = {}) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 const doc = (id: number, over: Record<string, unknown> = {}) => ({
   id, title: `Doc ${id}`, note: null, category_id: null, visibility: "everyone", file_name: `f${id}.pdf`, content_type: "application/pdf",
-  size_bytes: 2048, has_file: true, created_by: { id: 1, name: "Alice" }, created_at: "2026-11-20T10:00:00Z", updated_at: "2026-11-20T10:00:00Z", ...over,
+  size_bytes: 2048, has_file: true, has_preview: false, created_by: { id: 1, name: "Alice" }, created_at: "2026-11-20T10:00:00Z", updated_at: "2026-11-20T10:00:00Z", ...over,
 });
 const data = {
   documents: [
@@ -29,6 +31,7 @@ function mockApi(overrides: Record<string, () => unknown> = {}) {
     const route = `${init?.method ?? "GET"} ${url}`;
     if (overrides[route]) return overrides[route]();
     if (route === "GET /api/documents") return res(200, data);
+    if (route === "PUT /api/documents/99/preview") return res(204);
     if (route === "POST /api/documents") return res(201, { document: doc(99, { has_file: false, size_bytes: null }) });
     if (route.startsWith("DELETE /api/documents/")) return res(204);
     if (route.startsWith("PATCH /api/documents/")) return res(200, { document: doc(1) });
@@ -124,6 +127,26 @@ describe("Documents page", () => {
     expect(screen.getByText(/nothing like this/)).toBeInTheDocument();
   });
 
+  it("shows the preview in the dialog, and offers Open only for what a browser can show", async () => {
+    mockApi({
+      "GET /api/documents": () => res(200, { categories: [], documents: [
+        doc(7, { title: "Lease", has_preview: true }),
+        doc(8, { title: "Contract", content_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", file_name: "contract.docx" }),
+      ] }),
+    });
+    renderWithProviders(<DocumentsPage />);
+    fireEvent.click(await screen.findByText("Lease"));
+    let dialog = await screen.findByRole("dialog");
+    expect(dialog.querySelector("img.doc-preview")).toHaveAttribute("src", expect.stringContaining("/api/documents/7/preview"));
+    expect(within(dialog).getByRole("link", { name: en.docOpen })).toBeInTheDocument();
+    fireEvent.click(within(dialog).getAllByRole("button", { name: en.close })[0]);
+    fireEvent.click(await screen.findByText("Contract"));
+    dialog = await screen.findByRole("dialog");
+    expect(dialog.querySelector("img.doc-preview")).toBeNull();
+    expect(within(dialog).queryByRole("link", { name: en.docOpen })).toBeNull();
+    expect(within(dialog).getByRole("link", { name: en.docDownload })).toBeInTheDocument();
+  });
+
   it("gives a plain user no way to add, edit or delete", async () => {
     mockApi();
     renderWithProviders(<DocumentsPage />);
@@ -154,6 +177,36 @@ describe("Documents page", () => {
     expect(sent[0].url).toBe("/api/documents/99/file");
     expect(decodeURIComponent(sent[0].headers["X-File-Name"])).toBe("Lease 2026.pdf");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("sends the preview picture after the file, and keeps the upload even if the preview fails", async () => {
+    mockApi({ "PUT /api/documents/99/preview": () => res(500, { error: "x" }) });
+    const sent = fakeUpload(204);
+    renderWithProviders(<DocumentsPage />, admin);
+    await screen.findByText("Zebra");
+    fireEvent.click(screen.getByRole("button", { name: en.docNew }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(en.docFieldFile), { target: { files: [new File(["# hi"], "Notes.md")] } });
+    await waitFor(() => expect(within(dialog).getByLabelText(en.docFieldTitle)).toHaveValue("Notes"));
+    fireEvent.click(within(dialog).getByRole("button", { name: en.save }));
+    await waitFor(() => expect(calls("PUT /api/documents/99/preview")).toHaveLength(1));
+    expect(sent).toHaveLength(1); // the file went first
+    expect((calls("PUT /api/documents/99/preview")[0][1] as RequestInit).headers).toMatchObject({ "Content-Type": "image/jpeg" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull()); // the failed preview did not fail the save
+    expect(calls("DELETE /api/documents/99")).toHaveLength(0);
+  });
+
+  it("accepts Markdown, Office and HEIC files by name (the browser gives them no type)", async () => {
+    mockApi();
+    renderWithProviders(<DocumentsPage />, admin);
+    await screen.findByText("Zebra");
+    fireEvent.click(screen.getByRole("button", { name: en.docNew }));
+    const dialog = await screen.findByRole("dialog");
+    for (const name of ["a.md", "b.docx", "c.heic", "d.xlsx"]) {
+      fireEvent.change(within(dialog).getByLabelText(en.docFieldFile), { target: { files: [new File(["x"], name)] } });
+      await waitFor(() => expect(within(dialog).getByRole("button", { name: en.save })).not.toBeDisabled());
+      expect(within(dialog).queryByText(en.err_invalid_file)).toBeNull();
+    }
   });
 
   it("cleans up the half-made document and says why when the file is refused", async () => {

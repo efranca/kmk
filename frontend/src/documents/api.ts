@@ -12,12 +12,15 @@ export type DocumentItem = {
   content_type: string | null;
   size_bytes: number | null;
   has_file: boolean;
+  has_preview: boolean;
   created_by: { id: number; name: string | null };
   created_at: string;
   updated_at: string;
 };
 export type DocumentCategory = { id: number; name: string; icon: string | null };
 export type DocumentInput = { title: string; note: string | null; category_id: number | null; visibility: Visibility };
+
+export const previewUrl = (id: number, version: string) => `/api/documents/${id}/preview?v=${encodeURIComponent(version)}`;
 
 export const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
@@ -58,4 +61,10 @@ export function uploadFile(id: number, file: Blob, name: string, csrf: string, o
     };
     xhr.send(file);
   });
+}
+
+/** The small picture for the tiles view (best effort: the caller ignores a failure). */
+export async function uploadPreview(id: number, blob: Blob, csrf: string): Promise<void> {
+  const response = await fetch(`/api/documents/${id}/preview`, { method: "PUT", credentials: "same-origin", headers: { "X-CSRF-Token": csrf, "Content-Type": "image/jpeg" }, body: blob });
+  if (!response.ok) throw new Error(`preview ${response.status}`);
 }
