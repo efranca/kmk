@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 
 import httpx
 import pytest
@@ -113,7 +114,8 @@ def test_build_link_can_carry_the_language():
 @pytest.mark.parametrize("kind,locale", list(EXPIRY))
 def test_messages_end_with_the_brand_line(kind, locale):
     m = render(kind, locale, LINK, "a@b.c")
-    assert "KMK Entretien Ménager, Québec" in m.text and "KMK Entretien Ménager, Québec" in m.html
+    assert m.text.rstrip().endswith("KMK Entretien") and "Québec" not in m.text
+    assert m.html.rstrip().endswith("</div>") and ">KMK Entretien<" in m.html
 
 
 # ---- a person's name in the greeting ----
@@ -147,3 +149,31 @@ def test_the_name_is_escaped_in_the_html_and_stays_out_of_every_header():
     body = seen["body"]
     for header_field in ("from", "to", "subject"):
         assert "O'Brien" not in json.dumps(body[header_field])  # only the text and html parts carry the name
+
+
+LONG_LINK = "https://app.kmk-entretien.ca/set-password#token=jY9xtxvhyxGVUdBX-DM8y7FfAYIByFUMNxQtjZjITPI&lang=fr-CA"
+
+
+@pytest.mark.parametrize("kind,locale", list(EXPIRY))
+def test_html_hides_the_long_address_behind_link_text(kind, locale):
+    m = render(kind, locale, LONG_LINK, "a@b.c")
+    assert f'href="{LONG_LINK.replace("&", "&amp;")}"' in m.html  # the link still works
+    visible = re.sub(r"<[^>]+>", " ", m.html)  # what a person reads in the HTML part
+    assert "token=" not in visible and "set-password" not in visible
+    assert LONG_LINK in m.text  # plain text has no links, so it keeps the address
+
+
+@pytest.mark.parametrize("locale,label", [("fr-CA", "Choisir mon mot de passe"), ("en", "Choose my password"), ("pt-BR", "Escolher minha senha")])
+def test_invite_link_text_per_language(locale, label):
+    m = render("invite", locale, LONG_LINK, "a@b.c")
+    assert f">{label}</a>" in m.html
+
+
+def test_invite_names_the_site_as_a_https_link():
+    m = render("invite", "fr-CA", LONG_LINK, "a@b.c")
+    assert '<a href="https://app.kmk-entretien.ca"' in m.html and ">app.kmk-entretien.ca</a>" in m.html
+    assert "Un compte a été créé pour vous sur app.kmk-entretien.ca." in m.text
+
+
+def test_reset_link_text():
+    assert ">Choisir un nouveau mot de passe</a>" in render("reset", "fr-CA", LONG_LINK, "a@b.c").html

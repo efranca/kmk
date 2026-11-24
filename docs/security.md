@@ -46,6 +46,7 @@ Counting uses the submitted identifier whether or not the account exists, so the
 - The token is in the URL fragment (`/set-password#token=...&lang=...`), so it is never sent to the server, Caddy logs or Referer headers; the page removes the whole fragment from the address bar at once. The `lang` part is the recipient's language (not secret); the page uses it only if it is one of the three supported languages.
 - `forgot-password` always answers `202 {"status":"ok"}`; the email is sent after the response (a few milliseconds of difference remain for an existing active account, because the token is created within the request; deferred minor). A new password is validated before the token is spent. A reset revokes all of the user's sessions; accepting an invite does not sign anyone in.
 - All bad links return one generic `400 invalid_token`.
+- **What the email shows:** the token still has to be in the link (it is how the link proves who you are), but the HTML part shows words ("Choisir mon mot de passe") with the long address behind them, and names the site as a link to `https://app.kmk-entretien.ca`. The plain-text part cannot hide an address, so it keeps the full link. The token stays in the URL fragment either way, so it never reaches server logs or Referer headers. The email signs off "KMK Entretien".
 
 ## Two-step verification (TOTP)
 
