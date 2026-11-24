@@ -220,3 +220,44 @@ class UserAvatar(Base):
     content_type: Mapped[str] = mapped_column(Text)
     data: Mapped[bytes] = mapped_column(LargeBinary)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DocumentCategory(Base):
+    """A label for documents: a name (unique ignoring case) and an optional emoji."""
+
+    __tablename__ = "document_categories"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    name: Mapped[str] = mapped_column(Text)
+    icon: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)  # NULL for the seeded starters
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Document(Base):
+    """A company document's metadata. `size_bytes` NULL means the upload is pending (no file yet): see document_files."""
+
+    __tablename__ = "documents"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    title: Mapped[str] = mapped_column(Text)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("document_categories.id", ondelete="SET NULL"), nullable=True)
+    visibility: Mapped[str] = mapped_column(Text, default="admins", server_default="admins")  # everyone | admins | superadmin
+    file_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    created_by: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_by: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DocumentFile(Base):
+    """The bytes of a document, in a table of their own so lists never read them."""
+
+    __tablename__ = "document_files"
+
+    document_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True)
+    data: Mapped[bytes] = mapped_column(LargeBinary)
