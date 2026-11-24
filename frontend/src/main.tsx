@@ -5,6 +5,7 @@ import "./index.css";
 import "./ui/ui.css";
 import "./app/layout.css";
 import "./schedule/schedule.css";
+import "./dashboard/dashboard.css";
 import "./i18n";
 
 import { StrictMode } from "react";

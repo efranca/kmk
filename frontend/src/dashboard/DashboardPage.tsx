@@ -1,0 +1,43 @@
+import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
+
+import type { User } from "../api";
+import MfaBanner from "../MfaBanner";
+import { displayName } from "../person";
+import { useOccurrences, usePeople } from "../schedule/hooks";
+import { COMPANY_TIME_ZONE, addDays, todayIn } from "../schedule/scheduleDates";
+import type { Occurrence } from "../schedule/types";
+import { ErrorNotice, Loading } from "../ui/Feedback";
+import { AllEventsCard } from "./AllEventsCard";
+import { MyEventsCard } from "./MyEventsCard";
+
+/** Today and the next seven days. */
+const DAYS_AHEAD = 7;
+
+/** The home page: a greeting and two widgets over the shared calendar, "My events" and "All events". */
+export function DashboardPage({ user, mfaEnabled, recoveryCodesLeft }: { user: User; mfaEnabled: boolean; recoveryCodesLeft: number | null }) {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const today = todayIn(COMPANY_TIME_ZONE);
+  const range = useOccurrences(today, addDays(today, DAYS_AHEAD));
+  const everyone = usePeople();
+  const people = everyone.data ?? [];
+  const byId = new Map(people.map((p) => [p.id, p]));
+
+  const state = range.isPending ? <Loading /> : range.isError ? <ErrorNotice error={range.error} onRetry={() => void range.refetch()} /> : null;
+  const openDay = (item: Occurrence) => navigate(`/schedule?view=day&date=${item.date}`);
+  const openSchedule = () => navigate("/schedule");
+  const items = range.data ?? [];
+
+  return (
+    <div className="page page--dashboard">
+      <h1>{t("welcome", { name: displayName(user) })}</h1>
+      {recoveryCodesLeft !== null && <p className="notice" role="status">{t("codesRemaining", { count: recoveryCodesLeft })}</p>}
+      {!mfaEnabled && <MfaBanner role={user.role} />}
+      <div className="dash__grid">
+        <MyEventsCard items={items} userId={user.id} people={byId} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />
+        <AllEventsCard items={items} everyone={people} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />
+      </div>
+    </div>
+  );
+}

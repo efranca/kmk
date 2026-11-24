@@ -20,6 +20,9 @@ function mockApi(h: Record<string, Handler> = {}) {
     if (route in h) return h[route](init);
     if (route === "GET /api/auth/me") return res(401, { error: "unauthenticated" });
     if (route === "GET /api/admin/users") return res(200, { users: [] });
+    if (route.startsWith("GET /api/schedule/events")) return res(200, { occurrences: [] });
+    if (route === "GET /api/schedule/people") return res(200, { people: [] });
+    if (route === "GET /api/schedule/reminders/due") return res(200, { reminders: [] });
     throw new Error(`unexpected ${route}`);
   });
   vi.stubGlobal("fetch", fn);
@@ -40,12 +43,13 @@ afterEach(async () => {
 });
 
 describe("signed-in pages", () => {
-  it("shows the welcome page inside the shell", async () => {
+  it("shows the dashboard with its two cards inside the shell", async () => {
     mockApi({ "GET /api/auth/me": signedIn() });
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1, name: "Bonjour, alice" })).toBeInTheDocument();
-    expect(screen.getByText(frCA.welcomeTitle)).toBeInTheDocument();
-    expect(screen.getByText(frCA.welcomeIntro)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: frCA.dashMyEvents })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: frCA.dashAllEvents })).toBeInTheDocument();
+    expect((await screen.findAllByText(frCA.dashEmpty)).length).toBe(2);
     expect(screen.getByRole("navigation")).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: frCA.language })).toBeNull(); // language and sign-out sit behind the account menu
     openAccountMenu();

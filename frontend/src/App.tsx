@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { BrowserRouter } from "react-router";
 
 import AccountPage from "./AccountPage";
+import { DashboardPage } from "./dashboard/DashboardPage";
 import AdminPage from "./AdminPage";
 import { logout, me, type Session, type User } from "./api";
 import ForgotPassword from "./ForgotPassword";
@@ -20,7 +21,6 @@ import { SessionProvider } from "./session";
 import { ToastProvider } from "./ui/Toast";
 import SetPassword from "./SetPassword";
 import Shell, { type ShellPage } from "./Shell";
-import WelcomePage from "./WelcomePage";
 
 type State = { kind: "checking" } | { kind: "anon" } | { kind: "auth"; session: Session };
 type Page = "checking" | "signin" | "forgot" | "setpw" | "verify" | "setup" | "welcome" | "schedule" | "account" | "admin" | "notfound";
@@ -179,9 +179,9 @@ function AppContent() {
       onNavigate={navigate}
       onLanguageChanged={(user) => updateSession({ user })}
       onSignOut={signOut}
-      bare={page === "schedule"}
+      bare={page === "schedule" || page === "welcome"}
     >
-      {page === "welcome" && <WelcomePage user={session.user} mfaEnabled={session.mfaEnabled} recoveryCodesLeft={recoveryCodesLeft} />}
+      {page === "welcome" && <DashboardPage user={session.user} mfaEnabled={session.mfaEnabled} recoveryCodesLeft={recoveryCodesLeft} />}
       {page === "account" && (
         <AccountPage
           user={session.user}

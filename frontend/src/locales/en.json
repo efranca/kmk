@@ -103,11 +103,8 @@
   "errExists": "That username or email is already in use.",
   "language": "Language",
   "langError": "Could not change the language.",
-  "navWelcome": "Home",
   "navAccount": "My account",
   "navUsers": "Users",
-  "welcomeTitle": "Welcome to KMK Entretien Ménager",
-  "welcomeIntro": "This space is for the team. Company information (contacts, procedures, resources) will be added here soon.",
   "notFoundTitle": "Page not found",
   "notFoundText": "This page does not exist.",
   "notFoundHome": "Back to home",
@@ -272,5 +269,10 @@
   "err_occurrence_date_required": "Say which occurrence this applies to.",
   "err_not_an_occurrence": "The event does not take place on that date.",
   "err_invalid_people": "The people filter is not valid.",
-  "undo": "Undo"
+  "undo": "Undo",
+  "dashMyEvents": "My events",
+  "dashAllEvents": "All events",
+  "dashToday": "Today",
+  "dashUpcoming": "Upcoming",
+  "dashEmpty": "Nothing planned."
 }
