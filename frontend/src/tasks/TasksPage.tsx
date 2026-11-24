@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { usePreferences } from "../preferences";
 import { useSession } from "../session";
 import { COMPANY_TIME_ZONE, todayIn } from "../schedule/scheduleDates";
 import { useNarrow } from "../schedule/useNarrow";
@@ -51,6 +52,8 @@ export function TasksPage() {
   const [pick, setPick] = useState<number | null>(null);
   const [editing, setEditing] = useState<Task | "new" | null>(null);
   const [view, setView] = useTasksView();
+  const { prefs, update } = usePreferences();
+  const showChips = prefs.show_task_categories; // off until the person turns them on; it follows their account
   const toggle = useToggleTask();
   const move = useSetTaskStatus();
   const clear = useClearCompleted();
@@ -79,7 +82,8 @@ export function TasksPage() {
       : tasks;
   const loaded = matching(ofPicked(shown.data ?? []));
   // A picked category that was deleted falls back to All.
-  const selected = pick !== null && categoryById.has(pick) ? pick : null;
+  // Hidden chips cannot filter: with them off, every task shows.
+  const selected = showChips && pick !== null && categoryById.has(pick) ? pick : null;
   const countOf = new Map<number, number>();
   for (const x of loaded) if (x.category_id !== null) countOf.set(x.category_id, (countOf.get(x.category_id) ?? 0) + 1);
   const visible = selected !== null ? loaded.filter((x) => x.category_id === selected) : loaded;
@@ -106,6 +110,7 @@ export function TasksPage() {
         actions={
           <>
             <IconButton icon="search" label={t("taskSearchLabel")} aria-pressed={searchOpen} onClick={() => { setManaging(false); if (searchOpen) setText(""); setSearchOpen(!searchOpen); }} />
+            <IconButton icon="tag" label={t("taskShowCategories")} aria-pressed={showChips} onClick={() => update({ show_task_categories: !showChips })} />
             <ViewMenuButton view={view} onView={setView} managing={managing} onManage={() => { setSearchOpen(false); setText(""); setManaging(!managing); }} />
             <IconButton icon="plus" variant="primary" label={t("taskNew")} onClick={() => setEditing("new")} />
           </>
@@ -139,7 +144,7 @@ export function TasksPage() {
               <span className="tasks-summary__meter" aria-hidden="true"><i style={{ width: `${total ? (doneCount / total) * 100 : 0}%` }} /></span>
             </section>
           )}
-          {shown.data && (categories.data ?? []).length > 0 && (
+          {showChips && shown.data && (categories.data ?? []).length > 0 && (
             <CategoryChips label={t("taskCatFilter")} allLabel={t("taskCatAll")} allCount={loaded.length}
               options={(categories.data ?? []).map((c) => ({ id: c.id, name: c.name, icon: c.icon, count: countOf.get(c.id) ?? 0 }))}
               selected={selected} onSelect={setPick} />

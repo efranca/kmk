@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { COMPANY_TIME_ZONE, addDays, todayIn } from "../schedule/scheduleDates";
+import { DEFAULT_PREFERENCES } from "../preferences";
 import { mockApi, renderWithProviders, resetLanguage, useEnglish } from "../testUtils";
 import { TasksPage } from "./TasksPage";
 import type { Task } from "./types";
@@ -38,7 +39,7 @@ function api(tasks: Task[], extra: Record<string, unknown> = {}) {
 beforeEach(async () => { await useEnglish(); });
 afterEach(async () => { vi.unstubAllGlobals(); await resetLanguage(); });
 
-const page = () => renderWithProviders(<TasksPage />, { route: "/tasks" });
+const page = (show = false) => renderWithProviders(<TasksPage />, { route: "/tasks", preferences: { ...DEFAULT_PREFERENCES, show_task_categories: show } });
 
 describe("TasksPage", () => {
   it("lists the tasks to do grouped by when they are due", async () => {
@@ -145,12 +146,51 @@ describe("TasksPage", () => {
       "GET /api/tasks/categories": { categories: [{ id: 1, name: "Office", icon: "🏢" }, { id: 2, name: "Shop", icon: "🛒" }] },
       "GET /api/tasks": () => ({ tasks: [task({ title: "In office", category_id: 1 }), task({ title: "In shop", category_id: 2 }), task({ title: "In office 2", category_id: 1 })] }),
     });
-    page();
+    page(true);
     await screen.findByText("In office");
     expect(screen.getByRole("button", { name: "🏢 Office 2" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "🏢 Office 2" }));
     expect(screen.queryByText("In shop")).not.toBeInTheDocument();
     expect(screen.getByText("In office 2")).toBeInTheDocument();
+  });
+
+  describe("the category chips button", () => {
+    const withCategories = () => mockApi({
+      "GET /api/schedule/people": { people: PEOPLE },
+      "GET /api/tasks/categories": { categories: [{ id: 1, name: "Office", icon: "🏢" }, { id: 2, name: "Shop", icon: "🛒" }] },
+      "GET /api/tasks": () => ({ tasks: [task({ title: "In office", category_id: 1 }), task({ title: "In shop", category_id: 2 })] }),
+      "PATCH /api/me/preferences": { preferences: {} },
+    });
+
+    it("keeps the chips hidden until they are turned on", async () => {
+      withCategories();
+      page();
+      await screen.findByText("In office");
+      expect(screen.queryByRole("group", { name: "Category" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Show category chips" })).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("turns the chips on and off, and saves the choice to the account", async () => {
+      const { calls } = withCategories();
+      page();
+      await screen.findByText("In office");
+      fireEvent.click(screen.getByRole("button", { name: "Show category chips" }));
+      expect(await screen.findByRole("button", { name: "🏢 Office 1" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Show category chips" })).toHaveAttribute("aria-pressed", "true");
+      await waitFor(() => expect(calls.some((c) => c.method === "PATCH" && JSON.stringify(c.body) === JSON.stringify({ show_task_categories: true }))).toBe(true));
+      fireEvent.click(screen.getByRole("button", { name: "Show category chips" }));
+      expect(screen.queryByRole("button", { name: "🏢 Office 1" })).not.toBeInTheDocument();
+    });
+
+    it("shows every task again when the chips are turned off with a category picked", async () => {
+      withCategories();
+      page(true);
+      await screen.findByText("In office");
+      fireEvent.click(screen.getByRole("button", { name: "🏢 Office 1" }));
+      expect(screen.queryByText("In shop")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Show category chips" }));
+      expect(screen.getByText("In shop")).toBeInTheDocument();
+    });
   });
 
   it("falls back to All when the picked category is deleted", async () => {
@@ -161,7 +201,7 @@ describe("TasksPage", () => {
       "GET /api/tasks": () => ({ tasks: [task({ title: "In office", category_id: 1 }), task({ title: "Elsewhere", category_id: null })] }),
       "DELETE /api/tasks/categories/1": () => { cats = []; return { ok: true, status: 204, json: async () => ({}) }; },
     });
-    renderWithProviders(<TasksPage />, { route: "/tasks", session: { user: { id: 1, username: "a", name: "A", email: "a@x.ca", role: "admin", locale: "en" } } });
+    renderWithProviders(<TasksPage />, { route: "/tasks", preferences: { ...DEFAULT_PREFERENCES, show_task_categories: true }, session: { user: { id: 1, username: "a", name: "A", email: "a@x.ca", role: "admin", locale: "en" } } });
     await screen.findByText("In office");
     fireEvent.click(screen.getByRole("button", { name: "🏢 Office 1" }));
     expect(screen.queryByText("Elsewhere")).not.toBeInTheDocument();

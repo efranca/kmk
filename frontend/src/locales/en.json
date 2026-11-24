@@ -428,5 +428,6 @@
   "err_library_full": "The library is full (2 GB). Delete a document first.",
   "err_too_many_documents": "The library holds 500 documents. Delete one first.",
   "err_busy": "The server is receiving other files. Try again in a moment.",
-  "adminStatusLabel": "Which accounts"
+  "adminStatusLabel": "Which accounts",
+  "taskShowCategories": "Show category chips"
 }

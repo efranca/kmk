@@ -428,5 +428,6 @@
   "err_library_full": "A biblioteca está cheia (2 GB). Exclua um documento primeiro.",
   "err_too_many_documents": "A biblioteca tem 500 documentos. Exclua um primeiro.",
   "err_busy": "O servidor está recebendo outros arquivos. Tente de novo em instantes.",
-  "adminStatusLabel": "Quais contas"
+  "adminStatusLabel": "Quais contas",
+  "taskShowCategories": "Mostrar as etiquetas de categoria"
 }

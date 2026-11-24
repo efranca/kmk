@@ -9,6 +9,7 @@ export type Preferences = {
   sidebar_collapsed: boolean;
   tasks_view: "list" | "board";
   show_tasks_on_schedule: boolean;
+  show_task_categories: boolean;
   dashboard_widgets: { my_events: boolean; all_events: boolean; my_tasks: boolean };
 };
 
@@ -19,6 +20,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   sidebar_collapsed: false,
   tasks_view: "list",
   show_tasks_on_schedule: false,
+  show_task_categories: false,
   dashboard_widgets: { my_events: true, all_events: true, my_tasks: true },
 };
 

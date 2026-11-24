@@ -428,5 +428,6 @@
   "err_library_full": "La bibliothèque est pleine (2 Go). Supprimez d’abord un document.",
   "err_too_many_documents": "La bibliothèque contient 500 documents. Supprimez-en un d’abord.",
   "err_busy": "Le serveur reçoit d’autres fichiers. Réessayez dans un instant.",
-  "adminStatusLabel": "Quels comptes"
+  "adminStatusLabel": "Quels comptes",
+  "taskShowCategories": "Afficher les pastilles de catégorie"
 }
