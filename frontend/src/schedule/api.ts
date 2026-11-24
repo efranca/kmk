@@ -13,7 +13,7 @@ export class ApiFailure extends Error {
   }
 }
 
-async function request<T>(method: string, url: string, csrfToken?: string, body?: unknown): Promise<T> {
+export async function request<T>(method: string, url: string, csrfToken?: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
   if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
   if (body !== undefined) headers["Content-Type"] = "application/json";
