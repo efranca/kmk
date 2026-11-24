@@ -1,6 +1,7 @@
+import uuid
 from datetime import date, datetime, time
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Identity, Integer, LargeBinary, String, Text, Time, func
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Identity, Integer, LargeBinary, String, Text, Time, Uuid, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -49,6 +50,12 @@ class UserSession(Base):
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     mfa_verified: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    # Public handle for the devices page (the token hash is never exposed) and last access, written at most every 5 minutes.
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, unique=True, server_default=text("gen_random_uuid()"))
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_ip: Mapped[str | None] = mapped_column(Text, nullable=True)
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
 
 class AuditLog(Base):
