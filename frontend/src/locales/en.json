@@ -113,5 +113,7 @@
   "notFoundHome": "Back to home",
   "skipToContent": "Skip to content",
   "adminName": "Full name",
-  "errInvalidInput": "Check the fields: the name must be 1 to 100 characters, without special symbols."
+  "errInvalidInput": "Check the fields: the name must be 1 to 100 characters, without special symbols.",
+  "close": "Close",
+  "everyone": "Everyone"
 }

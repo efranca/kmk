@@ -113,5 +113,7 @@
   "notFoundHome": "Retour à l'accueil",
   "skipToContent": "Aller au contenu",
   "adminName": "Nom complet",
-  "errInvalidInput": "Vérifiez les champs : le nom doit compter de 1 à 100 caractères, sans symboles spéciaux."
+  "errInvalidInput": "Vérifiez les champs : le nom doit compter de 1 à 100 caractères, sans symboles spéciaux.",
+  "close": "Fermer",
+  "everyone": "Tout le monde"
 }
