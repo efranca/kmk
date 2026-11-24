@@ -208,6 +208,14 @@ No new settings or compose changes are expected.
   `completed_at`.
 - **Reopening a task** clears `completed_at` and `completed_by`.
 
+## Changes made while building (rulings)
+
+- Audit actions follow KMK's snake_case style: `task_created`, `task_updated`, `task_completed`, `task_reopened`, `task_deleted`, `tasks_cleared`, `task_category_created`, `task_category_updated`, `task_category_deleted`.
+- The person error is `unknown_person` (the schedule's code). Ids are identity columns like `events`.
+- The "Show tasks" switch is an icon button in the Schedule page header (next to search and "+"), not in the toolbar.
+- Category chips scroll sideways without arrow buttons; the category field is a native select with icons in its text.
+- The title icon suggestion is a small en/fr/pt keyword table over the icons KMK offers, not FamillAI's 500-line matcher.
+
 ## Left to the builder
 
 - Exact row counts in the Dashboard card.

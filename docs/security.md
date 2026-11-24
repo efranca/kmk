@@ -96,6 +96,17 @@ A deleted account keeps its username and email reserved (nothing new can take th
 `password_reset_requested`, `invite_accepted`, `password_reset_completed`, `password_changed`, `email_failed`, `mfa_enrolled`, `mfa_verified`, `mfa_failed`, `recovery_code_used`, `recovery_codes_regenerated`, `mfa_disabled`, `mfa_reset` (by the server command or by an admin), `user_disabled`, `user_enabled`, `user_deleted`, `user_restored`, `user_role_changed` (with the old and new role), `user_updated` (field names only, never values such as email addresses), `locale_changed` (a person changing their own language, with the old and new value).
 Details never contain passwords, hashes, tokens, links, TOTP secrets, codes or recovery codes (tests scan audit rows and logs for them). The login name someone typed is recorded only when it names a real account (people paste passwords into that box); otherwise only `{"known": false}`. There is no viewer yet; read it with `psql` as the superuser.
 
+## Tasks: who sees and who changes them
+
+- **Everyone who is signed in (fully verified) sees every task in full**, like events: title, description, people, due date. Anything written in a task is visible to every employee.
+- **Who may edit or delete a task** is decided in `backend/app/auth/policy.py` (`can_change_task`): admins and the super admin; the person who created it; a person it is for. A task for the whole team (no people) can be edited only by its creator or an admin, but **anyone may complete or reopen it** (`can_set_task_status`). Whoever may edit a task may change everything on it, including its people.
+- **Categories:** anyone can add one; only admins and the super admin rename, re-icon or delete one (`can_manage_task_categories`). Deleting a category keeps its tasks.
+- Only active accounts can be newly put on a task; people already on it stay when their account is later disabled (muted face).
+- "Clear completed" deletes only the completed tasks the caller may delete.
+- Completing a task takes a row lock, so two people ticking at once cannot overwrite who finished it or when.
+- Writes are audit-logged: `task_created`, `task_updated` (with the names of the fields that changed), `task_completed`, `task_reopened`, `task_deleted`, `tasks_cleared` (a count), `task_category_created`, `task_category_updated`, `task_category_deleted`; **never a title, description or category name**.
+- Reads need a verified session but no CSRF token; changes need both. Responses under `/api/tasks` are `Cache-Control: no-store`.
+
 ## Secrets
 
 Only in git-ignored `.env` files with mode 600: database passwords, `SESSION_SECRET`, `RESEND_API_KEY`, `MFA_ENCRYPTION_KEY`. The Docker image does not contain them (they are passed at run time). The compose file gives each container only the variables it needs: the database **owner's** URL reaches only the one-shot `migrate` container, never the long-running API. The development email backend (`log`) prints full messages, links included, to the API log, so it must not be used once real users exist.
@@ -126,6 +137,7 @@ Daily encrypted backups of the `kmk` database and a copy of `deploy/.env` (which
 - Losing `MFA_ENCRYPTION_KEY` makes stored TOTP secrets unusable (recovery: `reset-mfa` per user). There is no key rotation yet.
 - A compromised super admin session could do anything an admin can, and more; two-step verification is optional for now. A compromised admin session can disable or delete plain users (not admins).
 - Event titles and notes are readable by every employee, and a person an event is for can delete a series someone else created (the audit log shows who).
+- Task titles and descriptions are readable by every employee, and a person a task is for can delete it or change who it is for (the audit log shows who).
 - The password policy is 8 characters with a mix (from the plan); a breached-password check and a longer minimum are deferred.
 
 ## Not covered yet
