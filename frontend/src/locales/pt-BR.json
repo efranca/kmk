@@ -436,5 +436,9 @@
   "settingsMenuLabelsHint": "Só em celulares. Os ícones continuam aparecendo.",
   "navMore": "Mais",
   "navMoreTitle": "Outras páginas",
-  "taskMovedTo": "Movida para “{{status}}”."
+  "taskMovedTo": "Movida para “{{status}}”.",
+  "docView": "Exibição",
+  "docViewMenu": "Exibição e categorias",
+  "docViewList": "Lista",
+  "docViewTiles": "Blocos"
 }

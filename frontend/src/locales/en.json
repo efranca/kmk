@@ -436,5 +436,9 @@
   "settingsMenuLabelsHint": "Smartphones only. The icons stay either way.",
   "navMore": "More",
   "navMoreTitle": "More pages",
-  "taskMovedTo": "Moved to {{status}}."
+  "taskMovedTo": "Moved to {{status}}.",
+  "docView": "View",
+  "docViewMenu": "View and categories",
+  "docViewList": "List",
+  "docViewTiles": "Tiles"
 }

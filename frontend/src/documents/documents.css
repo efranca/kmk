@@ -13,3 +13,13 @@
 .doc-facts dd { margin: 0; }
 .dialog__spacer { flex: 1; }
 .doc-preview { display: block; max-width: 100%; max-height: 260px; margin: 0 auto 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; object-fit: contain; }
+.doc-tiles { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: 12px; }
+.doc-tile { display: flex; flex-direction: column; width: 100%; height: 100%; padding: 0; overflow: hidden; text-align: left; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+.doc-tile:hover { border-color: var(--accent); }
+.doc-tile__preview { display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; background: var(--surface-2); border-bottom: 1px solid var(--line); overflow: hidden; }
+.doc-tile__preview img { width: 100%; height: 100%; object-fit: cover; object-position: top center; background: #fff; }
+.doc-tile__icon { font-size: 2.6rem; }
+.doc-tile__body { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 12px 12px; min-width: 0; }
+.doc-tile__title { overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.doc-tile__meta { font-size: 0.8rem; }
+@media (max-width: 480px) { .doc-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

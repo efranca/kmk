@@ -147,6 +147,61 @@ describe("Documents page", () => {
     expect(within(dialog).getByRole("link", { name: en.docDownload })).toBeInTheDocument();
   });
 
+  describe("tiles", () => {
+    const tiles = { preferences: { ...DEFAULT_PREFERENCES, documents_view: "tiles" as const } };
+    const withPreviews = () => mockApi({
+      "GET /api/documents": () => res(200, { categories: data.categories, documents: [
+        doc(5, { title: "Lease", has_preview: true, category_id: 10 }),
+        doc(6, { title: "Handbook", content_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", file_name: "handbook.docx" }),
+        doc(7, { title: "Budget", content_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", file_name: "budget.xlsx" }),
+      ] }),
+      "PATCH /api/me/preferences": () => res(200, { preferences: {} }),
+    });
+
+    it("is the list until the person chooses Tiles, and the choice is saved to the account", async () => {
+      withPreviews();
+      renderWithProviders(<DocumentsPage />);
+      await screen.findByText("Lease");
+      expect(document.querySelector(".doc-tiles")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: en.docViewMenu }));
+      expect(screen.getByRole("menuitemradio", { name: en.docViewList })).toHaveAttribute("aria-checked", "true");
+      fireEvent.click(screen.getByRole("menuitemradio", { name: en.docViewTiles }));
+      expect(document.querySelector(".doc-tiles")).not.toBeNull();
+      await waitFor(() => expect(calls("PATCH /api/me/preferences")).toHaveLength(1));
+      expect(JSON.parse(String((calls("PATCH /api/me/preferences")[0][1] as RequestInit).body))).toEqual({ documents_view: "tiles" });
+    });
+
+    it("shows the preview when there is one and an icon for the kind when not", async () => {
+      withPreviews();
+      renderWithProviders(<DocumentsPage />, tiles);
+      await screen.findByText("Lease");
+      const lease = screen.getByRole("button", { name: /Lease/ });
+      expect(lease.querySelector("img")).toHaveAttribute("src", expect.stringContaining("/api/documents/5/preview"));
+      expect(screen.getByRole("button", { name: /Handbook/ }).querySelector("img")).toBeNull();
+      expect(screen.getByRole("button", { name: /Handbook/ })).toHaveTextContent("📃");
+      expect(screen.getByRole("button", { name: /Budget/ })).toHaveTextContent("📊");
+    });
+
+    it("opens the same dialog when a tile is clicked, and the filters and search still apply", async () => {
+      withPreviews();
+      renderWithProviders(<DocumentsPage />, { preferences: { ...tiles.preferences, show_document_categories: true } });
+      await screen.findByText("Lease");
+      fireEvent.click(screen.getByRole("button", { name: /Insurance 1/ }));
+      expect(screen.queryByText("Handbook")).toBeNull();
+      fireEvent.click(screen.getByText("Lease"));
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    });
+
+    it("keeps Manage categories in the same menu", async () => {
+      withPreviews();
+      renderWithProviders(<DocumentsPage />, tiles);
+      await screen.findByText("Lease");
+      fireEvent.click(screen.getByRole("button", { name: en.docViewMenu }));
+      fireEvent.click(screen.getByRole("menuitem", { name: en.taskCatManage }));
+      expect(await screen.findByRole("region", { name: en.docCategories })).toBeInTheDocument();
+    });
+  });
+
   it("gives a plain user no way to add, edit or delete", async () => {
     mockApi();
     renderWithProviders(<DocumentsPage />);

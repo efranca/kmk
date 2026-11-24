@@ -10,6 +10,7 @@ DEFAULTS = {
     "show_task_categories": False,
     "show_document_categories": False,
     "show_menu_labels": True,
+    "documents_view": "list",
     "dashboard_widgets": {"my_events": True, "all_events": True, "my_tasks": True},
 }
 
@@ -107,3 +108,14 @@ def test_menu_names_in_the_phone_bar_are_on_until_turned_off_and_follow_the_acco
     assert r.status_code == 200 and r.json()["preferences"]["show_menu_labels"] is False
     assert login(make_client(), "alice").json()["preferences"]["show_menu_labels"] is False
     assert c.patch("/api/me/preferences", json={"show_menu_labels": "no"}, headers=h).status_code == 422
+
+
+def test_documents_view_is_list_until_changed_and_follows_the_account(make_client, add_user):
+    c, h, first = session(make_client, add_user)
+    assert first["preferences"]["documents_view"] == "list"
+    r = c.patch("/api/me/preferences", json={"documents_view": "tiles"}, headers=h)
+    assert r.status_code == 200 and r.json()["preferences"]["documents_view"] == "tiles"
+    assert login(make_client(), "alice").json()["preferences"]["documents_view"] == "tiles"
+    for bad in ("grid", "", 1):
+        assert c.patch("/api/me/preferences", json={"documents_view": bad}, headers=h).status_code == 422
+    assert c.get("/api/auth/me").json()["preferences"]["documents_view"] == "tiles"  # a refused value changed nothing

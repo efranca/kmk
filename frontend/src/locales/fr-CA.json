@@ -436,5 +436,9 @@
   "settingsMenuLabelsHint": "Téléphones seulement. Les icônes restent affichées.",
   "navMore": "Plus",
   "navMoreTitle": "Autres pages",
-  "taskMovedTo": "Déplacée vers « {{status}} »."
+  "taskMovedTo": "Déplacée vers « {{status}} ».",
+  "docView": "Affichage",
+  "docViewMenu": "Affichage et catégories",
+  "docViewList": "Liste",
+  "docViewTiles": "Tuiles"
 }

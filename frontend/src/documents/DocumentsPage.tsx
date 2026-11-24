@@ -9,9 +9,12 @@ import { PageHeader } from "../ui/PageHeader";
 import { CategoryChips, FALLBACK_CATEGORY_ICON } from "../tasks/CategoryChips";
 import { matchesSearch } from "../tasks/search";
 import type { DocumentItem } from "./api";
+import { ViewMenuButton } from "../tasks/ViewMenuButton";
 import { DocCategoryManager } from "./DocCategoryManager";
 import { DocumentDialog } from "./DocumentDialog";
+import { DocumentTile } from "./DocumentTile";
 import { useDocuments } from "./hooks";
+import { useDocumentsView, type DocumentsView } from "./useDocumentsView";
 import { formatSize } from "./prepareDocument";
 
 const LEVEL_KEYS = { everyone: "docLevelEveryone", admins: "docLevelAdmins", superadmin: "docLevelSuperadmin" } as const;
@@ -22,6 +25,7 @@ export function DocumentsPage() {
   const { user } = useSession();
   const canManage = user.role !== "user";
   const { prefs, update } = usePreferences();
+  const [view, setView] = useDocumentsView();
   const showChips = prefs.show_document_categories; // off until the person turns them on; it follows their account
   const { data, isPending, isError, error, refetch } = useDocuments();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -51,7 +55,9 @@ export function DocumentsPage() {
           <>
             <IconButton icon="search" label={t("docSearchLabel")} aria-pressed={searchOpen} onClick={() => { setManaging(false); if (searchOpen) setText(""); setSearchOpen(!searchOpen); }} />
             <IconButton icon="tag" label={t("docShowCategories")} aria-pressed={showChips} onClick={() => update({ show_document_categories: !showChips })} />
-            <IconButton icon="settings" label={t("docCategories")} aria-pressed={managing} onClick={() => { setSearchOpen(false); setText(""); setManaging(!managing); }} />
+            <ViewMenuButton<DocumentsView> view={view} onView={setView} managing={managing} menuLabel={t("docViewMenu")} heading={t("docView")}
+              views={[{ id: "list", label: t("docViewList") }, { id: "tiles", label: t("docViewTiles") }]}
+              onManage={() => { setSearchOpen(false); setText(""); setManaging(!managing); }} />
             {canManage && <IconButton icon="plus" variant="primary" label={t("docNew")} onClick={() => setEditing("new")} />}
           </>
         }
@@ -78,6 +84,11 @@ export function DocumentsPage() {
               </div>
             )
             : visible.length === 0 ? <EmptyState>{searching ? t("docSearchNoResults", { q: text.trim() }) : t("docEmptyCategory")}</EmptyState>
+            : view === "tiles" ? (
+              <ul className="doc-tiles">
+                {visible.map((d) => <DocumentTile key={d.id} document={d} category={d.category_id ? categoryById.get(d.category_id) : undefined} onOpen={() => setEditing(d)} />)}
+              </ul>
+            )
             : (
               <ul className="docs">
                 {visible.map((d) => {
