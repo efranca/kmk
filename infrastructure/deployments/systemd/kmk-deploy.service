@@ -1,0 +1,7 @@
+[Unit]
+Description=KMK auto-deploy (test, then deploy origin/main if new)
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.config/kmk-deploy.env
+ExecStart=%h/projects/kmk/infrastructure/deployments/auto-deploy.sh %h/projects/kmk

@@ -6,3 +6,5 @@ __pycache__/
 .pytest_cache/
 .superpowers/
 *.pyc
+infrastructure/deployments/logs/
+infrastructure/deployments/worktree/
