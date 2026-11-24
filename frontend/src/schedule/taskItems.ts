@@ -1,27 +1,10 @@
-import { useCallback, useState } from "react";
-
+import { usePreferences } from "../preferences";
 import type { Task } from "../tasks/types";
 
-const STORAGE_KEY = "kmk.schedule.showTasks";
-
-/** Whether the calendar shows tasks that are due: off at first, remembered in this browser (and still working for this visit when storage is blocked). */
+/** Whether the calendar shows tasks that are due: off at first; part of the person's preferences, so it follows the account. */
 export function useShowTasks(): [boolean, (on: boolean) => void] {
-  const [on, setOn] = useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
-  const set = useCallback((next: boolean) => {
-    setOn(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
-    } catch {
-      /* the choice only lasts for this visit */
-    }
-  }, []);
-  return [on, set];
+  const { prefs, update } = usePreferences();
+  return [prefs.show_tasks_on_schedule, (on) => update({ show_tasks_on_schedule: on })];
 }
 
 /**

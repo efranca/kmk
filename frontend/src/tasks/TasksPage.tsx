@@ -15,18 +15,22 @@ import { Segmented } from "../ui/Segmented";
 import { useToast } from "../ui/toastContext";
 import type { Person } from "../ui/Avatar";
 import { dueGroup, type DueGroup } from "./dueGroup";
-import { useCategories, useClearCompleted, useTasks, useToggleTask } from "./hooks";
+import { useCategories, useClearCompleted, useSetTaskStatus, useTasks, useToggleTask } from "./hooks";
 import { canChangeTask, canSetTaskStatus } from "./permissions";
 import { matchesSearch } from "./search";
 import { CategoryChips } from "./CategoryChips";
 import { CategoryManager } from "./CategoryManager";
+import { TaskBoard } from "./TaskBoard";
 import { TaskDialog } from "./TaskDialog";
 import { TaskRow } from "./TaskRow";
-import type { StatusFilter, Task } from "./types";
+import { useTasksView } from "./useTasksView";
+import { ViewMenuButton } from "./ViewMenuButton";
+import type { Task, TaskStatus } from "./types";
 import { useTaskPeople } from "./useTaskPeople";
 
-const STATUSES: StatusFilter[] = ["pending", "completed", "all"];
-const STATUS_KEYS = { pending: "taskStatusPending", completed: "taskStatusCompleted", all: "taskStatusAll" } as const;
+const STATUSES: TaskStatus[] = ["pending", "in_progress", "completed"];
+const STATUS_KEYS = { pending: "taskStatusPending", in_progress: "taskStatusInProgress", completed: "taskStatusCompleted" } as const;
+const EMPTY_KEYS = { pending: "taskEmptyPending", in_progress: "taskEmptyInProgress", completed: "taskEmptyCompleted" } as const;
 const GROUP_KEYS = { overdue: "taskGroupOverdue", today: "taskGroupToday", week: "taskGroupWeek", later: "taskGroupLater", none: "taskGroupNone" } as const;
 
 /** The team's to-do list: whose tasks, the status, then the tasks grouped by when they are due. */
@@ -39,20 +43,22 @@ export function TasksPage() {
   const everyone = usePeople();
   const categories = useCategories();
   const [picked, setPicked] = useTaskPeople();
-  const [status, setStatus] = useState<StatusFilter>("pending");
+  const [status, setStatus] = useState<TaskStatus>("pending");
   const [searchOpen, setSearchOpen] = useState(false);
   const [text, setText] = useState("");
   const [clearing, setClearing] = useState(false);
   const [managing, setManaging] = useState(false);
   const [pick, setPick] = useState<number | null>(null);
   const [editing, setEditing] = useState<Task | "new" | null>(null);
+  const [view, setView] = useTasksView();
   const toggle = useToggleTask();
+  const move = useSetTaskStatus();
   const clear = useClearCompleted();
 
   const searching = text.trim().length > 0;
   const all = useTasks("all");
-  const list = useTasks(status);
-  const shown = searching ? all : list;
+  const list = useTasks(status, undefined, view === "list");
+  const shown = searching || view === "board" ? all : list;
 
   const members: Person[] = everyone.data ?? [];
   const byId = new Map(members.map((p) => [p.id, p]));
@@ -82,7 +88,7 @@ export function TasksPage() {
   const clearable = (all.data ?? []).filter((x) => x.status === "completed" && canChangeTask(user, x)).length;
 
   const groups: { key: DueGroup | "none"; tasks: Task[] }[] =
-    status === "pending" && !searching
+    status !== "completed" && !searching
       ? (["overdue", "today", "week", "later", "none"] as const)
           .map((key) => ({ key, tasks: visible.filter((x) => (x.due_date ? dueGroup(x.due_date, today) : "none") === key) }))
           .filter((g) => g.tasks.length > 0)
@@ -100,7 +106,7 @@ export function TasksPage() {
         actions={
           <>
             <IconButton icon="search" label={t("taskSearchLabel")} aria-pressed={searchOpen} onClick={() => { setManaging(false); if (searchOpen) setText(""); setSearchOpen(!searchOpen); }} />
-            <IconButton icon="settings" label={t("taskCatManage")} aria-pressed={managing} onClick={() => { setSearchOpen(false); setText(""); setManaging(!managing); }} />
+            <ViewMenuButton view={view} onView={setView} managing={managing} onManage={() => { setSearchOpen(false); setText(""); setManaging(!managing); }} />
             <IconButton icon="plus" variant="primary" label={t("taskNew")} onClick={() => setEditing("new")} />
           </>
         }
@@ -113,7 +119,7 @@ export function TasksPage() {
       ) : (
         <>
           <div className="tasks-toolbar">
-            {!searching && <Segmented label={t("taskStatusLabel")} value={status} onChange={setStatus} options={STATUSES.map((s) => ({ value: s, label: t(STATUS_KEYS[s]) }))} />}
+            {!searching && view === "list" && <Segmented label={t("taskStatusLabel")} value={status} onChange={setStatus} options={STATUSES.map((s) => ({ value: s, label: t(STATUS_KEYS[s]) }))} />}
             {searchOpen && (
               <label className="tasks-toolbar__search">
                 <span className="visually-hidden">{t("taskSearchLabel")}</span>
@@ -141,18 +147,22 @@ export function TasksPage() {
           {shown.isPending ? <Loading />
             : shown.isError ? <ErrorNotice error={shown.error} onRetry={() => void shown.refetch()} />
             : visible.length === 0 && searching ? <EmptyState>{t("taskSearchNoResults", { q: text.trim() })}</EmptyState>
-            : visible.length === 0 ? <EmptyState>{t(status === "completed" ? "taskEmptyCompleted" : "taskEmptyPending")}</EmptyState>
+            : visible.length === 0 && view === "list" ? <EmptyState>{t(EMPTY_KEYS[status])}</EmptyState>
             : (
+              view === "board" ? (
+                <TaskBoard tasks={visible} people={byId} categoryById={categoryById} today={today}
+                  canMove={(x) => canSetTaskStatus(user, x)} onMove={(x, to) => move.mutate({ task: x, status: to })} onOpen={setEditing} />
+              ) : (
               <div className="taskgroups">
                 {groups.map((g) => (
                   <section key={g.key} className="taskgroup">
-                    {status === "pending" && !searching && <h2 className="taskgroup__label">{t(GROUP_KEYS[g.key])}</h2>}
+                    {status !== "completed" && !searching && <h2 className="taskgroup__label">{t(GROUP_KEYS[g.key])}</h2>}
                     <ul className="tasks">{g.tasks.map(row)}</ul>
                   </section>
                 ))}
               </div>
-            )}
-          {clearable > 0 && status !== "pending" && !searching && (
+              ))}
+          {clearable > 0 && (view === "board" || status === "completed") && !searching && (
             <Button variant="ghost" icon="trash" className="tasks-clear" onClick={() => setClearing(true)}>{t("taskClearCompleted")}</Button>
           )}
         </>

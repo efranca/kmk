@@ -8,11 +8,12 @@ import { Avatar } from "../ui/Avatar";
 import { Icon } from "../ui/Icon";
 import { memberColor } from "../ui/memberColor";
 
-/** Your face at the top right: opens Account, the language and Sign out. */
+/** Your face at the bottom of the sidebar: opens Account, Settings, the language and Sign out. */
 export default function AccountMenu({
   user,
   csrfToken,
   active,
+  settingsActive = false,
   onNavigate,
   onLanguageChanged,
   onSignOut,
@@ -20,6 +21,7 @@ export default function AccountMenu({
   user: User;
   csrfToken: string;
   active: boolean;
+  settingsActive?: boolean;
   onNavigate: (path: string) => void;
   onLanguageChanged: (user: User) => void;
   onSignOut: () => void;
@@ -57,7 +59,8 @@ export default function AccountMenu({
         aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((o) => !o)}
       >
-        <Avatar person={{ id: user.id, name, color: memberColor(user.id) }} size="md" />
+        <Avatar person={{ id: user.id, name, color: memberColor(user.id), avatar_url: user.avatar_url }} size="md" />
+        <span className="accountmenu__name">{name}</span>
         <Icon name="chev-down" size={16} />
       </button>
       {open && (
@@ -75,6 +78,19 @@ export default function AccountMenu({
           >
             <Icon name="account" size={18} />
             {t("navAccount")}
+          </a>
+          <a
+            href="/settings"
+            aria-current={settingsActive ? "page" : undefined}
+            className="accountmenu__item"
+            onClick={(e) => {
+              e.preventDefault();
+              setOpen(false);
+              onNavigate("/settings");
+            }}
+          >
+            <Icon name="settings" size={18} />
+            {t("navSettings")}
           </a>
           <div className="accountmenu__item accountmenu__item--static">
             <LanguageSwitcher csrfToken={csrfToken} onChanged={onLanguageChanged} />

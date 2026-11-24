@@ -104,7 +104,7 @@ describe("TasksPage", () => {
     ]);
     page();
     await screen.findByText("Still open");
-    fireEvent.click(screen.getByRole("radio", { name: "All" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Done" }));
     fireEvent.click(await screen.findByRole("button", { name: "Clear completed" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("1 completed task will be deleted.")).toBeInTheDocument();
@@ -165,12 +165,34 @@ describe("TasksPage", () => {
     await screen.findByText("In office");
     fireEvent.click(screen.getByRole("button", { name: "🏢 Office 1" }));
     expect(screen.queryByText("Elsewhere")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Manage categories" }));
+    fireEvent.click(screen.getByRole("button", { name: "View and categories" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Manage categories" }));
     fireEvent.click(await screen.findByRole("button", { name: "Delete Office" }));
     fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(calls.some((c) => c.method === "DELETE")).toBe(true));
     fireEvent.click(await screen.findByRole("button", { name: "Back to tasks" }));
     expect(await screen.findByText("Elsewhere")).toBeInTheDocument();
     expect(screen.getByText("In office")).toBeInTheDocument();
+  });
+
+  it("has To do, In progress and Done tabs and no All", async () => {
+    api([task({ title: "Open one" })]);
+    page();
+    await screen.findByText("Open one");
+    expect(screen.getAllByRole("radio").map((r) => r.textContent)).toEqual(["To do", "In progress", "Done"]);
+  });
+
+  it("the view menu switches to the board and a card moves to in progress on the server", async () => {
+    localStorage.removeItem("kmk.tasks.view");
+    const { calls } = api([task({ title: "Mop the floor" })], { "POST /api/tasks/1/start": { task: {} }, "PATCH /api/me/preferences": { preferences: {} } });
+    n = 0;
+    page();
+    await screen.findByText("Mop the floor");
+    fireEvent.click(screen.getByRole("button", { name: "View and categories" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Board" }));
+    expect(screen.queryAllByRole("radio", { name: "Done" })).toHaveLength(0); // tabs are gone
+    fireEvent.change(await screen.findByRole("combobox", { name: "Move Mop the floor to" }), { target: { value: "in_progress" } });
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path.endsWith("/start"))).toBe(true));
+    localStorage.removeItem("kmk.tasks.view");
   });
 });

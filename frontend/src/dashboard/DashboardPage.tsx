@@ -9,6 +9,7 @@ import { COMPANY_TIME_ZONE, addDays, todayIn } from "../schedule/scheduleDates";
 import type { Occurrence } from "../schedule/types";
 import { ErrorNotice, Loading } from "../ui/Feedback";
 import { AllEventsCard } from "./AllEventsCard";
+import { usePreferences } from "../preferences";
 import { MyEventsCard } from "./MyEventsCard";
 import { TasksCard } from "./TasksCard";
 
@@ -19,6 +20,8 @@ const DAYS_AHEAD = 7;
 export function DashboardPage({ user, mfaEnabled, recoveryCodesLeft }: { user: User; mfaEnabled: boolean; recoveryCodesLeft: number | null }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { prefs } = usePreferences();
+  const widgets = prefs.dashboard_widgets;
   const today = todayIn(COMPANY_TIME_ZONE);
   const range = useOccurrences(today, addDays(today, DAYS_AHEAD));
   const everyone = usePeople();
@@ -37,10 +40,16 @@ export function DashboardPage({ user, mfaEnabled, recoveryCodesLeft }: { user: U
       {recoveryCodesLeft !== null && <p className="notice" role="status">{t("codesRemaining", { count: recoveryCodesLeft })}</p>}
       {!mfaEnabled && <MfaBanner role={user.role} />}
       <div className="dash__grid">
-        <MyEventsCard items={items} userId={user.id} people={byId} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />
-        <AllEventsCard items={items} everyone={people} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />
-        <TasksCard userId={user.id} people={byId} today={today} onOpenTasks={openTasks} />
+        {widgets.my_events && <MyEventsCard items={items} userId={user.id} people={byId} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />}
+        {widgets.all_events && <AllEventsCard items={items} everyone={people} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />}
+        {widgets.my_tasks && <TasksCard userId={user.id} people={byId} today={today} onOpenTasks={openTasks} />}
       </div>
+      {!widgets.my_events && !widgets.all_events && !widgets.my_tasks && (
+        <p className="status">
+          {t("dashAllHidden")}{" "}
+          <a href="/settings" onClick={(e) => { e.preventDefault(); navigate("/settings"); }}>{t("dashAllHiddenLink")}</a>
+        </p>
+      )}
     </div>
   );
 }

@@ -194,7 +194,7 @@ def update_task(db: Session, actor: User, task_id: int, data: TaskIn, ip: str) -
 
 
 def set_status(db: Session, actor: User, task_id: int, status: str, ip: str) -> Task:
-    """Complete or reopen. Idempotent: asking for the status a task already has changes nothing (the row is locked, so
+    """Complete, start or reopen. Idempotent: asking for the status a task already has changes nothing (the row is locked, so
     two people ticking at once cannot overwrite who finished it or when)."""
     task = get_task(db, task_id, lock=True)
     policy.check_task_status(actor, task.created_by, _people_of(db, task.id))
@@ -204,7 +204,8 @@ def set_status(db: Session, actor: User, task_id: int, status: str, ip: str) -> 
     task.completed_at = func.now() if status == "completed" else None
     task.completed_by = actor.id if status == "completed" else None
     task.updated_by, task.updated_at = actor.id, func.now()
-    audit.log(db, "task_completed" if status == "completed" else "task_reopened", actor_user_id=actor.id, ip=ip, details={"task_id": task.id})
+    action = {"completed": "task_completed", "in_progress": "task_started"}.get(status, "task_reopened")
+    audit.log(db, action, actor_user_id=actor.id, ip=ip, details={"task_id": task.id})
     db.flush()
     db.refresh(task)
     return task

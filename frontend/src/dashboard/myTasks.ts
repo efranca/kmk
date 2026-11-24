@@ -9,7 +9,7 @@ export type TaskSections = { overdue: Task[]; today: Task[]; doneToday: Task[]; 
  */
 export function myTaskSections(tasks: Task[], userId: number, today: string, tomorrow: string): TaskSections {
   const mine = tasks.filter((x) => x.show_on_dashboard && (x.people.length === 0 || x.people.includes(userId)));
-  const pending = mine.filter((x) => x.status === "pending");
+  const pending = mine.filter((x) => x.status !== "completed");
   const finishedDay = (x: Task) => (x.completed_at ? todayIn(COMPANY_TIME_ZONE, new Date(x.completed_at)) : null);
   return {
     overdue: pending.filter((x) => x.due_date !== null && x.due_date < today),

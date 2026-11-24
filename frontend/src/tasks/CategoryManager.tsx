@@ -7,7 +7,7 @@ import { Dialog } from "../ui/Dialog";
 import { ErrorNotice, Loading } from "../ui/Feedback";
 import { TextField } from "../ui/Field";
 import { IconPicker } from "../ui/IconPicker";
-import { FALLBACK_CATEGORY_ICON } from "./CategoryChips";
+import { DEFAULT_CATEGORY_ICON, FALLBACK_CATEGORY_ICON } from "./CategoryChips";
 import { useCategories, useDeleteCategory, useSaveCategory } from "./hooks";
 import { canManageCategories } from "./permissions";
 import { suggestIcon } from "./suggestIcon";
@@ -22,7 +22,7 @@ export function CategoryManager({ onClose }: { onClose: () => void }) {
   const remove = useDeleteCategory();
   const canManage = canManageCategories(user);
   const [name, setName] = useState("");
-  const [icon, setIcon] = useState("");
+  const [icon, setIcon] = useState(DEFAULT_CATEGORY_ICON);
   const [iconPicked, setIconPicked] = useState(false);
   const [editing, setEditing] = useState<{ id: number; name: string; icon: string } | null>(null);
   const [deleting, setDeleting] = useState<Category | null>(null);
@@ -31,16 +31,16 @@ export function CategoryManager({ onClose }: { onClose: () => void }) {
   async function add(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    await save.mutateAsync({ input: { name: name.trim(), icon: icon || null } });
+    await save.mutateAsync({ input: { name: name.trim(), icon: icon || DEFAULT_CATEGORY_ICON } });
     setName("");
-    setIcon("");
+    setIcon(DEFAULT_CATEGORY_ICON);
     setIconPicked(false);
   }
 
   async function rename(e: FormEvent) {
     e.preventDefault();
     if (!editing || !editing.name.trim()) return;
-    await save.mutateAsync({ id: editing.id, input: { name: editing.name.trim(), icon: editing.icon || null } });
+    await save.mutateAsync({ id: editing.id, input: { name: editing.name.trim(), icon: editing.icon || DEFAULT_CATEGORY_ICON } });
     setEditing(null);
   }
 
@@ -55,7 +55,7 @@ export function CategoryManager({ onClose }: { onClose: () => void }) {
       <form className="catmanager__add" onSubmit={(e) => swallow(add(e))} noValidate>
         <IconPicker value={icon} label={t("schFormIcon")} onChange={(next) => { setIconPicked(true); setIcon(next); }} />
         <TextField label={t("taskCatName")} value={name} maxLength={50}
-          onChange={(e) => { setName(e.target.value); if (!iconPicked) setIcon(suggestIcon(e.target.value)); }} />
+          onChange={(e) => { setName(e.target.value); if (!iconPicked) setIcon(suggestIcon(e.target.value) || DEFAULT_CATEGORY_ICON); }} />
         <Button type="submit" variant="primary" icon="plus" busy={save.isPending && editing === null}>{t("taskCatAdd")}</Button>
       </form>
       {failure && <ErrorNotice error={failure} />}

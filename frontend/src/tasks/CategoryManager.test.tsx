@@ -28,6 +28,17 @@ describe("CategoryManager", () => {
     expect(calls.find((c) => c.method === "POST")?.body).toEqual({ name: "Windows", icon: "🪟" });
   });
 
+  it("a new category with no matching icon gets the default task icon", async () => {
+    const { calls } = api({ "POST /api/tasks/categories": { category: { id: 9, name: "Zzqx", icon: "✅" } } });
+    renderWithProviders(<CategoryManager onClose={() => {}} />);
+    expect(await screen.findByRole("button", { name: "Icon" })).toHaveTextContent("✅"); // shown before typing anything
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Zzqx" } });
+    expect(screen.getByRole("button", { name: "Icon" })).toHaveTextContent("✅");
+    fireEvent.click(screen.getByRole("button", { name: "Add category" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")?.body).toEqual({ name: "Zzqx", icon: "✅" });
+  });
+
   it("a plain user cannot rename or delete", async () => {
     api();
     renderWithProviders(<CategoryManager onClose={() => {}} />);

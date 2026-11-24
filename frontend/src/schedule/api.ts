@@ -72,3 +72,17 @@ export async function dueReminders(): Promise<DueReminder[]> {
 export async function dismissReminder(eventId: number, occurrenceDate: string, csrfToken: string): Promise<void> {
   await request("POST", `${BASE}/reminders/dismiss`, csrfToken, { event_id: eventId, occurrence_date: occurrenceDate });
 }
+
+/** A raw upload (a profile picture): the body is the bytes, the type says what they are. */
+export async function upload(method: string, url: string, csrfToken: string, body: Blob): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(url, { method, credentials: "same-origin", headers: { "X-CSRF-Token": csrfToken, "Content-Type": body.type }, body });
+  } catch {
+    throw new ApiFailure(0, "network");
+  }
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new ApiFailure(response.status, typeof data?.error === "string" ? data.error : "unknown");
+  }
+}

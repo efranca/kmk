@@ -6,6 +6,7 @@ import { vi } from "vitest";
 
 import type { User } from "./api";
 import i18n from "./i18n";
+import { DEFAULT_PREFERENCES, PreferencesProvider, type Preferences } from "./preferences";
 import { SessionProvider, type SessionValue } from "./session";
 import type { Occurrence } from "./schedule/types";
 import type { Person } from "./ui/Avatar";
@@ -14,15 +15,17 @@ import { ToastProvider } from "./ui/Toast";
 export const testUser: User = { id: 1, username: "alice", name: "Alice Roy", email: "alice@example.com", role: "user", locale: "en" };
 
 /** The providers the schedule's components need: a query client (retries off), a session, toasts and a memory router. */
-export function Providers({ children, route = "/", session }: { children: ReactNode; route?: string; session?: Partial<SessionValue> }) {
+export function Providers({ children, route = "/", session, preferences }: { children: ReactNode; route?: string; session?: Partial<SessionValue>; preferences?: Preferences }) {
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } }));
   const value: SessionValue = { user: testUser, csrfToken: "tok-1", ...session };
   return (
     <QueryClientProvider client={client}>
       <SessionProvider value={value}>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
-        </ToastProvider>
+        <PreferencesProvider initial={preferences ?? DEFAULT_PREFERENCES} csrfToken={value.csrfToken}>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+          </ToastProvider>
+        </PreferencesProvider>
       </SessionProvider>
     </QueryClientProvider>
   );
@@ -31,9 +34,9 @@ export function Providers({ children, route = "/", session }: { children: ReactN
 /** Renders under those providers. */
 export function renderWithProviders(
   ui: ReactElement,
-  { route = "/", session }: { route?: string; session?: Partial<SessionValue> } = {},
+  { route = "/", session, preferences }: { route?: string; session?: Partial<SessionValue>; preferences?: Preferences } = {},
 ): RenderResult {
-  return render(<Providers route={route} session={session}>{ui}</Providers>);
+  return render(<Providers route={route} session={session} preferences={preferences}>{ui}</Providers>);
 }
 
 /** Opens the signed-in account menu (the avatar button) and returns the button; language independent. */
@@ -85,4 +88,12 @@ export function mockApi(handlers: Record<string, Handler | Record<string, unknow
   });
   vi.stubGlobal("fetch", fn);
   return { calls, fetch: fn };
+}
+
+/** A `wrapper` for renderHook: hooks that read the person's preferences, starting from `initial` (the defaults). Updates go to a stubbed server that accepts them. */
+export function preferencesWrapper(initial: Preferences = DEFAULT_PREFERENCES) {
+  vi.stubGlobal("fetch", vi.fn(async () => reply(200, {})));
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return <PreferencesProvider initial={initial} csrfToken="tok-1">{children}</PreferencesProvider>;
+  };
 }

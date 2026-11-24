@@ -1,3 +1,5 @@
+import { DEFAULT_PREFERENCES, type Preferences } from "./preferences";
+
 export type User = {
   id: number;
   username: string;
@@ -5,11 +7,12 @@ export type User = {
   email: string;
   role: "user" | "admin" | "superadmin";
   locale: "fr-CA" | "en" | "pt-BR";
+  avatar_url?: string | null;
 };
 
 export type MfaState = "ok" | "verify" | "setup";
 
-export type Session = { user: User; csrfToken: string; mfa: MfaState; mfaEnabled: boolean };
+export type Session = { user: User; csrfToken: string; mfa: MfaState; mfaEnabled: boolean; preferences: Preferences };
 
 export type LoginResult =
   | ({ ok: true } & Session)
@@ -22,7 +25,7 @@ export async function me(): Promise<Session | null> {
     const r = await fetch("/api/auth/me", base);
     if (!r.ok) return null;
     const body = await r.json();
-    return { user: body.user, csrfToken: body.csrf_token, mfa: body.mfa ?? "ok", mfaEnabled: body.mfa_enabled ?? false };
+    return { user: body.user, csrfToken: body.csrf_token, mfa: body.mfa ?? "ok", mfaEnabled: body.mfa_enabled ?? false, preferences: body.preferences ?? DEFAULT_PREFERENCES };
   } catch {
     return null;
   }
@@ -39,7 +42,7 @@ export async function login(identifier: string, password: string): Promise<Login
     if (r.status === 429) return { ok: false, reason: "rate_limited" };
     if (!r.ok) return { ok: false, reason: "invalid" };
     const body = await r.json();
-    return { ok: true, user: body.user, csrfToken: body.csrf_token, mfa: body.mfa ?? "ok", mfaEnabled: body.mfa_enabled ?? false };
+    return { ok: true, user: body.user, csrfToken: body.csrf_token, mfa: body.mfa ?? "ok", mfaEnabled: body.mfa_enabled ?? false, preferences: body.preferences ?? DEFAULT_PREFERENCES };
   } catch {
     return { ok: false, reason: "network" };
   }
@@ -214,6 +217,7 @@ export type AdminUser = {
   mfaEnabled: boolean;
   createdAt: string;
   lastSignIn: string | null;
+  avatarUrl: string | null;
   actions: string[];
 };
 
@@ -236,6 +240,7 @@ export async function adminList(): Promise<AdminUser[] | null> {
       mfaEnabled: u.mfa_enabled,
       createdAt: u.created_at,
       lastSignIn: u.last_sign_in ?? null,
+      avatarUrl: u.avatar_url ?? null,
       actions: u.actions ?? [],
     }));
   } catch {
@@ -271,6 +276,7 @@ export const adminInvite = (csrf: string, v: { name: string; username: string; e
 export const adminAct = (csrf: string, id: number, action: "invite" | "reset" | "disable" | "enable" | "delete" | "restore" | "reset-mfa") =>
   adminCall(csrf, "POST", `users/${id}/${action}`);
 export const adminSetRole = (csrf: string, id: number, role: "user" | "admin") => adminCall(csrf, "POST", `users/${id}/role`, { role });
+export const adminRemoveAvatar = (csrf: string, id: number) => adminCall(csrf, "DELETE", `users/${id}/avatar`);
 export const adminEdit = (csrf: string, id: number, v: { locale?: string; email?: string; name?: string }) => adminCall(csrf, "PATCH", `users/${id}`, v);
 
 export async function setLocale(csrfToken: string, locale: string): Promise<{ ok: true; user: User } | { ok: false }> {

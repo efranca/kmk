@@ -19,6 +19,15 @@ _GREETING = {
     "pt-BR": ("Olá {name},", "Olá,"),
 }
 
+# The text of the link in the HTML part (the long address with its token stays behind it): per locale, invite then reset.
+_LINK_TEXT = {
+    "fr-CA": ("Choisir mon mot de passe", "Choisir un nouveau mot de passe"),
+    "en": ("Choose my password", "Choose a new password"),
+    "pt-BR": ("Escolher minha senha", "Escolher uma nova senha"),
+}
+
+SITE = "app.kmk-entretien.ca"
+
 # Per locale and kind: subject, greeting+intro (before the link), expiry words, ignore line.
 _T = {
     "fr-CA": {
@@ -71,15 +80,19 @@ def render(kind: str, locale: str, link: str, to: str, name: str | None = None) 
     with_name, without = _GREETING[locale]
     # The name goes only into the body (never the subject or a header); the HTML part escapes it.
     greeting = with_name.format(name=name) if name else without
-    text = f"{greeting}\n\n{intro}\n\n{link}\n\n{expiry}\n{ignore}\n\nKMK Entretien Ménager, Québec"
+    # Plain text cannot hide an address behind words, so it keeps the full link. The HTML part shows words instead.
+    text = f"{greeting}\n\n{intro}\n\n{link}\n\n{expiry}\n{ignore}\n\nKMK Entretien"
+    site = f"https://{SITE}"
+    intro_html = escape(intro).replace(SITE, f'<a href="{site}" style="color:#007A78">{SITE}</a>', 1)
+    label = _LINK_TEXT[locale][0 if kind == "invite" else 1]
     html = (
         '<div style="font-family:Inter,Arial,sans-serif;color:#16242C;max-width:520px">'
         '<h2 style="color:#007A78;margin:0 0 16px">KMK Entretien Ménager</h2>'
-        f"<p>{escape(greeting)}</p><p>{escape(intro)}</p>"
-        f'<p><a href="{escape(link)}" style="color:#007A78;font-weight:600">{escape(link)}</a></p>'
+        f"<p>{escape(greeting)}</p><p>{intro_html}</p>"
+        f'<p><a href="{escape(link)}" style="color:#007A78;font-weight:600">{escape(label)}</a></p>'
         f"<p>{escape(expiry)}</p>"
         f'<p style="color:#49575F;font-size:14px">{escape(ignore)}</p>'
-        '<p style="color:#49575F;font-size:12px;margin-top:24px">KMK Entretien Ménager, Québec</p>'
+        '<p style="color:#49575F;font-size:12px;margin-top:24px">KMK Entretien</p>'
         "</div>"
     )
     return EmailMessage(to=to, subject=subject, text=text, html=html)

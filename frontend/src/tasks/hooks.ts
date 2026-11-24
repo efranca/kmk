@@ -4,9 +4,9 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { useSession } from "../session";
 import {
   clearCompleted, completeTask, createCategory, createTask, deleteCategory, deleteTask, listCategories, listTasks,
-  reopenTask, updateCategory, updateTask,
+  reopenTask, startTask, updateCategory, updateTask,
 } from "./api";
-import type { CategoryInput, StatusFilter, Task, TaskInput } from "./types";
+import type { CategoryInput, StatusFilter, Task, TaskInput, TaskStatus } from "./types";
 
 export const taskKeys = {
   all: ["tasks"] as const,
@@ -47,26 +47,33 @@ export function useClearCompleted() {
   return useMutation({ mutationFn: () => clearCompleted(csrfToken), onSuccess: () => refresh(client) });
 }
 
-/** Ticks or unticks a task. The row flips at once in every cached list and flips back if the server refuses. */
-export function useToggleTask() {
+const SEND = { completed: completeTask, in_progress: startTask, pending: reopenTask } as const;
+
+/** Moves a task to a status. It changes at once in every cached list and goes back if the server refuses. */
+export function useSetTaskStatus() {
   const { csrfToken } = useSession();
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (task: Task) => (task.status === "completed" ? reopenTask(task.id, csrfToken) : completeTask(task.id, csrfToken)),
-    onMutate: async (task: Task) => {
+    mutationFn: ({ task, status }: { task: Task; status: TaskStatus }) => SEND[status](task.id, csrfToken),
+    onMutate: async ({ task, status }) => {
       await client.cancelQueries({ queryKey: taskKeys.lists });
       const before = client.getQueriesData<Task[]>({ queryKey: taskKeys.lists });
-      const done = task.status !== "completed";
       client.setQueriesData<Task[]>({ queryKey: taskKeys.lists }, (list) =>
-        list?.map((x) => (x.id === task.id ? { ...x, status: done ? "completed" : "pending", completed_at: done ? new Date().toISOString() : null } : x)),
+        list?.map((x) => (x.id === task.id ? { ...x, status, completed_at: status === "completed" ? new Date().toISOString() : null } : x)),
       );
       return { before };
     },
-    onError: (_error, _task, context) => {
+    onError: (_error, _vars, context) => {
       for (const [key, data] of context?.before ?? []) client.setQueryData(key, data);
     },
     onSettled: () => refresh(client),
   });
+}
+
+/** Ticks or unticks a task (done, or back to to do). */
+export function useToggleTask() {
+  const { mutate, ...rest } = useSetTaskStatus();
+  return { ...rest, mutate: (task: Task) => mutate({ task, status: task.status === "completed" ? "pending" : "completed" }) };
 }
 
 export function useSaveCategory() {

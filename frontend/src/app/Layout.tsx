@@ -4,9 +4,10 @@ import { useTranslation } from "react-i18next";
 import type { User } from "../api";
 import { ReminderTray } from "../schedule/ReminderTray";
 import AccountMenu from "./AccountMenu";
+import { useSidebarCollapsed } from "./useSidebarCollapsed";
 import Nav, { type NavId } from "./Nav";
 
-export type LayoutPage = NavId | "account" | "other";
+export type LayoutPage = NavId | "account" | "settings" | "other";
 
 /** The frame of every signed-in page: navigation (bar or rail), the account menu, and the page area. */
 export default function Layout({
@@ -30,31 +31,26 @@ export default function Layout({
   children: ReactNode;
 }) {
   const { t } = useTranslation();
+  const [collapsed, toggle] = useSidebarCollapsed();
   return (
-    <div className="app">
+    <div className={collapsed ? "app app--collapsed" : "app"}>
       <a className="skip" href="#main">{t("skipToContent")}</a>
-      <Nav active={active === "account" || active === "other" ? null : active} isAdmin={user.role !== "user"} onNavigate={onNavigate} />
-      <div className="app__body">
-        <header className="topbar">
-          <a
-            href="/"
-            className="topbar__brand"
-            onClick={(e) => {
-              e.preventDefault();
-              onNavigate("/");
-            }}
-          >
-            <img src="/logo-horizontal.png" alt="KMK Entretien Ménager" width="108" height="36" />
-          </a>
+      <Nav active={active === "account" || active === "settings" || active === "other" ? null : active} isAdmin={user.role !== "user"} collapsed={collapsed}
+        onToggle={toggle}
+        onNavigate={onNavigate}
+        footer={
           <AccountMenu
             user={user}
             csrfToken={csrfToken}
             active={active === "account"}
+            settingsActive={active === "settings"}
             onNavigate={onNavigate}
             onLanguageChanged={onLanguageChanged}
             onSignOut={onSignOut}
           />
-        </header>
+        }
+      />
+      <div className="app__body">
         <main id="main" className="app__main">
           {bare ? children : <div className="card page">{children}</div>}
         </main>

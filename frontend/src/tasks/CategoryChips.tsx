@@ -1,3 +1,5 @@
+/** What a new category gets when no icon fits its name. */
+export const DEFAULT_CATEGORY_ICON = "✅";
 export const FALLBACK_CATEGORY_ICON = "🏷️";
 
 interface CategoryChipsProps {

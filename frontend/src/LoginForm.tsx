@@ -18,7 +18,7 @@ export default function LoginForm({ onSignedIn, onForgot }: { onSignedIn: (s: Se
     setBusy(false);
     if (result.ok) {
       setPassword("");
-      onSignedIn({ user: result.user, csrfToken: result.csrfToken, mfa: result.mfa, mfaEnabled: result.mfaEnabled });
+      onSignedIn({ user: result.user, csrfToken: result.csrfToken, mfa: result.mfa, mfaEnabled: result.mfaEnabled, preferences: result.preferences });
     } else {
       setError(result.reason === "rate_limited" ? "tooManyAttempts" : result.reason === "network" ? "networkError" : "invalidCredentials");
     }

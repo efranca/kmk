@@ -43,4 +43,12 @@ describe("myTaskSections", () => {
     const s = myTaskSections([late, yesterday, dueToday], 1, today, tomorrow);
     expect(ids(s.doneToday)).toEqual([late.id, dueToday.id]);
   });
+
+  it("keeps in-progress tasks in the open sections", () => {
+    const active = task({ status: "in_progress", due_date: today });
+    const late = task({ status: "in_progress", due_date: "2026-11-20" });
+    const s = myTaskSections([active, late], 1, today, tomorrow);
+    expect(ids(s.today)).toEqual([active.id]);
+    expect(ids(s.overdue)).toEqual([late.id]);
+  });
 });

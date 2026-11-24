@@ -1,6 +1,6 @@
 /* Schedule: toolbar, time grid, month, year and search. Event colors come from --ev (set per element). */
 .page__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-.page__header h1 { margin: 0; font-family: Montserrat, Inter, system-ui, sans-serif; font-size: clamp(1.4rem, 4vw, 1.9rem); color: var(--text); text-align: left; }
+.page__header h1 { margin: 0; font-family: Montserrat, Inter, system-ui, sans-serif; font-size: clamp(0.85rem, 2vw, 0.95rem); color: var(--text); text-align: left; }
 .page__actions { display: flex; align-items: center; gap: 8px; }
 .page__actions .btn[aria-pressed="true"] { background: var(--surface-2); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

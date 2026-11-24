@@ -206,3 +206,36 @@ def test_unknown_task_is_404(alice):
     assert c.patch("/api/tasks/999", json=body(), headers=h).status_code == 404
     assert c.post("/api/tasks/999/complete", headers=h).status_code == 404
     assert c.delete("/api/tasks/999", headers=h).status_code == 404
+
+
+def test_start_sets_in_progress_and_clears_completion(alice, owner_engine):
+    c, h = alice
+    t = create(c, h)
+    c.post(f"/api/tasks/{t['id']}/complete", headers=h)
+    r = c.post(f"/api/tasks/{t['id']}/start", headers=h).json()["task"]
+    assert (r["status"], r["completed_at"]) == ("in_progress", None)
+    assert sql(owner_engine, "SELECT completed_by FROM tasks")[0][0] is None
+    back = c.post(f"/api/tasks/{t['id']}/reopen", headers=h).json()["task"]
+    assert back["status"] == "pending"
+
+
+def test_status_filter_in_progress(alice):
+    c, h = alice
+    a, _b = create(c, h, title="A"), create(c, h, title="B")
+    c.post(f"/api/tasks/{a['id']}/start", headers=h)
+    assert [x["title"] for x in listing(c, status="in_progress")] == ["A"]
+    assert [x["title"] for x in listing(c, status="pending")] == ["B"]
+
+
+def test_start_needs_permission(make_client, add_user, owner_engine):
+    c, h = session(make_client, add_user, "alice")
+    t = create(c, h, people=[uid(owner_engine, "alice")])
+    cb, hb = session(make_client, add_user, "bob")
+    assert cb.post(f"/api/tasks/{t['id']}/start", headers=hb).status_code == 403
+
+
+def test_start_is_audited(alice, owner_engine):
+    c, h = alice
+    t = create(c, h)
+    c.post(f"/api/tasks/{t['id']}/start", headers=h)
+    assert sql(owner_engine, "SELECT count(*) FROM audit_log WHERE action = 'task_started'")[0][0] == 1

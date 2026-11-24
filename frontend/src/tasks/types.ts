@@ -1,5 +1,5 @@
 // The tasks API (backend/app/tasks). Dates are ISO strings; `people` empty = the whole team.
-export type TaskStatus = "pending" | "completed";
+export type TaskStatus = "pending" | "in_progress" | "completed";
 export type StatusFilter = TaskStatus | "all";
 export type UserRef = { id: number; name: string };
 

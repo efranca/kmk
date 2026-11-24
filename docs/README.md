@@ -38,7 +38,7 @@ browser --HTTPS--> Cloudflare --tunnel (outbound from this machine)--> cloudflar
 | 4b Admin | admin page, user lifecycle, authority rules (only the super admin manages admins) | done | [spec](superpowers/specs/2026-11-17-phase4b-admin-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase4b-admin.md) |
 | 5 Frontend | app shell, welcome page (placeholder, since replaced by the Dashboard), per-user language switching, polish | done | [spec](superpowers/specs/2026-11-17-phase5-frontend-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase5-frontend.md) |
 | 7 Schedule and Dashboard | shared calendar (Day, Week, Month, Year, repeating events, reminders, drag to move) and the Dashboard home page with the "My events" and "All events" widgets, in a FamillAI-style layout | done | [spec](superpowers/specs/2026-11-24-schedule-dashboard-design.md) | [plan](superpowers/plans/2026-11-24-schedule-dashboard.md) |
-| 8 Tasks | the team's to-do list: tasks for people or the whole team with a due date, categories with icons, status tabs, people filter, search, "Clear completed"; a "My tasks" Dashboard card; an optional "Show tasks" switch on the Schedule. No repeating tasks, rewards or AI | done | [spec](superpowers/specs/2026-11-24-tasks-design.md) | [plan](superpowers/plans/2026-11-24-tasks.md) |
+| 8 Tasks | the team's to-do list: tasks for people or the whole team with a due date, categories with icons, status tabs (To do, In progress, Done), a List/Board view menu (the board moves cards by drag and drop or a "Move to" control), people filter, search, "Clear completed"; a "My tasks" Dashboard card; an optional "Show tasks" switch on the Schedule. No repeating tasks, rewards or AI | done | [spec](superpowers/specs/2026-11-24-tasks-design.md) | [plan](superpowers/plans/2026-11-24-tasks.md) |
 | 6 Hardening | encrypted verified backups, container limits and health checks, dependency scan, independent security review, go-live runbook | built; go-live waits for the owner's steps (key, Resend, two-step, pilot) | [spec](superpowers/specs/2026-11-17-phase6-hardening-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase6-hardening.md) |
 
 ## Data model (as built)
@@ -59,8 +59,9 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 | `event_reminders` | up to 10 per event ("2 hours before") | `event_id`, `amount` (1-99), `unit` (`hours`/`days`/`weeks`) |
 | `reminder_dismissals` | a person dismissed the reminder of one occurrence | `user_id`, `event_id`, `occurrence_date` |
 | `task_categories` | the labels of tasks | `name` (1-50, unique ignoring case), `icon` (one emoji, optional), `created_by` |
-| `tasks` | one task, to do or completed | `title`, `description`, `icon`, `category_id` (set null when the category is deleted), `status` (`pending`/`completed`), `due_date` (a date in the company time zone, optional), `completed_at` and `completed_by` (set exactly when completed), `show_on_dashboard`, `created_by`, `updated_by` |
+| `tasks` | one task, to do or completed | `title`, `description`, `icon`, `category_id` (set null when the category is deleted), `status` (`pending`/`in_progress`/`completed`), `due_date` (a date in the company time zone, optional), `completed_at` and `completed_by` (set exactly when completed), `show_on_dashboard`, `created_by`, `updated_by` |
 | `task_people` | who a task is for (no rows = the whole team) | `task_id`, `user_id` |
+| `user_avatars` | a person's profile picture, at most 50 KB (JPEG, PNG or WebP); `users.avatar_updated_at` says whether there is one | `user_id`, `content_type`, `data`, `updated_at` |
 | `alembic_version` | migration state | |
 
 Deletion is soft (`status = 'deleted'`, `deleted_at` set): the row stays, so the audit log keeps its references and the username and email stay reserved. An admin can restore a deleted account (it comes back `disabled`).
@@ -85,6 +86,10 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `POST /api/auth/mfa/verify` | `verify` state | second login step: a code or a recovery code |
 | `POST /api/auth/mfa/disable` | verified | needs password and a code; refused for roles in `MFA_REQUIRED_ROLES` |
 | `POST /api/auth/mfa/recovery-codes/regenerate` | verified | needs password and a code |
+| `PUT /api/me/avatar`, `DELETE /api/me/avatar` | verified | set (raw JPEG, PNG or WebP body, at most 50 KB, `422 invalid_image` otherwise) or remove your own picture |
+| `DELETE /api/admin/users/{id}/avatar` | verified admin or super admin, with the same authority as editing that person | take down someone's picture (nobody can put one up for someone else) |
+| `GET /api/people/{id}/avatar` | verified | the picture (with `ETag`); `404` when there is none. Every user payload and the people list carry `avatar_url` |
+| `PATCH /api/me/preferences` | verified | change preferences (see Settings and preferences) |
 | `GET /api/admin/users` | verified admin or super admin | all accounts with role, status, two-step state, last sign-in, and the `actions` the caller may take on each row |
 | `POST /api/admin/users` | verified admin or super admin | create and invite an account: a **name** is required; role `user`, or `admin` for the super admin only |
 | `PATCH /api/admin/users/{id}` | verified admin or super admin (per [authority](security.md#administration-authority-and-account-lifecycle)) | change name or language; change email only while the account is `invited` (the super admin may also edit their own account) |
@@ -101,7 +106,7 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `GET /api/tasks?status&person` | verified | the tasks (`status` = `pending`/`completed`/`all`; `person` = a user id, or `none` for the tasks for the whole team), to do first, then by due date, at most 1000; everyone sees every task in full |
 | `POST /api/tasks` | verified | create a task for yourself, anyone, or the whole team |
 | `GET` / `PATCH` / `DELETE /api/tasks/{id}` | read: verified; change or delete: the creator, a person on it, an admin | `PATCH` takes the whole form |
-| `POST /api/tasks/{id}/complete`, `POST /api/tasks/{id}/reopen` | whoever may edit it; anyone for a task for the whole team | idempotent: a task that already has that status is returned unchanged |
+| `POST /api/tasks/{id}/complete`, `/start` (in progress), `/reopen` (back to to do) | whoever may edit it; anyone for a task for the whole team | idempotent: a task that already has that status is returned unchanged |
 | `DELETE /api/tasks/completed` | verified | deletes the completed tasks the caller may delete; answers `{"deleted": n}` |
 | `GET /api/tasks/categories`, `POST /api/tasks/categories` | verified | list (by name) and add a category |
 | `PATCH` / `DELETE /api/tasks/categories/{id}` | admins and the super admin | rename, change the icon, or delete (its tasks are kept without a category) |
@@ -115,14 +120,19 @@ The frontend pages (React Router in `frontend/src/App.tsx`; the card pages and t
 | `/schedule` | signed in | the calendar: Day, Week, Month and Year views, event dialog, search, people filter, drag to move (`?view=week&date=2026-11-12&people=3,5&q=...`) |
 | `/tasks` | signed in | the task list: status tabs, people filter (`?people=3,5`), category chips, search, task dialog, category manager |
 | `/account` | signed in | two-step verification, recovery codes, change password |
-| `/admin` | admins and the super admin (a plain user sees the Dashboard) | user management |
+| `/settings` | signed in: everyone; otherwise the sign-in form | theme choice |
+| `/admin` | admins and the super admin (a plain user sees the Dashboard) | the Users page: a list (face, name, email, role chip, a note when the account is not active) with search and a **+** that opens the invite dialog; tapping a row opens a dialog with that person's details and the actions the server allows |
 | `/forgot-password`, `/set-password#token=...&lang=...` | anyone | recovery and invitation pages; the link's `lang` opens the page in the recipient's language |
 | anything else | anyone | a friendly "page not found" |
 
-Signed-in pages sit inside the **layout** (`app/Layout.tsx`, wrapped by `Shell.tsx`): a bottom bar on a phone and a side rail from 768px (Dashboard, Schedule, Tasks, Users for admins and the super admin), the account menu behind your avatar (Account, language, Sign out) and the on-screen reminders. People who are not signed in get a small FR / EN / PT picker instead; the choice is kept in this browser (`localStorage` key `kmk.lang`).
+Signed-in pages sit inside the **layout** (`app/Layout.tsx`, wrapped by `Shell.tsx`): a bottom bar on a phone, an icon rail from 768px and the full sidebar from 1024px (Dashboard, Schedule, Tasks, Users for admins and the super admin). The toggle at the top of the sidebar collapses it to the rail (a per-account preference). There is no top bar: the account menu (Account, Settings, language, Sign out) sits at the bottom of the sidebar, and pages use the full width beside it. The page title is small (about 15px). The on-screen reminders show on every page. People who are not signed in get a small FR / EN / PT picker instead; the choice is kept in this browser (`localStorage` key `kmk.lang`).
+
+**Settings and preferences:** `/settings` (everyone) holds the theme (**KMK**, the green look that follows the OS light or dark preference; **Light** and **Dark**, forced neutral palettes) and a switch for each Dashboard card (My events, All events, My tasks). Preferences belong to the account and follow the person to every device: `users.preferences` (JSON) holds `theme`, `sidebar_collapsed`, `tasks_view`, `show_tasks_on_schedule` and `dashboard_widgets`, validated by a closed schema in `backend/app/preferences.py` (unknown keys or values are refused, `422`); `PATCH /api/me/preferences` merges any subset, and `/api/auth/me` and sign-in return the full set. The front end (`preferences.tsx`) applies a change at once and puts it back if the server refuses. The theme is also kept in `localStorage` (`kmk.theme`) only so a reload starts in the right look before the session loads. The language stays its own setting (`/api/auth/locale`).
 A signed-in user's language is stored on the server (`users.locale`, changed with `POST /api/auth/locale`) and is also used for their emails; signing in applies it and saves it as the browser's preference. A user who still has to enter or set up two-step verification sees those screens on every path.
 
 **Schedule code:** the backend is `backend/app/schedule/` (`recurrence.py` the repeat rule and series dates through `dateutil.rrule`, `occurrences.py` the expansion with one-off changes, `service.py`, `routes.py`); the repeat rule's JSON shape is `{"freq": "weekly", "interval": 1, "weekdays": ["THU"], "month_day": null, "nth_weekdays": [{"nth": 4, "day": "SAT"}]}`. The front end is `frontend/src/schedule/` (views, event dialog, drag, reminders), `frontend/src/dashboard/` (the two widgets) and `frontend/src/ui/` (shared pieces: buttons, dialog, avatars).
+**Tasks:** `0008` adds the `in_progress` status and seeds ten starter categories (Cleaning, Supplies, Equipment, Clients, Vehicle, Maintenance, Training, Safety, Admin, Other; created by no one). A new category with no matching icon gets ✅. The view (list or board) is a per-account preference.
+
 **Tasks code:** the backend is `backend/app/tasks/` (`schemas.py`, `service.py`, `routes.py`); the rules are `can_change_task`, `can_set_task_status` and `can_manage_task_categories` in `backend/app/auth/policy.py`. The front end is `frontend/src/tasks/` (page, row, dialog, categories, hooks), `frontend/src/dashboard/TasksCard.tsx` and the task chips in `frontend/src/schedule/` (`TaskChip.tsx`, `taskItems.ts`). Task strings start with `task` in the locale files.
 The server serves the single-page app for any non-`/api`, non-`/assets` path.
 

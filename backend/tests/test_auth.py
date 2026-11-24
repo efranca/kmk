@@ -11,7 +11,7 @@ def test_login_by_username_and_email_case_insensitive(client, add_user):
     r = login(client, "Alice")
     assert r.status_code == 200
     body = r.json()
-    assert body["user"] == {"id": body["user"]["id"], "username": "alice", "name": None, "email": "alice@example.com", "role": "user", "locale": "fr-CA"}
+    assert body["user"] == {"id": body["user"]["id"], "username": "alice", "name": None, "email": "alice@example.com", "role": "user", "locale": "fr-CA", "avatar_url": None}
     assert "password_hash" not in r.text and body["csrf_token"]
     assert "kmk_session" in r.cookies
     assert login(client, "ALICE@Example.com").status_code == 200

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icon, type IconName } from "../ui/Icon";
@@ -12,14 +13,21 @@ const ITEMS: NavItem[] = [
   { id: "admin", to: "/admin", labelKey: "navUsers", icon: "users", adminOnly: true },
 ];
 
-/** The main navigation: a bar along the bottom of a phone, a rail down the side from 768px (one element, two looks). */
+/** The main navigation: a bar along the bottom of a phone, an icon rail from 768px, the full sidebar (collapsible) from 1024px. */
 export default function Nav({
   active,
   isAdmin,
+  collapsed,
+  onToggle,
+  footer,
   onNavigate,
 }: {
   active: NavId | null;
   isAdmin: boolean;
+  collapsed: boolean;
+  onToggle: () => void;
+  /** Sits at the bottom of the sidebar (last in the phone bar): the account menu. */
+  footer: ReactNode;
   onNavigate: (path: string) => void;
 }) {
   const { t } = useTranslation();
@@ -35,10 +43,19 @@ export default function Nav({
       >
         <img src="/logo-horizontal.png" alt="KMK Entretien Ménager" width="150" height="50" />
       </a>
+      <button
+        type="button"
+        className="appnav__toggle"
+        aria-label={t(collapsed ? "sidebarExpand" : "sidebarCollapse")}
+        onClick={onToggle}
+      >
+        <Icon name={collapsed ? "chev-right" : "chev-left"} size={18} />
+      </button>
       {ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => (
         <a
           key={item.id}
           href={item.to}
+          title={t(item.labelKey)}
           aria-current={active === item.id ? "page" : undefined}
           onClick={(e) => {
             e.preventDefault();
@@ -49,6 +66,7 @@ export default function Nav({
           <span>{t(item.labelKey)}</span>
         </a>
       ))}
+      <div className="appnav__footer">{footer}</div>
     </nav>
   );
 }
