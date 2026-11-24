@@ -66,7 +66,7 @@ button { min-height: var(--touch-target); }
 .appnav > a:not(.appnav__brand), .appnav > .appnav__more { min-height: var(--touch-target); border-radius: var(--radius-md); color: var(--ink-muted); font-size: 0.8125rem; }
 .appnav > a:not(.appnav__brand):hover, .appnav > .appnav__more:hover { background: var(--brand-tint); color: var(--ink); }
 .appnav > a[aria-current="page"], .appnav > .appnav__more[aria-current="page"] { background: var(--brand-tint); color: var(--brand); }
-.appnav > a[aria-current="page"] span { font-weight: 700; }
+@media (min-width: 640px) { .appnav > a[aria-current="page"] span { font-weight: 700; } }
 .more-sheet__link:hover, .more-sheet__link[aria-current="page"], .accountmenu__item[aria-current="page"] { background: var(--brand-tint); }
 .accountmenu__item { min-height: var(--touch-target); }
 .accountmenu__item:hover:not(:disabled):not(.accountmenu__item--static) { background: var(--brand-tint); }
@@ -87,3 +87,5 @@ button { min-height: var(--touch-target); }
   .dialog__panel { width: 100%; border-radius: var(--radius-lg) var(--radius-lg) 0 0; max-height: 92dvh; }
 }
 @media (prefers-reduced-motion: no-preference) { .btn, .appnav > a, .accountmenu__item { transition: background-color 150ms ease-out, color 150ms ease-out; } }
+/* the phone bar holds six tabs and the account face: its labels use the 12px overline size so they all fit */
+@media (max-width: 639px) { .appnav > a:not(.appnav__brand), .appnav > .appnav__more { font-size: 0.75rem; } }
