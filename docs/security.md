@@ -82,6 +82,14 @@ A deleted account keeps its username and email reserved (nothing new can take th
 
 **Edit rules:** the name and the language can change at any time (not on deleted accounts); the email only while the account is still `invited` (to fix a typo before the person accepts). The page's "last sign-in" comes from the `sessions` table because the app cannot read the audit log.
 
+## Schedule: who sees and who changes events
+
+- **Everyone who is signed in (fully verified) sees every event in full**: title, notes, people and times. This was the owner's choice. Anything written in an event is visible to every employee, so titles and notes must not hold what only some employees should read (for example a client's address or door code).
+- **Who may edit or delete an event** is decided in `backend/app/auth/policy.py` (`can_change_event`): admins and the super admin; the person who created it; a person it is for. An event for everyone can be changed only by its creator or an admin. Whoever may change an event may do everything to it, including deleting a whole series or removing the other people; the audit log records who did it. Anyone can create events for themselves or others.
+- Only active accounts can be newly put on an event. People already on an event stay on it, and the event stays editable, when their account is later disabled or deleted; they show as a muted face (`GET /api/schedule/people` flags them `active: false`). When a series is split ("this and following") the new series keeps the original creator.
+- Creates, changes and deletes are audit-logged (`event_created`, `event_updated`, `event_deleted`) with the event id, the scope and the names of the fields that changed, **never the notes or title text**.
+- Reads need a verified session but no CSRF token (like the admin list); changes need both. Responses under `/api/schedule` are `Cache-Control: no-store`.
+
 ## Audit log
 
 `audit_log` is append-only at the database level: the runtime role `kmk_app` has INSERT but no SELECT, UPDATE or DELETE on it, and the running API does not hold the database owner's credentials (migrations run in a separate one-shot container), so a compromise of the API process cannot erase audit rows. Events written: `login_success`, `login_failed`, `login_rate_limited`, `logout`, `user_created`, `user_invited`, `invite_resent`,
@@ -117,6 +125,7 @@ Daily encrypted backups of the `kmk` database and a copy of `deploy/.env` (which
 - Any process on the host can reach the loopback ports; the API still authenticates every request.
 - Losing `MFA_ENCRYPTION_KEY` makes stored TOTP secrets unusable (recovery: `reset-mfa` per user). There is no key rotation yet.
 - A compromised super admin session could do anything an admin can, and more; two-step verification is optional for now. A compromised admin session can disable or delete plain users (not admins).
+- Event titles and notes are readable by every employee, and a person an event is for can delete a series someone else created (the audit log shows who).
 - The password policy is 8 characters with a mix (from the plan); a breached-password check and a longer minimum are deferred.
 
 ## Not covered yet

@@ -19,7 +19,7 @@ Background: [operations.md](operations.md) (running the system), [security.md](s
 | 9 | Code is healthy | `cd backend && .venv/bin/pytest -q`, `cd frontend && npx vitest run`, `scripts/audit-deps.sh` | all pass, scan clean |
 | 10 | Containers are healthy | `docker inspect --format '{{.Name}} {{.State.Health.Status}}' kmk-api kmk-caddy` | both `healthy` |
 | 11 | Portuguese text | reviewed by someone who reads Portuguese, or you accept the risk | decided |
-| 12 | Welcome page | the placeholder is acceptable for the first weeks, or real content is added (see README: "Adding content to the Welcome page") | decided |
+| 12 | Home page | the Dashboard ("My events", "All events") replaced the placeholder Welcome page; check that colleagues do not put anything in event titles or notes that other employees should not read (everyone sees every event) | decided |
 | 13 | Cloudflare | route `app` → `http://localhost:8081` exists; "Always Use HTTPS" on (`curl -sI http://app.kmk-entretien.ca/` shows a `301`) | confirmed |
 | 14 | A reboot is survivable (optional) | reboot the computer, then `docker compose -f deploy/docker-compose.yml ps` and `systemctl --user list-timers kmk-backup.timer` | everything came back by itself |
 

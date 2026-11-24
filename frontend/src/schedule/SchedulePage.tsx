@@ -1,0 +1,128 @@
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { IconButton } from "../ui/Button";
+import { EventDialog, type EventDialogTarget } from "./EventDialog";
+import { ErrorNotice, Loading } from "../ui/Feedback";
+import { PageHeader } from "../ui/PageHeader";
+import { useSession } from "../session";
+import { useOccurrences, usePeople } from "./hooks";
+import { canChangeEvent } from "./permissions";
+import { MonthView } from "./MonthView";
+import { COMPANY_TIME_ZONE, addDays, firstDayOf, todayIn, weekStart } from "./scheduleDates";
+import { ScheduleToolbar } from "./ScheduleToolbar";
+import { SearchResults } from "./SearchResults";
+import { shiftDate, useScheduleView, visibleRange, type ScheduleViewKind } from "./scheduleView";
+import { TimeGrid } from "./TimeGrid";
+import { useMoveEvent } from "./useMoveEvent";
+import { useSwipe } from "./useSwipe";
+import type { Occurrence } from "./types";
+import { useNarrow } from "./useNarrow";
+import { YearView } from "./YearView";
+
+/** What the view covers, written for the person: "Thursday, November 12", "Nov 8 – 14", "November 2026". */
+function rangeLabel(view: ScheduleViewKind, date: string, days: string[], locale: string): string {
+  const day = (d: string) => new Date(`${d}T12:00:00`);
+  switch (view) {
+    case "day": return new Intl.DateTimeFormat(locale, { weekday: "long", month: "long", day: "numeric" }).format(day(date));
+    case "week": return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).formatRange(day(days[0]!), day(days[days.length - 1]!));
+    case "month": return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(day(date));
+    case "year": return date.slice(0, 4);
+  }
+}
+
+/** The shared calendar: Day, Week, Month and Year views; an event or an empty spot opens the event dialog. */
+export function SchedulePage() {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language;
+  const { view, date, people, q, today, set } = useScheduleView();
+  const narrow = useNarrow();
+  const { user } = useSession();
+  const moveEvent = useMoveEvent();
+  const everyone = usePeople();
+  const [searchOpen, setSearchOpen] = useState(q.length > 0);
+  const [dialog, setDialog] = useState<EventDialogTarget | null>(null);
+  const onOpenEvent = (item: Occurrence) => setDialog({ kind: "item", item });
+  const onCreate = (day: string, minutes?: number) => setDialog({ kind: "new", date: day, minutes });
+  const firstDay = firstDayOf(i18n.language);
+
+  const [from, to] = visibleRange(view, date, firstDay, narrow);
+  const range = useOccurrences(from, to, { people });
+  const busyDates = useMemo(() => new Set((range.data ?? []).map((o) => o.date)), [range.data]);
+
+  // The search box keeps its own text and writes it to the URL a moment after typing stops.
+  const [text, setText] = useState(q);
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (text.trim() !== q) set({ q: text.trim() });
+    }, 300);
+    return () => clearTimeout(id);
+  }, [text, q, set]);
+  const searching = q.length >= 2;
+
+  const swipe = useSwipe(() => set({ date: shiftDate(view, date, -1, narrow) }), () => set({ date: shiftDate(view, date, 1, narrow) }));
+
+  const gridDays = view === "day" ? [date] : narrow ? [0, 1, 2].map((n) => addDays(date, n)) : Array.from({ length: 7 }, (_, n) => addDays(weekStart(date, firstDay), n));
+
+  return (
+    <div className="page page--schedule">
+      <PageHeader
+        title={t("schTitle")}
+        actions={
+          <>
+            <IconButton
+              icon="search"
+              label={t("schSearchLabel")}
+              aria-pressed={searchOpen}
+              onClick={() => {
+                if (searchOpen) setText("");
+                setSearchOpen(!searchOpen);
+              }}
+            />
+            <IconButton icon="plus" variant="primary" label={t("schAdd")} onClick={() => onCreate(view === "day" ? date : today)} />
+          </>
+        }
+      />
+      <ScheduleToolbar
+        view={view}
+        date={date}
+        people={people}
+        everyone={(everyone.data ?? []).filter((p) => p.active !== false)}
+        label={rangeLabel(view, date, view === "week" ? [from, to] : gridDays, locale)}
+        onView={(next) => set({ view: next })}
+        onDate={(next) => set({ date: next })}
+        onToday={() => set({ date: todayIn(COMPANY_TIME_ZONE) })}
+        onPeople={(ids) => set({ people: ids })}
+        narrow={narrow}
+        search={text}
+        onSearch={setText}
+        searchOpen={searchOpen}
+      />
+      <div className="sched-swipe" {...swipe}>
+        {searching ? (
+          <SearchResults
+            query={q}
+            locale={locale}
+            onOpen={(item) => {
+              setText("");
+              set({ view: "day", date: item.date, q: "" });
+            }}
+          />
+        ) : range.isPending ? (
+          <Loading />
+        ) : range.isError ? (
+          <ErrorNotice error={range.error} onRetry={() => void range.refetch()} />
+        ) : view === "year" ? (
+          <YearView year={Number(date.slice(0, 4))} busyDates={busyDates} today={today} firstDay={firstDay} locale={locale} onOpenMonth={(first) => set({ view: "month", date: first })} />
+        ) : view === "month" ? (
+          <MonthView year={Number(date.slice(0, 4))} month={Number(date.slice(5, 7))} items={range.data} today={today} firstDay={firstDay} locale={locale} onOpenDay={(day) => set({ view: "day", date: day })} onOpenItem={onOpenEvent} />
+        ) : (
+          <TimeGrid days={gridDays} items={range.data} today={today} locale={locale} onOpenItem={onOpenEvent} onCreateAt={(day, minutes) => onCreate(day, minutes)}
+            canMove={(item) => canChangeEvent(user, item)} onMoveEvent={(item, slot) => void moveEvent.move(item, slot)} />
+        )}
+      </div>
+      {moveEvent.dialog}
+      {dialog && <EventDialog key={dialog.kind === "item" ? `${dialog.item.event_id}-${dialog.item.original_date}` : `new-${dialog.date}-${dialog.minutes ?? ""}`} target={dialog} onClose={() => setDialog(null)} />}
+    </div>
+  );
+}

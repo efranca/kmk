@@ -91,6 +91,14 @@ All entries below were decided on 2026-11-17 during the build (phase noted).
 
 ---
 
+## Schedule
+
+### D18. The schedule is a port of FamillAI's, with new Python code and two new front-end libraries (phase 7)
+- **Decision:** copy FamillAI's schedule screens (restyled with KMK's colors), write the API in Python, and keep its repeat-rule JSON. Repeating dates come from `python-dateutil`'s `rrule` (the standard implementation of the calendar repeat rules), checked against FamillAI's own test cases; the front end gained `react-router` and `@tanstack/react-query` (FamillAI's code uses both), at the versions FamillAI pins.
+- **Rejected:** translating FamillAI's Java repeat engine line by line (it would be a hand-kept engine; it stays the fallback if `rrule` ever disagrees with the parity tests), and a ready-made calendar component (it would not look or behave like FamillAI).
+- **Who sees and edits events:** everyone sees everything; creator, listed people and admins edit (see [security.md](security.md)).
+- **Revisit when:** KMK needs private events or client data in events (then add per-event visibility), or an `rrule` upgrade changes a date.
+
 ## People
 
 ### D17. Every person has one display name; admins and the super admin fix it, people cannot change their own (user name feature)

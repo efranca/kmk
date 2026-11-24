@@ -6,6 +6,7 @@ import i18n from "./i18n";
 import en from "./locales/en.json";
 import frCA from "./locales/fr-CA.json";
 import ptBR from "./locales/pt-BR.json";
+import { openAccountMenu } from "./testUtils";
 
 const alice = { id: 1, username: "alice", email: "alice@example.com", role: "admin", locale: "fr-CA" };
 const json = (status: number, body: unknown) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
@@ -50,6 +51,7 @@ describe("App", () => {
     await screen.findByLabelText(frCA.identifier);
     fillAndSubmit();
     await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Hello, alice"));
+    openAccountMenu();
     expect(screen.getByRole("button", { name: en.signOut })).toBeInTheDocument();
   });
 
@@ -80,6 +82,7 @@ describe("App", () => {
     mockApi({ me: () => json(200, { user: alice, csrf_token: "tok" }) });
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Bonjour, alice");
+    openAccountMenu();
     fireEvent.click(screen.getByRole("link", { name: frCA.navAccount })); // the role line is on the account page
     expect(await screen.findByText(new RegExp(frCA.role_admin))).toBeInTheDocument();
   });
@@ -87,6 +90,8 @@ describe("App", () => {
   it("logs out with the CSRF token and returns to the form", async () => {
     const fn = mockApi({ me: () => json(200, { user: alice, csrf_token: "tok-123" }) });
     render(<App />);
+    await screen.findByRole("link", { name: frCA.navDashboard });
+    openAccountMenu();
     fireEvent.click(await screen.findByRole("button", { name: frCA.signOut }));
     await waitFor(() => expect(screen.getByLabelText(frCA.identifier)).toBeInTheDocument());
     const call = fn.mock.calls.find(([u, i]) => u === "/api/auth/logout" && i?.method === "POST")!;

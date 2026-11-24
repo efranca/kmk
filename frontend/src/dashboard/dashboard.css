@@ -1,0 +1,20 @@
+/* Dashboard: a greeting and two cards over the shared calendar. */
+.page--dashboard > h1 { margin: 0 0 12px; font-family: Montserrat, Inter, system-ui, sans-serif; font-size: clamp(1.4rem, 4vw, 1.9rem); color: var(--text); text-align: left; }
+.page--dashboard .banner, .page--dashboard .notice { margin: 0 0 14px; }
+.dash__grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 768px) { .dash__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.dcard { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px 16px; min-width: 0; color: var(--text); text-align: left; }
+.dcard__header h2 { margin: 0 0 6px; font-family: Montserrat, Inter, system-ui, sans-serif; font-size: 1.05rem; }
+.dcard__header a { color: var(--text); text-decoration: none; }
+.dcard__header a:hover { color: var(--accent); }
+.dash__heading { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-muted); }
+.dash__group + .dash__group { margin-top: 4px; }
+.dash__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.dash__row { display: grid; grid-template-columns: 4.2rem minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; margin: 0; padding: 8px 10px; border: 0; border-left: 4px solid var(--ev, var(--accent)); border-radius: 10px; background: color-mix(in srgb, var(--ev, var(--accent)) 12%, var(--surface)); color: var(--text); font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
+.dash__row:hover:not(:disabled) { background: color-mix(in srgb, var(--ev, var(--accent)) 22%, var(--surface)); }
+.dash__when { display: flex; flex-direction: column; line-height: 1.2; font-size: 0.85rem; }
+.dash__when small { color: var(--text-muted); font-size: 0.7rem; text-transform: capitalize; }
+.dash__title { overflow-wrap: anywhere; font-weight: 600; }
+.dash__who { display: flex; }
+.dash__more { margin: 4px 0 0; padding: 4px 6px; border: 0; background: none; color: var(--text-muted); font: inherit; font-size: 0.8rem; cursor: pointer; }
+.dash__more:hover:not(:disabled) { background: none; color: var(--accent); }

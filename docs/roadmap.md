@@ -2,6 +2,12 @@
 
 Where the project stands and what to pick up next. Status of the phases is also in the table in [README.md](README.md).
 
+## Done recently: phase 7, Schedule and Dashboard
+
+The shared calendar (Day, Week, Month, Year; repeating events: daily, weekly on chosen weekdays, monthly by day or "the 4th Saturday", yearly; one-off changes with "this event / this and following / all"; on-screen reminders; drag to move and resize) and the Dashboard with "My events" and "All events" are built, in FamillAI's layout with KMK's colors; see the [design](superpowers/specs/2026-11-24-schedule-dashboard-design.md).
+**Decision recorded:** everyone sees every event in full (see the accepted risk in [security.md](security.md)). **Not built, by choice:** Tasks, Shopping, event categories, phone push for reminders, photo avatars, a settings screen for hours and time zone.
+**Follow-ups:** a review of the new French and Portuguese strings (they come from FamillAI's translations); an admin-set company time zone if KMK ever works in another one; reminder email or push if on-screen reminders are not enough.
+
 ## Done recently: phase 4b, Admin
 
 The admin page, the user lifecycle (disable, enable, delete, restore, role change, edit, reset password and two-step) and one central authority policy are built;
@@ -10,8 +16,8 @@ see [security.md](security.md) and the [design](superpowers/specs/2026-11-17-pha
 
 ## Done recently: phase 5, Frontend
 
-The app shell with navigation, the placeholder welcome page, the account page, per-user language switching (stored on the server, with a pre-login picker and language-carrying email links), a not-found page, page titles and responsive polish are built;
-see the [design](superpowers/specs/2026-11-17-phase5-frontend-design.md). **Still to do by the owner:** the real welcome content (the page is a placeholder; see how to add blocks in [README.md](README.md)) and a review of the Portuguese text by someone who reads Portuguese.
+The app shell with navigation, the welcome page (since replaced by the Dashboard), the account page, per-user language switching (stored on the server, with a pre-login picker and language-carrying email links), a not-found page, page titles and responsive polish are built;
+see the [design](superpowers/specs/2026-11-17-phase5-frontend-design.md). **Still to do by the owner:** a review of the Portuguese text by someone who reads Portuguese.
 
 ## Done: phase 6, Hardening and go-live (owner steps remain)
 
@@ -44,7 +50,7 @@ F17 safe-name check for scratch databases; F18 failed weekly copy handling; F24 
 | Is the hostname proxied through Cloudflare? | answered: yes, always, through the tunnel |
 | Who is the super admin? | created with the server command (see [operations.md](operations.md)) |
 | Resend sender address | suggested `no-reply@mail.kmk-entretien.ca`; Resend itself is not set up yet |
-| Welcome page copy in EN, FR-CA, PT-BR | open: the page exists with placeholder text; real content to be added by the owner |
+| Welcome page copy in EN, FR-CA, PT-BR | superseded: the Welcome page was replaced by the Dashboard (phase 7) |
 | Portuguese review | open: all Portuguese UI and email text was written without a native reviewer |
 | Schedule the regulation and backup reviews | open |
 | Invite the ~15 employees | waits until the above is ready; the owner chose to do it after everything else |

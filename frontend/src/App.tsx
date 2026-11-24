@@ -1,7 +1,10 @@
+import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { BrowserRouter } from "react-router";
 
 import AccountPage from "./AccountPage";
+import { DashboardPage } from "./dashboard/DashboardPage";
 import AdminPage from "./AdminPage";
 import { logout, me, type Session, type User } from "./api";
 import ForgotPassword from "./ForgotPassword";
@@ -11,13 +14,16 @@ import LoginForm from "./LoginForm";
 import MfaSetup from "./MfaSetup";
 import MfaVerify from "./MfaVerify";
 import NotFound from "./NotFound";
+import { makeQueryClient } from "./queryClient";
 import { useRoute } from "./route";
+import { SchedulePage } from "./schedule/SchedulePage";
+import { SessionProvider } from "./session";
+import { ToastProvider } from "./ui/Toast";
 import SetPassword from "./SetPassword";
 import Shell, { type ShellPage } from "./Shell";
-import WelcomePage from "./WelcomePage";
 
 type State = { kind: "checking" } | { kind: "anon" } | { kind: "auth"; session: Session };
-type Page = "checking" | "signin" | "forgot" | "setpw" | "verify" | "setup" | "welcome" | "account" | "admin" | "notfound";
+type Page = "checking" | "signin" | "forgot" | "setpw" | "verify" | "setup" | "welcome" | "schedule" | "account" | "admin" | "notfound";
 
 const BRAND = "KMK Entretien Ménager";
 const TITLE_KEYS: Record<Page, string | null> = {
@@ -27,7 +33,8 @@ const TITLE_KEYS: Record<Page, string | null> = {
   setpw: "setPasswordTitle",
   verify: "mfaCodeTitle",
   setup: "mfaSetupTitle",
-  welcome: "navWelcome",
+  welcome: "navDashboard",
+  schedule: "schTitle",
   account: "navAccount",
   admin: "adminTitle",
   notfound: "notFoundTitle",
@@ -37,17 +44,31 @@ function pageFor(path: string, state: State): Page {
   if (path === "/set-password") return "setpw";
   if (path === "/forgot-password") return "forgot";
   if (state.kind === "checking") return "checking";
-  if (state.kind === "anon") return ["/", "/account", "/admin"].includes(path) ? "signin" : "notfound";
+  if (state.kind === "anon") return ["/", "/schedule", "/account", "/admin"].includes(path) ? "signin" : "notfound";
   if (state.session.mfa === "verify") return "verify";
   if (state.session.mfa === "setup") return "setup";
   if (path === "/") return "welcome";
+  if (path === "/schedule") return "schedule";
   if (path === "/account") return "account";
   if (path === "/admin") return state.session.user.role !== "user" ? "admin" : "welcome"; // plain users just see the welcome page
   return "notfound";
 }
 
+/** The app: one query client and the browser router around everything, so every page shares both. */
 export default function App() {
+  const [queryClient] = useState(makeQueryClient);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}
+
+function AppContent() {
   const { t, i18n } = useTranslation();
+  const queryClient = useQueryClient();
   const [state, setState] = useState<State>({ kind: "checking" });
   const [recoveryCodesLeft, setRecoveryCodesLeft] = useState<number | null>(null);
   const { path, navigate } = useRoute();
@@ -93,6 +114,7 @@ export default function App() {
 
   async function signOut() {
     if (state.kind === "auth") await logout(state.session.csrfToken);
+    queryClient.clear(); // the next person to sign in on this device must not see what this one had loaded
     void i18n.changeLanguage(savedLanguage() ?? "fr-CA");
     setRecoveryCodesLeft(null);
     setState({ kind: "anon" });
@@ -147,9 +169,11 @@ export default function App() {
 
   if (state.kind !== "auth") return null;
   const { session } = state;
-  const shellPage: ShellPage = page === "welcome" || page === "account" || page === "admin" ? page : "notfound";
+  const shellPage: ShellPage = page === "welcome" || page === "schedule" || page === "account" || page === "admin" ? page : "notfound";
 
   return (
+    <SessionProvider value={{ user: session.user, csrfToken: session.csrfToken }}>
+    <ToastProvider>
     <Shell
       user={session.user}
       active={shellPage}
@@ -157,8 +181,9 @@ export default function App() {
       onNavigate={navigate}
       onLanguageChanged={(user) => updateSession({ user })}
       onSignOut={signOut}
+      bare={page === "schedule" || page === "welcome"}
     >
-      {page === "welcome" && <WelcomePage user={session.user} mfaEnabled={session.mfaEnabled} recoveryCodesLeft={recoveryCodesLeft} />}
+      {page === "welcome" && <DashboardPage user={session.user} mfaEnabled={session.mfaEnabled} recoveryCodesLeft={recoveryCodesLeft} />}
       {page === "account" && (
         <AccountPage
           user={session.user}
@@ -169,7 +194,10 @@ export default function App() {
         />
       )}
       {page === "admin" && <AdminPage session={session} />}
+      {page === "schedule" && <SchedulePage />}
       {page === "notfound" && <NotFound onHome={() => navigate("/")} />}
     </Shell>
+    </ToastProvider>
+    </SessionProvider>
   );
 }

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import i18n from "./i18n";
 import { forgetToken } from "./route";
+import { openAccountMenu } from "./testUtils";
 import frCA from "./locales/fr-CA.json";
 
 const BRAND = "KMK Entretien Ménager";
@@ -19,6 +20,9 @@ function mockApi(h: Record<string, Handler> = {}) {
     if (route in h) return h[route](init);
     if (route === "GET /api/auth/me") return res(401, { error: "unauthenticated" });
     if (route === "GET /api/admin/users") return res(200, { users: [] });
+    if (route.startsWith("GET /api/schedule/events")) return res(200, { occurrences: [] });
+    if (route === "GET /api/schedule/people") return res(200, { people: [] });
+    if (route === "GET /api/schedule/reminders/due") return res(200, { reminders: [] });
     throw new Error(`unexpected ${route}`);
   });
   vi.stubGlobal("fetch", fn);
@@ -39,13 +43,16 @@ afterEach(async () => {
 });
 
 describe("signed-in pages", () => {
-  it("shows the welcome page inside the shell", async () => {
+  it("shows the dashboard with its two cards inside the shell", async () => {
     mockApi({ "GET /api/auth/me": signedIn() });
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1, name: "Bonjour, alice" })).toBeInTheDocument();
-    expect(screen.getByText(frCA.welcomeTitle)).toBeInTheDocument();
-    expect(screen.getByText(frCA.welcomeIntro)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: frCA.dashMyEvents })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: frCA.dashAllEvents })).toBeInTheDocument();
+    expect((await screen.findAllByText(frCA.dashEmpty)).length).toBe(2);
     expect(screen.getByRole("navigation")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: frCA.language })).toBeNull(); // language and sign-out sit behind the account menu
+    openAccountMenu();
     expect(screen.getByRole("combobox", { name: frCA.language })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: frCA.signOut })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: frCA.changePasswordTitle })).toBeNull(); // that lives on /account now
@@ -63,13 +70,16 @@ describe("signed-in pages", () => {
   it("marks the active entry and navigates without reloading", async () => {
     mockApi({ "GET /api/auth/me": signedIn() });
     render(<App />);
-    const home = await screen.findByRole("link", { name: frCA.navWelcome });
+    const home = await screen.findByRole("link", { name: frCA.navDashboard });
     expect(home).toHaveAttribute("aria-current", "page");
+    openAccountMenu();
+    expect(screen.getByRole("link", { name: frCA.navAccount })).not.toHaveAttribute("aria-current");
     fireEvent.click(screen.getByRole("link", { name: frCA.navAccount }));
     expect(await screen.findByRole("heading", { level: 2, name: frCA.changePasswordTitle })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/account");
+    expect(screen.getByRole("link", { name: frCA.navDashboard })).not.toHaveAttribute("aria-current");
+    openAccountMenu();
     expect(screen.getByRole("link", { name: frCA.navAccount })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: frCA.navWelcome })).not.toHaveAttribute("aria-current");
   });
 
   it("has a skip link that targets the main content", async () => {
@@ -84,9 +94,75 @@ describe("signed-in pages", () => {
     mockApi({ "GET /api/auth/me": signedIn("admin") });
     render(<App />);
     expect(await screen.findByText(frCA.mfaBannerAdmin)).toBeInTheDocument();
+    openAccountMenu();
     fireEvent.click(screen.getByRole("link", { name: frCA.navAccount }));
     await screen.findByRole("heading", { level: 2, name: frCA.changePasswordTitle });
     expect(screen.getByText(frCA.mfaBannerAdmin)).toBeInTheDocument();
+  });
+});
+
+describe("schedule page", () => {
+  const scheduleApi = {
+    "GET /api/schedule/events": () => res(200, { occurrences: [] }),
+    "GET /api/schedule/people": () => res(200, { people: [] }),
+  };
+
+  it("has a Schedule entry in the navigation that opens the calendar", async () => {
+    mockApi({ "GET /api/auth/me": signedIn(), ...scheduleApi });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("link", { name: frCA.schTitle }));
+    expect(await screen.findByRole("heading", { level: 1, name: frCA.schTitle })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/schedule");
+    expect(screen.getByRole("link", { name: frCA.schTitle })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: frCA.navDashboard })).not.toHaveAttribute("aria-current");
+  });
+
+  it("is reachable directly, and sets the page title", async () => {
+    visit("/schedule");
+    mockApi({ "GET /api/auth/me": signedIn(), ...scheduleApi });
+    render(<App />);
+    expect(await screen.findByRole("radio", { name: frCA.schViewsWeek })).toBeInTheDocument();
+    expect(document.title).toBe(`${frCA.schTitle} · ${BRAND}`);
+  });
+
+  it("opens the new-event dialog from the Add button inside the real app", async () => {
+    visit("/schedule");
+    mockApi({ "GET /api/auth/me": signedIn(), ...scheduleApi });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: frCA.schAdd }));
+    expect(await screen.findByRole("dialog", { name: frCA.schFormNewTitle })).toBeInTheDocument();
+  });
+
+  it("asks anonymous visitors to sign in first", async () => {
+    visit("/schedule");
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1, name: frCA.signInTitle })).toBeInTheDocument();
+  });
+});
+
+describe("account menu", () => {
+  it("holds the account page, the language and sign out, and closes on Escape", async () => {
+    mockApi({ "GET /api/auth/me": signedIn() });
+    render(<App />);
+    await screen.findByRole("link", { name: frCA.navDashboard });
+    const button = openAccountMenu();
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: frCA.navAccount })).toHaveAttribute("href", "/account");
+    expect(screen.getByRole("combobox", { name: frCA.language })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: frCA.signOut })).toBeInTheDocument();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(screen.queryByRole("button", { name: frCA.signOut })).toBeNull();
+    expect(button).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("closes after choosing the account page", async () => {
+    mockApi({ "GET /api/auth/me": signedIn() });
+    render(<App />);
+    await screen.findByRole("link", { name: frCA.navDashboard });
+    openAccountMenu();
+    fireEvent.click(screen.getByRole("link", { name: frCA.navAccount }));
+    await screen.findByRole("heading", { level: 2, name: frCA.changePasswordTitle });
+    expect(screen.queryByRole("button", { name: frCA.signOut })).toBeNull();
   });
 });
 
@@ -98,7 +174,7 @@ describe("navigation by role", () => {
   ])("%s sees Users: %s", async (role, sees) => {
     mockApi({ "GET /api/auth/me": signedIn(role) });
     render(<App />);
-    await screen.findByRole("link", { name: frCA.navWelcome });
+    await screen.findByRole("link", { name: frCA.navDashboard });
     expect(!!screen.queryByRole("link", { name: frCA.navUsers })).toBe(sees);
   });
 
@@ -203,7 +279,7 @@ describe("titles and language", () => {
   };
 
   it("sets the page title from the page name", async () => {
-    expect(await titleAt("/", { "GET /api/auth/me": signedIn() })).toBe(`${frCA.navWelcome} · ${BRAND}`);
+    expect(await titleAt("/", { "GET /api/auth/me": signedIn() })).toBe(`${frCA.navDashboard} · ${BRAND}`);
     cleanup();
     expect(await titleAt("/account", { "GET /api/auth/me": signedIn() })).toBe(`${frCA.navAccount} · ${BRAND}`);
     cleanup();
@@ -231,5 +307,42 @@ describe("titles and language", () => {
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1, name: "Olá, alice" })).toBeInTheDocument();
     expect(window.localStorage.getItem("kmk.lang")).toBe("pt-BR");
+  });
+});
+
+describe("signing out", () => {
+  it("forgets what the previous person's pages had loaded (no reminder of theirs for the next sign-in)", async () => {
+    const reminder = { event_id: 1, occurrence_date: "2026-11-05", title: "Alice private visit", start_date: "2026-11-05", start_time: "09:00", all_day: false, remind_at: "2026-11-05T07:00" };
+    let reminders: unknown[] = [reminder];
+    mockApi({
+      "GET /api/auth/me": signedIn(),
+      "POST /api/auth/logout": () => res(204),
+      "POST /api/auth/login": signedIn(),
+      "GET /api/schedule/reminders/due": () => (reminders.length ? res(200, { reminders }) : new Promise(() => {})), // the next person's answer is slow
+    });
+    render(<App />);
+    expect(await screen.findByText("Alice private visit")).toBeInTheDocument();
+    openAccountMenu();
+    fireEvent.click(await screen.findByRole("button", { name: frCA.signOut }));
+    await screen.findByLabelText(frCA.identifier);
+    reminders = [];
+    fireEvent.change(screen.getByLabelText(frCA.identifier), { target: { value: "bob" } });
+    fireEvent.change(screen.getByLabelText(frCA.password), { target: { value: "pw" } });
+    fireEvent.click(screen.getByRole("button", { name: frCA.signIn }));
+    await screen.findByRole("heading", { level: 1, name: "Bonjour, alice" });
+    expect(screen.queryByText("Alice private visit")).toBeNull();
+  });
+});
+
+describe("reminders", () => {
+  it("shows a due reminder on every signed-in page", async () => {
+    visit("/account");
+    mockApi({
+      "GET /api/auth/me": signedIn(),
+      "GET /api/schedule/reminders/due": () =>
+        res(200, { reminders: [{ event_id: 1, occurrence_date: "2026-11-05", title: "Visit client", start_date: "2026-11-05", start_time: "09:00", all_day: false, remind_at: "2026-11-05T07:00" }] }),
+    });
+    render(<App />);
+    expect(await screen.findByText("Visit client")).toBeInTheDocument();
   });
 });

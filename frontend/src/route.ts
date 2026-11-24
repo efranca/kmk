@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
+import { useLocation, useNavigate } from "react-router";
 
 import { isLang, type Lang } from "./lang";
 
@@ -32,17 +33,15 @@ export function forgetToken(): void {
   rememberedLang = null;
 }
 
-export function useRoute(): { path: string; navigate: (to: string) => void } {
-  const [path, setPath] = useState(window.location.pathname);
-  useEffect(() => {
-    const onPop = () => setPath(window.location.pathname);
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
-  const navigate = useCallback((to: string) => {
-    forgetToken();
-    window.history.pushState(null, "", to);
-    setPath(window.location.pathname);
-  }, []);
-  return { path, navigate };
+export function useRoute(): { path: string; search: string; navigate: (to: string) => void } {
+  const location = useLocation();
+  const go = useNavigate();
+  const navigate = useCallback(
+    (to: string) => {
+      forgetToken();
+      go(to);
+    },
+    [go],
+  );
+  return { path: location.pathname, search: location.search, navigate };
 }

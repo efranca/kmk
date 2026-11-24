@@ -141,6 +141,8 @@ The shared project scripts (`/home/evandro/projects/shared/scripts/pg-backup.sh`
 
 ## Checking dependencies
 
+The schedule added `python-dateutil` (backend) and `react-router`, `@tanstack/react-query` (frontend); nothing in `deploy/.env` changes for it. Migration `0006_schedule` creates the five schedule tables and runs with the other migrations at stack start (`docker compose run --rm migrate`).
+
 `scripts/audit-deps.sh` scans the installed Python packages (`pip-audit`) and the production JavaScript packages (`npm audit`, high or worse). It needs network access, exits non-zero on findings, and should be run before every deploy.
 
 ## Email: switching from `log` to Resend
