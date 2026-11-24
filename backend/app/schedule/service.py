@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app import names
 from app.auth import audit, policy
 from app.auth.errors import ApiError
+from app.auth.avatars_url import avatar_url
 from app.models import Event, EventException, EventPerson, EventReminder, ReminderDismissal, User
 from app.schedule.occurrences import EventData, ExceptionData, Occurrence, expand, own_dates
 from app.schedule.recurrence import MAX_RANGE_DAYS, RecurrenceRule, first_date_on_or_after, series_dates
@@ -42,7 +43,7 @@ def selectable_people(db: Session) -> list[dict]:
     the events they are on still show who they are. Only active ones may be newly added."""
     users = db.scalars(select(User).where(User.status.in_(("active", "disabled", "deleted")))).all()
     users.sort(key=lambda u: (u.status != "active", *names.sort_key(u.name, u.username)))
-    return [{"id": u.id, "name": display_name(u), "color": avatar_color(u.id), "active": u.status == "active"} for u in users]
+    return [{"id": u.id, "name": display_name(u), "color": avatar_color(u.id), "active": u.status == "active", "avatar_url": avatar_url(u)} for u in users]
 
 
 def _rule(event: Event) -> RecurrenceRule | None:

@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import names
+from app.auth.avatars_url import avatar_url
 from app.auth import audit, lifecycle, policy, service, tokens
 from app.auth.account import queue_email
 from app.auth.deps import get_db, get_settings_dep
@@ -114,6 +115,7 @@ def row_payload(actor: User, user: User, last_sign_in) -> dict:
         "email": user.email,
         "role": user.role,
         "locale": user.locale,
+        "avatar_url": avatar_url(user),
         "status": user.status,
         "mfa_enabled": user.mfa_enabled,
         "created_at": user.created_at.isoformat(),

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.models import User, UserSession
+from app.auth.avatars_url import avatar_url
 from app.preferences import normalize as normalize_preferences
 from app.security import DUMMY_HASH, hash_password, hash_token, needs_rehash, new_session_token, verify_password
 
@@ -67,7 +68,7 @@ def current_session(db: Session, token: str | None) -> tuple[User, UserSession] 
 
 
 def user_payload(user: User) -> dict:
-    return {"id": user.id, "username": user.username, "name": user.name, "email": user.email, "role": user.role, "locale": user.locale}
+    return {"id": user.id, "username": user.username, "name": user.name, "email": user.email, "role": user.role, "locale": user.locale, "avatar_url": avatar_url(user)}
 
 
 def state_for(user: User, verified: bool, settings: Settings) -> str:

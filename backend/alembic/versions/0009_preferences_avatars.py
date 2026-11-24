@@ -18,6 +18,9 @@ def upgrade() -> None:
         -- One validated JSON object per person (theme, layout choices, Dashboard widgets); the application fills defaults.
         ALTER TABLE users ADD COLUMN preferences jsonb NOT NULL DEFAULT '{}'::jsonb;
 
+        -- NULL = no picture; otherwise when it was set (the picture's address carries it, so a new picture is fetched afresh).
+        ALTER TABLE users ADD COLUMN avatar_updated_at timestamptz;
+
         -- A profile picture: at most 50 KB, prepared by the browser; the server checks type and size again.
         CREATE TABLE user_avatars (
           user_id bigint PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -33,4 +36,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DROP TABLE user_avatars; ALTER TABLE users DROP COLUMN preferences;")
+    op.execute("DROP TABLE user_avatars; ALTER TABLE users DROP COLUMN avatar_updated_at; ALTER TABLE users DROP COLUMN preferences;")
