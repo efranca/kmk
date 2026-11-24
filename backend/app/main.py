@@ -15,6 +15,7 @@ from app.db import make_engine
 from app.preferences import router as preferences_router
 from app.schedule.routes import router as schedule_router
 from app.tasks.routes import router as tasks_router
+from app.version import router as version_router
 
 log = logging.getLogger("kmk")
 
@@ -47,6 +48,7 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
     app.include_router(schedule_router)
     app.include_router(tasks_router)
     app.include_router(preferences_router)
+    app.include_router(version_router)
 
     @app.exception_handler(ApiError)
     async def api_error(request, exc: ApiError):
