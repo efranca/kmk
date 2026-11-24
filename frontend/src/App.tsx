@@ -1,5 +1,7 @@
+import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { BrowserRouter } from "react-router";
 
 import AccountPage from "./AccountPage";
 import AdminPage from "./AdminPage";
@@ -11,6 +13,7 @@ import LoginForm from "./LoginForm";
 import MfaSetup from "./MfaSetup";
 import MfaVerify from "./MfaVerify";
 import NotFound from "./NotFound";
+import { makeQueryClient } from "./queryClient";
 import { useRoute } from "./route";
 import SetPassword from "./SetPassword";
 import Shell, { type ShellPage } from "./Shell";
@@ -46,7 +49,19 @@ function pageFor(path: string, state: State): Page {
   return "notfound";
 }
 
+/** The app: one query client and the browser router around everything, so every page shares both. */
 export default function App() {
+  const [queryClient] = useState(makeQueryClient);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}
+
+function AppContent() {
   const { t, i18n } = useTranslation();
   const [state, setState] = useState<State>({ kind: "checking" });
   const [recoveryCodesLeft, setRecoveryCodesLeft] = useState<number | null>(null);
