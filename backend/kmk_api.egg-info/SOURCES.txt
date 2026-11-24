@@ -6,6 +6,7 @@ app/db.py
 app/main.py
 app/mfa.py
 app/models.py
+app/names.py
 app/security.py
 app/auth/__init__.py
 app/auth/account.py
@@ -26,6 +27,8 @@ app/emails/__init__.py
 app/emails/backends.py
 app/emails/sender.py
 app/emails/templates.py
+app/schedule/__init__.py
+app/schedule/recurrence.py
 kmk_api.egg-info/PKG-INFO
 kmk_api.egg-info/SOURCES.txt
 kmk_api.egg-info/dependency_links.txt
@@ -37,14 +40,17 @@ tests/test_admin_lifecycle.py
 tests/test_auth.py
 tests/test_backup_scripts.py
 tests/test_cli.py
+tests/test_deploy_config.py
 tests/test_emails.py
 tests/test_health.py
 tests/test_lifecycle.py
 tests/test_mfa_guard.py
 tests/test_mfa_primitives.py
 tests/test_mfa_routes.py
+tests/test_names.py
 tests/test_policy.py
 tests/test_ratelimit_kinds.py
+tests/test_schedule_recurrence.py
 tests/test_schema_permissions.py
 tests/test_security.py
 tests/test_tokens.py

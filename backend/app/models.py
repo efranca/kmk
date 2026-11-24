@@ -108,7 +108,7 @@ class Event(Base):
     start_date: Mapped[date] = mapped_column(Date)
     start_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    recurrence: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    recurrence: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
     ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     max_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_by: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
