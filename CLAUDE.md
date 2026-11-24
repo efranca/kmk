@@ -50,6 +50,7 @@ Set up the backend once with `python3 -m venv backend/.venv && backend/.venv/bin
   Tokens, TOTP secrets, recovery codes and passwords must never reach logs or audit rows.
 - Error bodies are `{"error": "<code>"}`; auth failures are deliberately generic (no account enumeration).
 - New UI strings go into all three locale files; a test checks that the key sets match.
+- **Versions:** the visible version is `major.minor.<commit count>` (Settings > About, `GET /api/version`). Raise the minor in `frontend/package.json` and `backend/pyproject.toml` for a release with user-visible changes; the third number is automatic (auto-deploy passes the commit, count and build time to the API image).
 - Alembic migrations are written by hand as explicit SQL (no autogenerate); keep `app/models.py` in step.
 
 ## Working agreements

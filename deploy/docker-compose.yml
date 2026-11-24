@@ -9,7 +9,13 @@ name: kmk
 
 services:
   migrate:
-    build: ../backend
+    build:
+      context: ../backend
+      # Shown by GET /api/version (Settings > About); auto-deploy exports them, a manual build leaves them empty.
+      args:
+        APP_COMMIT: ${APP_COMMIT:-}
+        APP_COMMIT_COUNT: ${APP_COMMIT_COUNT:-}
+        APP_BUILT_AT: ${APP_BUILT_AT:-}
     image: kmk-backend
     pull_policy: build
     container_name: kmk-migrate

@@ -83,7 +83,7 @@ docker compose exec api python -m app.cli reset-mfa --username NAME
 
 ## Auto-deploy (optional)
 
-`infrastructure/deployments/` can deploy every new `origin/main` by itself (frontend build, `docker compose up -d --build`, smoke check on `/` and `/api/health`). It is **not installed**; steps, settings and troubleshooting are in `infrastructure/deployments/README.md`.
+`infrastructure/deployments/` can deploy every new `origin/main` by itself (frontend build, `docker compose up -d --build`, smoke check on `/` and `/api/health`). It is **not installed**; steps, settings and troubleshooting are in `infrastructure/deployments/README.md`. It also exports `APP_COMMIT`, `APP_COMMIT_COUNT` and `APP_BUILT_AT` so Settings > About shows the build (a hand-run `docker compose up -d --build` can export them the same way; without them the page says "Unknown").
 
 ## Backups
 

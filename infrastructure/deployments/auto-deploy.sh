@@ -104,6 +104,8 @@ fi
 log "deploying $SHORT from $WORK"
 (cd "$WORK/frontend" && npm ci --silent && npm run build --silent) || fail "frontend build"
 cd "$WORK/deploy"
+# Build info for Settings > About (the API image bakes these in; the frontend reads git itself while building).
+export APP_COMMIT="$(git -C "$WORK" rev-parse --short HEAD)" APP_COMMIT_COUNT="$(git -C "$WORK" rev-list --count HEAD)" APP_BUILT_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 docker compose up -d --build || fail "docker compose"   # builds, runs the migrate one-shot first, then recreates what changed
 # Caddy's admin API is off, so it never reloads by itself: restart it when the Caddyfile changed.
 [ "$OLD_CADDYFILE" = "$(sha256sum caddy/Caddyfile | cut -d' ' -f1)" ] || { log "Caddyfile changed: restarting caddy"; docker compose restart caddy || fail "caddy restart"; }

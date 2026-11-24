@@ -54,3 +54,11 @@ def test_logs_and_health_checks_are_still_configured(compose):
     for service in ("api", "caddy"):
         assert compose[service]["logging"]["options"] == {"max-size": "10m", "max-file": "5"}
         assert "healthcheck" in compose[service]
+
+
+def test_build_info_is_baked_into_the_api_image_not_passed_at_runtime(compose):
+    # Empty build args are dropped from `compose config`, so the build section is checked in the file itself.
+    text = (DEPLOY / "docker-compose.yml").read_text()
+    for name in ("APP_COMMIT", "APP_COMMIT_COUNT", "APP_BUILT_AT"):
+        assert f"{name}: ${{{name}:-}}" in text
+        assert name not in compose["api"]["environment"]
