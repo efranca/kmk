@@ -25,3 +25,7 @@
 .task--done .task__icon { opacity: 0.6; }
 .tasks-clear { margin-top: 12px; }
 @media (max-width: 640px) { .tasks-summary__meter { width: 56px; } }
+.task-fields { display: grid; gap: 14px; }
+.task-fields__title { display: flex; align-items: flex-end; gap: 10px; }
+.task-fields__title > .field { flex: 1; }
+.task-meta { margin: 14px 0 0; font-size: 0.85rem; color: var(--text-muted); }

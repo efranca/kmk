@@ -18,6 +18,7 @@ import { dueGroup, type DueGroup } from "./dueGroup";
 import { useCategories, useClearCompleted, useTasks, useToggleTask } from "./hooks";
 import { canChangeTask, canSetTaskStatus } from "./permissions";
 import { matchesSearch } from "./search";
+import { TaskDialog } from "./TaskDialog";
 import { TaskRow } from "./TaskRow";
 import type { StatusFilter, Task } from "./types";
 import { useTaskPeople } from "./useTaskPeople";
@@ -40,7 +41,7 @@ export function TasksPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [text, setText] = useState("");
   const [clearing, setClearing] = useState(false);
-  const [, setEditing] = useState<Task | "new" | null>(null);
+  const [editing, setEditing] = useState<Task | "new" | null>(null);
   const toggle = useToggleTask();
   const clear = useClearCompleted();
 
@@ -154,6 +155,7 @@ export function TasksPage() {
           {clear.error && <ErrorNotice error={clear.error} />}
         </Dialog>
       )}
+      {editing && <TaskDialog key={editing === "new" ? "new" : editing.id} task={editing === "new" ? null : editing} defaultPeople={picked} onClose={() => setEditing(null)} />}
     </div>
   );
 }

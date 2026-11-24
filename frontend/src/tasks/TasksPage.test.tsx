@@ -126,4 +126,16 @@ describe("TasksPage", () => {
     const bob = screen.getByText("For Bob").closest("li")!;
     expect(within(bob).getByRole("img", { name: "Bob Tremblay" })).toBeInTheDocument();
   });
+
+  it("the plus button opens an empty task form, and a row opens that task", async () => {
+    api([task({ title: "Mop the floor", description: "Blue bucket" })]);
+    page();
+    await screen.findByText("Mop the floor");
+    fireEvent.click(screen.getByRole("button", { name: "New task" }));
+    expect(await screen.findByRole("dialog", { name: "New task" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /Mop the floor/ }));
+    expect(await screen.findByDisplayValue("Blue bucket")).toBeInTheDocument();
+  });
 });
