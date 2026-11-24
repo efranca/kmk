@@ -3,13 +3,14 @@ import { useTranslation } from "react-i18next";
 
 import { Icon, type IconName } from "../ui/Icon";
 
-export type NavId = "dashboard" | "schedule" | "tasks" | "admin" | "devices";
+export type NavId = "dashboard" | "schedule" | "tasks" | "documents" | "admin" | "devices";
 type NavItem = { id: NavId; to: string; labelKey: string; icon: IconName; adminOnly?: boolean; superAdminOnly?: boolean };
 
 const ITEMS: NavItem[] = [
   { id: "dashboard", to: "/", labelKey: "navDashboard", icon: "home" },
   { id: "schedule", to: "/schedule", labelKey: "schTitle", icon: "calendar" },
   { id: "tasks", to: "/tasks", labelKey: "taskTitle", icon: "tasks" },
+  { id: "documents", to: "/documents", labelKey: "navDocuments", icon: "document" },
   { id: "admin", to: "/admin", labelKey: "navUsers", icon: "users", adminOnly: true },
   { id: "devices", to: "/devices", labelKey: "navDevices", icon: "devices", superAdminOnly: true },
 ];

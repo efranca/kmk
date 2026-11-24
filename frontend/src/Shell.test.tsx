@@ -204,6 +204,12 @@ describe("navigation by role", () => {
     expect(!!screen.queryByRole("link", { name: frCA.navDevices })).toBe(sees);
   });
 
+  it.each(["user", "admin", "superadmin"])("%s sees Documents", async (role) => {
+    mockApi({ "GET /api/auth/me": signedIn(role) });
+    render(<App />);
+    expect(await screen.findByRole("link", { name: frCA.navDocuments })).toBeInTheDocument();
+  });
+
   it("sends an admin who types /devices to the Dashboard", async () => {
     visit("/devices");
     mockApi({ "GET /api/auth/me": signedIn("admin") });
