@@ -75,3 +75,16 @@ def can_invite_role(actor: User, role: str) -> bool:
     if role == "admin":
         return actor.role == "superadmin"
     return False
+
+
+def can_change_event(actor: User, creator_id: int, person_ids: frozenset[int]) -> bool:
+    """Who may edit or delete a schedule event: an admin or the super admin, its creator, or a person it is for.
+    An event for everyone (no listed people) can be changed only by its creator or an admin."""
+    if actor.role in PRIVILEGED or actor.id == creator_id:
+        return True
+    return actor.id in person_ids
+
+
+def check_event(actor: User, creator_id: int, person_ids: frozenset[int]) -> None:
+    if not can_change_event(actor, creator_id, person_ids):
+        raise ApiError(403, "forbidden")

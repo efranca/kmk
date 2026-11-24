@@ -157,3 +157,36 @@ def test_available_actions_examples():
 )
 def test_can_invite_role(actor_role, role, allowed):
     assert policy.can_invite_role(user(1, actor_role), role) is allowed
+
+
+# --- events: who may change an event (creator, a listed person, an admin; "everyone" events: creator or admin) ---
+
+
+def test_creator_may_change_event():
+    assert policy.can_change_event(user(1), 1, frozenset({2})) is True
+
+
+def test_listed_person_may_change_event():
+    assert policy.can_change_event(user(2), 1, frozenset({2, 3})) is True
+
+
+def test_unlisted_plain_user_may_not_change_event():
+    assert policy.can_change_event(user(4), 1, frozenset({2, 3})) is False
+
+
+@pytest.mark.parametrize("role", ["admin", "superadmin"])
+def test_admin_may_change_any_event(role):
+    assert policy.can_change_event(user(9, role=role), 1, frozenset({2})) is True
+    assert policy.can_change_event(user(9, role=role), 1, frozenset()) is True
+
+
+def test_everyone_event_only_creator_or_admin():
+    assert policy.can_change_event(user(1), 1, frozenset()) is True
+    assert policy.can_change_event(user(2), 1, frozenset()) is False
+
+
+def test_check_event_raises_forbidden():
+    with pytest.raises(ApiError) as caught:
+        policy.check_event(user(4), 1, frozenset({2}))
+    assert (caught.value.status, caught.value.code) == FORBIDDEN
+    policy.check_event(user(2), 1, frozenset({2}))  # no error
