@@ -371,7 +371,6 @@
   "avatarInvalid": "Este arquivo não pode ser usado como foto. Escolha uma imagem JPEG, PNG ou WebP.",
   "adminNoResults": "Ninguém corresponde.",
   "taskMoveFailed": "Não foi possível mover a tarefa. Tente novamente.",
-  "settingsAbout": "Sobre",
   "aboutApp": "Aplicativo",
   "aboutServer": "Servidor",
   "aboutVersion": "Versão",
@@ -429,5 +428,7 @@
   "err_too_many_documents": "A biblioteca tem 500 documentos. Exclua um primeiro.",
   "err_busy": "O servidor está recebendo outros arquivos. Tente de novo em instantes.",
   "adminStatusLabel": "Quais contas",
-  "taskShowCategories": "Mostrar as etiquetas de categoria"
+  "taskShowCategories": "Mostrar as etiquetas de categoria",
+  "navAbout": "Sobre",
+  "docShowCategories": "Mostrar as etiquetas de categoria"
 }

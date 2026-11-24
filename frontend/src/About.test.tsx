@@ -1,6 +1,7 @@
-import { act, cleanup, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import AboutPage from "./AboutPage";
 import AboutSection from "./AboutSection";
 import i18n from "./i18n";
 import en from "./locales/en.json";
@@ -64,10 +65,18 @@ describe("About", () => {
     expect(screen.queryByText(en.aboutMismatch)).toBeNull();
   });
 
-  it("is part of the Settings page", async () => {
+  it("has a card for the app and one for the server", async () => {
+    mockVersion(() => res(200, server));
+    renderWithProviders(<AboutPage />);
+    expect(screen.getByRole("heading", { level: 1, name: en.navAbout })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: en.aboutApp })).toHaveTextContent(__APP_VERSION__);
+    expect(await within(screen.getByRole("region", { name: en.aboutServer })).findByText("0.2.58")).toBeInTheDocument();
+  });
+
+  it("is no longer on the Settings page", () => {
     mockVersion(() => res(200, server));
     renderWithProviders(<SettingsPage onLanguageChanged={vi.fn()} />);
-    expect(screen.getByRole("heading", { name: en.settingsAbout })).toBeInTheDocument();
-    await screen.findByText("0.2.58");
+    expect(screen.queryByRole("region", { name: en.aboutApp })).toBeNull();
+    expect(screen.queryByText(en.aboutVersion)).toBeNull();
   });
 });

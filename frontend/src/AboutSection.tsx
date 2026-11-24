@@ -24,21 +24,26 @@ export default function AboutSection() {
   const info = server.data ?? null;
   const mismatch = Boolean(__BUILD_COMMIT__ && info?.commit && info.commit !== __BUILD_COMMIT__);
   return (
-    <section className="section settings-card">
-      <h2>{t("settingsAbout")}</h2>
-      <h3 className="about__title">{t("aboutApp")}</h3>
-      <dl className="about">
-        <Row label={t("aboutVersion")} value={__APP_VERSION__} />
-        <Row label={t("aboutCommit")} value={__BUILD_COMMIT__ || unknown} />
-        <Row label={t("aboutBuilt")} value={when(__BUILD_TIME__)} />
-      </dl>
-      <h3 className="about__title">{t("aboutServer")}</h3>
-      <dl className="about">
-        <Row label={t("aboutVersion")} value={info?.version ?? unknown} />
-        <Row label={t("aboutCommit")} value={info?.commit || unknown} />
-        <Row label={t("aboutBuilt")} value={when(info?.builtAt ?? null)} />
-      </dl>
+    <>
+      <div className="cards">
+        <section className="section settings-card" aria-label={t("aboutApp")}>
+          <h2>{t("aboutApp")}</h2>
+          <dl className="about">
+            <Row label={t("aboutVersion")} value={__APP_VERSION__} />
+            <Row label={t("aboutCommit")} value={__BUILD_COMMIT__ || unknown} />
+            <Row label={t("aboutBuilt")} value={when(__BUILD_TIME__)} />
+          </dl>
+        </section>
+        <section className="section settings-card" aria-label={t("aboutServer")}>
+          <h2>{t("aboutServer")}</h2>
+          <dl className="about">
+            <Row label={t("aboutVersion")} value={info?.version ?? unknown} />
+            <Row label={t("aboutCommit")} value={info?.commit || unknown} />
+            <Row label={t("aboutBuilt")} value={when(info?.builtAt ?? null)} />
+          </dl>
+        </section>
+      </div>
       {mismatch && <p className="error" role="status">{t("aboutMismatch")}</p>}
-    </section>
+    </>
   );
 }

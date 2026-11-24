@@ -371,7 +371,6 @@
   "avatarInvalid": "This file cannot be used as a picture. Choose a JPEG, PNG or WebP image.",
   "adminNoResults": "No one matches.",
   "taskMoveFailed": "That task could not be moved. Try again.",
-  "settingsAbout": "About",
   "aboutApp": "App",
   "aboutServer": "Server",
   "aboutVersion": "Version",
@@ -429,5 +428,7 @@
   "err_too_many_documents": "The library holds 500 documents. Delete one first.",
   "err_busy": "The server is receiving other files. Try again in a moment.",
   "adminStatusLabel": "Which accounts",
-  "taskShowCategories": "Show category chips"
+  "taskShowCategories": "Show category chips",
+  "navAbout": "About",
+  "docShowCategories": "Show category chips"
 }

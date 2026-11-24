@@ -79,6 +79,9 @@ button:disabled { opacity: 0.6; cursor: default; }
 a { color: var(--pine); font-size: 0.9rem; }
 .section { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
 .settings-card { margin-top: 16px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+/* Cards side by side as the width allows (one column on a phone), not one long line. */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 16px; align-items: start; margin-top: 16px; }
+.cards > .settings-card { margin-top: 0; }
 .section h2 { font-family: Montserrat, Inter, system-ui, sans-serif; font-size: 1.1rem; margin: 0 0 4px; color: var(--ink); }
 button.secondary { background: transparent; color: var(--pine); border: 1px solid var(--pine); margin-top: 20px; }
 button.secondary:hover:not(:disabled) { background: var(--mist); }
@@ -118,3 +121,4 @@ select { font: inherit; font-size: 1rem; color: var(--ink); background: var(--pa
 .skip { position: absolute; left: -9999px; top: 0; background: var(--pine); color: #fff; padding: 8px 14px; border-radius: 0 0 10px 0; z-index: 10; }
 .skip:focus { left: 0; }
 .card > .lang-picker { display: flex; justify-content: flex-end; margin: -8px 0 8px; }
+.cards + .error { margin-top: 12px; }

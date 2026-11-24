@@ -7,17 +7,19 @@ import { Avatar } from "../ui/Avatar";
 import { Icon } from "../ui/Icon";
 import { memberColor } from "../ui/memberColor";
 
-/** Your face at the bottom of the sidebar: opens Account, Settings, the language and Sign out. */
+/** Your face at the bottom of the sidebar: opens Account, Settings, About and Sign out. */
 export default function AccountMenu({
   user,
   active,
   settingsActive = false,
+  aboutActive = false,
   onNavigate,
   onSignOut,
 }: {
   user: User;
   active: boolean;
   settingsActive?: boolean;
+  aboutActive?: boolean;
   onNavigate: (path: string) => void;
   onSignOut: () => void;
 }) {
@@ -91,6 +93,19 @@ export default function AccountMenu({
           >
             <Icon name="settings" size={18} />
             {t("navSettings")}
+          </a>
+          <a
+            href="/about"
+            aria-current={aboutActive ? "page" : undefined}
+            className="accountmenu__item"
+            onClick={(e) => {
+              e.preventDefault();
+              setOpen(false);
+              onNavigate("/about");
+            }}
+          >
+            <Icon name="info" size={18} />
+            {t("navAbout")}
           </a>
           <button type="button" className="accountmenu__item" onClick={onSignOut}>
             <Icon name="logout" size={18} />

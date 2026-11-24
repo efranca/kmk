@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import i18n from "../i18n";
+import { DEFAULT_PREFERENCES } from "../preferences";
 import en from "../locales/en.json";
 import { renderWithProviders, testUser } from "../testUtils";
 import { DocumentsPage } from "./DocumentsPage";
@@ -56,6 +57,7 @@ function fakeUpload(status: number, body: unknown = {}) {
   return sent;
 }
 
+const chips = { preferences: { ...DEFAULT_PREFERENCES, show_document_categories: true } };
 const admin = { session: { user: { ...testUser, role: "admin" as const } } };
 
 beforeEach(async () => {
@@ -77,11 +79,34 @@ describe("Documents page", () => {
 
   it("filters by category with counts", async () => {
     mockApi();
-    renderWithProviders(<DocumentsPage />);
+    renderWithProviders(<DocumentsPage />, chips);
     await screen.findByText("Zebra");
     fireEvent.click(screen.getByRole("button", { name: /HR 1/ }));
     expect(screen.queryByText("Zebra")).toBeNull();
     expect(screen.getByText("Employee handbook")).toBeInTheDocument();
+  });
+
+  it("keeps the category chips hidden until they are turned on, and saves the choice", async () => {
+    mockApi({ "PATCH /api/me/preferences": () => res(200, { preferences: {} }) });
+    renderWithProviders(<DocumentsPage />);
+    await screen.findByText("Zebra");
+    expect(screen.queryByRole("group", { name: en.docCatFilter })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: en.docShowCategories }));
+    expect(await screen.findByRole("button", { name: /HR 1/ })).toBeInTheDocument();
+    await waitFor(() => expect(calls("PATCH /api/me/preferences")).toHaveLength(1));
+    expect(JSON.parse(String((calls("PATCH /api/me/preferences")[0][1] as RequestInit).body))).toEqual({ show_document_categories: true });
+    fireEvent.click(screen.getByRole("button", { name: en.docShowCategories }));
+    expect(screen.queryByRole("button", { name: /HR 1/ })).toBeNull();
+  });
+
+  it("shows every document again when the chips are turned off with a category picked", async () => {
+    mockApi({ "PATCH /api/me/preferences": () => res(200, { preferences: {} }) });
+    renderWithProviders(<DocumentsPage />, chips);
+    await screen.findByText("Zebra");
+    fireEvent.click(screen.getByRole("button", { name: /HR 1/ }));
+    expect(screen.queryByText("Zebra")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: en.docShowCategories }));
+    expect(screen.getByText("Zebra")).toBeInTheDocument();
   });
 
   it("searches title, note, category and file name ignoring accents and case", async () => {
