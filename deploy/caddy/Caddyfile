@@ -28,6 +28,10 @@ http://app.kmk-entretien.ca:8081 {
 		reverse_proxy 127.0.0.1:8001 {
 			# Overwrites anything the client sent; resolved from Cf-Connecting-Ip for the trusted tunnel peer.
 			header_up X-Real-Client-Ip {client_ip}
+			# Approximate place from Cloudflare (informational, shown to the super admin). Always overwritten here, so a
+			# browser cannot choose them; the city only exists when the "Add visitor location headers" transform is on.
+			header_up X-Geo-Country {http.request.header.Cf-Ipcountry}
+			header_up X-Geo-City {http.request.header.Cf-Ipcity}
 		}
 	}
 

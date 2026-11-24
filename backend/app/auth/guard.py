@@ -3,12 +3,12 @@ from collections.abc import Callable
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
-from app.auth import service
+from app.auth import geo, service
 from app.auth.deps import get_db, get_settings_dep
 from app.auth.errors import ApiError
 from app.config import Settings
 from app.models import User, UserSession
-from app.security import verify_csrf
+from app.security import client_ip, verify_csrf
 
 
 def guard(*, allow: tuple[str, ...] = ("ok",), csrf: bool = True) -> Callable:
@@ -27,6 +27,9 @@ def guard(*, allow: tuple[str, ...] = ("ok",), csrf: bool = True) -> Callable:
         if not found:
             raise ApiError(401, "unauthenticated")
         user, session = found
+        peer = request.client.host if request.client else "unknown"
+        country, city = geo.from_request(request, settings)
+        service.touch_session(db, session, client_ip(peer, request.headers.get("x-real-client-ip"), settings.trusted_proxy_ips), country, city)
         if csrf and not verify_csrf(session.token_hash, settings.session_secret, request.headers.get("x-csrf-token", "")):
             raise ApiError(403, "forbidden")
         state = service.mfa_state(user, session, settings)
