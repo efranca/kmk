@@ -6,6 +6,7 @@ import { moveSlot, resizeSlot, sameSlot, timeOfMinutes, type Slot } from "./drag
 import { busyHours, hourBands, layoutColumn, minutesAt, positionOf, toMinutes, unionWindow, windowFor, type GridItem } from "./gridLayout";
 import { isWeekend } from "./scheduleDates";
 import { ScheduleChip } from "./ScheduleChip";
+import { TaskChip, type TaskLayer } from "./TaskChip";
 import type { Occurrence } from "./types";
 
 const HOUR_PX = 56;
@@ -31,6 +32,8 @@ interface TimeGridProps {
   onMoveEvent?: (item: Occurrence, slot: { date: string; start: string; end: string }) => void;
   /** Which events may be dragged (the person may change them); all of them when absent. */
   canMove?: (item: Occurrence) => boolean;
+  /** Tasks to show in the all-day strip of their due day, when the switch is on. */
+  tasks?: TaskLayer;
 }
 
 /** A drag or resize under way: what the ghost shows. */
@@ -50,7 +53,7 @@ const LONG_PRESS_MS = 350; // on a touch screen a drag starts after a press, so 
  * edge dragged to change how long it lasts (on a touch screen after pressing it for a moment); both snap to a quarter
  * of an hour and are reported to `onMoveEvent`.
  */
-export function TimeGrid({ days, items, today, locale, onOpenItem, onCreateAt, onMoveEvent, canMove }: TimeGridProps) {
+export function TimeGrid({ days, items, today, locale, onOpenItem, onCreateAt, onMoveEvent, canMove, tasks }: TimeGridProps) {
   const { t } = useTranslation();
   const window = unionWindow(days);
   const timed = days.flatMap((d) => items.filter((i) => i.date === d && !i.all_day && i.start_time));
@@ -212,6 +215,7 @@ export function TimeGrid({ days, items, today, locale, onOpenItem, onCreateAt, o
           {byDay(d).filter((i) => i.all_day).map((i) => (
             <ScheduleChip key={keyOf(i)} item={i} onOpen={(x) => onOpenItem?.(x)} />
           ))}
+          {tasks?.on(d).map((task) => <TaskChip key={`task-${task.id}`} task={task} layer={tasks} />)}
         </div>
       ))}
 

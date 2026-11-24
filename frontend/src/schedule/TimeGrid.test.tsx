@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ComponentProps } from "react";
 
+import type { Task } from "../tasks/types";
 import { occurrence, resetLanguage, useEnglish } from "../testUtils";
 import { TimeGrid } from "./TimeGrid";
 
@@ -143,5 +144,23 @@ describe("TimeGrid dragging", () => {
     pointer("pointerMove", window, 410, { clientX: 150 });
     pointer("pointerUp", window, 410, { clientX: 150 });
     expect(moved).toHaveBeenCalledWith(piano, { date: "2026-11-13", start: "10:00", end: "11:00" });
+  });
+
+  it("puts a task in the all-day strip of its day; it can be ticked and opened, and never dragged", () => {
+    const task = { id: 4, title: "Mop", icon: null, status: "pending", people: [] } as unknown as Task;
+    const layer = { on: (d: string) => (d === "2026-11-12" ? [task] : []), canToggle: () => true, onToggle: vi.fn(), onOpen: vi.fn() };
+    const onMove = vi.fn();
+    render(<TimeGrid days={["2026-11-12", "2026-11-13"]} items={[]} today="2026-11-12" locale="en-US" tasks={layer} onMoveEvent={onMove} canMove={() => true} />);
+    const strip = document.querySelector('.grid__allday[data-date="2026-11-12"]') as HTMLElement;
+    fireEvent.click(within(strip).getByRole("checkbox", { name: "Mop" }));
+    expect(layer.onToggle).toHaveBeenCalledWith(task);
+    const open = within(strip).getByRole("button", { name: /Mop/ });
+    fireEvent.pointerDown(open, { pointerId: 1, clientX: 5, clientY: 5 });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 80, clientY: 200 });
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 80, clientY: 200 });
+    expect(onMove).not.toHaveBeenCalled();
+    fireEvent.click(open);
+    expect(layer.onOpen).toHaveBeenCalledWith(task);
+    expect(document.querySelector('.grid__allday[data-date="2026-11-13"] .grid__chip--task')).toBeNull();
   });
 });

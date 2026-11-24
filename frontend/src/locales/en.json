@@ -340,5 +340,6 @@
   "dashMyTasks": "My tasks",
   "taskDashTomorrow": "Tomorrow",
   "taskDashMore": "+{{count}} more",
-  "taskDashEmpty": "Nothing waiting for you."
+  "taskDashEmpty": "Nothing waiting for you.",
+  "schShowTasks": "Show tasks"
 }

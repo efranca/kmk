@@ -340,5 +340,6 @@
   "dashMyTasks": "Mes tâches",
   "taskDashTomorrow": "Demain",
   "taskDashMore": "+{{count}} de plus",
-  "taskDashEmpty": "Rien ne vous attend."
+  "taskDashEmpty": "Rien ne vous attend.",
+  "schShowTasks": "Afficher les tâches"
 }

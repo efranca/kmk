@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { mockApi, occurrence, person, renderWithProviders, reply, resetLanguage, useEnglish } from "../testUtils";
 import { todayIn, COMPANY_TIME_ZONE } from "./scheduleDates";
 import { SchedulePage } from "./SchedulePage";
+import type { Task } from "../tasks/types";
 import type { Occurrence } from "./types";
 
 const alice = person(1, "Alice Roy", "red");
@@ -241,5 +242,60 @@ describe("SchedulePage actions", () => {
     await userEvent.pointer({ target: column, keys: "[MouseLeft]", coords: { clientY: 500 } });
     expect(await screen.findByRole("dialog", { name: "New event" })).toBeInTheDocument();
     expect(screen.getByLabelText("Date")).toHaveValue("2026-11-13");
+  });
+});
+
+describe("SchedulePage tasks", () => {
+  const dueTask: Task = {
+    id: 11, title: "Mop the floor", description: null, icon: "🧹", category_id: null, people: [], status: "pending", due_date: "2026-11-12", completed_at: null,
+    show_on_dashboard: true, created_by: { id: 1, name: "Alice Roy" }, updated_by: { id: 1, name: "Alice Roy" }, created_at: "2026-11-01T12:00:00Z", updated_at: "2026-11-01T12:00:00Z",
+  };
+  function withTasks(route: string) {
+    const api = mockApi({
+      "GET /api/schedule/events": () => ({ occurrences: [] }),
+      "GET /api/schedule/people": () => ({ people: [alice, leo] }),
+      "GET /api/tasks": () => ({ tasks: [dueTask] }),
+      "GET /api/tasks/categories": () => ({ categories: [] }),
+      "POST /api/tasks/11/complete": () => ({ task: { ...dueTask, status: "completed" } }),
+    });
+    renderWithProviders(<><SchedulePage /><Probe /></>, { route });
+    return api;
+  }
+  beforeEach(() => localStorage.clear());
+
+  it("shows no tasks, and never asks for them, while the switch is off", async () => {
+    const api = withTasks("/schedule?view=month&date=2026-11-12");
+    await screen.findByRole("button", { name: "Show tasks" });
+    expect(screen.queryByText("Mop the floor")).not.toBeInTheDocument();
+    expect(api.calls.some((c) => c.path === "/api/tasks")).toBe(false);
+  });
+
+  it("shows a task with a due date as a chip on its day once the switch is on", async () => {
+    withTasks("/schedule?view=month&date=2026-11-12");
+    await userEvent.click(await screen.findByRole("button", { name: "Show tasks" }));
+    const chip = await screen.findByText("Mop the floor");
+    expect(chip.closest("[data-date]")?.getAttribute("data-date")).toBe("2026-11-12");
+    expect(screen.getByRole("button", { name: "Show tasks" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("shows it in the all-day strip of the week view, and ticking the chip completes the task", async () => {
+    const api = withTasks("/schedule?view=week&date=2026-11-12");
+    await userEvent.click(await screen.findByRole("button", { name: "Show tasks" }));
+    await screen.findByText("Mop the floor");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Mop the floor" }));
+    await waitFor(() => expect(api.calls.some((c) => c.method === "POST" && c.path === "/api/tasks/11/complete")).toBe(true));
+  });
+
+  it("a task chip opens the task, not an event", async () => {
+    withTasks("/schedule?view=month&date=2026-11-12");
+    await userEvent.click(await screen.findByRole("button", { name: "Show tasks" }));
+    await userEvent.click(await screen.findByText("Mop the floor"));
+    expect(await screen.findByRole("dialog", { name: "Task" })).toBeInTheDocument();
+  });
+
+  it("marks a day with a task in the year view", async () => {
+    withTasks("/schedule?view=year&date=2026-11-12");
+    await userEvent.click(await screen.findByRole("button", { name: "Show tasks" }));
+    await waitFor(() => expect(document.querySelector('[data-date="2026-11-12"] .year__dot')).not.toBeNull());
   });
 });

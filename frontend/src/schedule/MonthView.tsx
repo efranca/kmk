@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 
 import { isWeekend, monthGrid } from "./scheduleDates";
 import { ScheduleChip } from "./ScheduleChip";
+import { TaskChip, type TaskLayer } from "./TaskChip";
 import type { Occurrence } from "./types";
 
 const MAX_CHIPS = 3;
@@ -16,10 +17,12 @@ interface MonthViewProps {
   locale: string;
   onOpenDay: (date: string) => void;
   onOpenItem: (item: Occurrence) => void;
+  /** Tasks to show on their due day, when the switch is on. */
+  tasks?: TaskLayer;
 }
 
 /** A classic month: six weeks of days, each with up to three short chips and "+N more"; a day opens its Day view. */
-export function MonthView({ year, month, items, today, firstDay, locale, onOpenDay, onOpenItem }: MonthViewProps) {
+export function MonthView({ year, month, items, today, firstDay, locale, onOpenDay, onOpenItem, tasks }: MonthViewProps) {
   const { t } = useTranslation();
   const days = monthGrid(year, month, firstDay);
   const prefix = `${year}-${String(month).padStart(2, "0")}`;
@@ -37,6 +40,11 @@ export function MonthView({ year, month, items, today, firstDay, locale, onOpenD
       <div className="month__grid">
         {days.map((d) => {
           const here = items.filter((i) => i.date === d);
+          const due = tasks?.on(d) ?? [];
+          const chips = [
+            ...here.map((i) => <ScheduleChip key={`${i.event_id}-${i.original_date}`} item={i} onOpen={onOpenItem} />),
+            ...due.map((task) => <TaskChip key={`task-${task.id}`} task={task} layer={tasks!} />),
+          ];
           const classes = [
             "month__day",
             d.startsWith(prefix) ? "" : "month__day--outside",
@@ -48,12 +56,10 @@ export function MonthView({ year, month, items, today, firstDay, locale, onOpenD
               <button type="button" className="month__num" aria-label={dayName.format(at(d))} onClick={() => onOpenDay(d)}>
                 {Number(d.slice(8))}
               </button>
-              {here.slice(0, MAX_CHIPS).map((i) => (
-                <ScheduleChip key={`${i.event_id}-${i.original_date}`} item={i} onOpen={onOpenItem} />
-              ))}
-              {here.length > MAX_CHIPS && (
+              {chips.slice(0, MAX_CHIPS)}
+              {chips.length > MAX_CHIPS && (
                 <button type="button" className="month__more" onClick={() => onOpenDay(d)}>
-                  {t("schMore", { n: here.length - MAX_CHIPS })}
+                  {t("schMore", { n: chips.length - MAX_CHIPS })}
                 </button>
               )}
             </div>
