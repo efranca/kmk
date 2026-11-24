@@ -1,9 +1,9 @@
-.users { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.users-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 14px; }
+.users { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.users-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 14px; position: relative; z-index: 6; }
 .users-toolbar__search input { min-height: 40px; min-width: 12rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); padding: 0 16px; font: inherit; }
-.user-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.user-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .user-card.status-deleted, .user-card.status-disabled { opacity: 0.7; }
-.user-card__open { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0; padding: 10px 14px; border: 0; border-radius: 14px; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.user-card__open { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0; padding: 8px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .user-card__open:hover { background: var(--surface-2); }
 .user-card__who { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 2px; }
 .user-card__who strong, .user-card__who .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -14,3 +14,5 @@
 .user-dialog__head { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; }
 .user-dialog__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 599px) { .user-card__open { flex-wrap: wrap; } .user-card__chips { flex-basis: 100%; } }
+.users-toolbar .segmented__option { white-space: nowrap; }
+@media (max-width: 599px) { .users-toolbar .segmented { max-width: 100%; } .users-toolbar .segmented__option { padding: 6px 9px; font-size: 0.82rem; } }

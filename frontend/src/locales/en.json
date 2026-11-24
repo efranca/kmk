@@ -64,9 +64,8 @@
   "mfaMandatory": "Two-step verification is required for your role.",
   "mfaUnavailable": "Two-step verification is unavailable right now.",
   "codesRemaining": "You have {{count}} recovery code(s) left. Consider generating new ones.",
-  "adminTitle": "User management",
+  "adminTitle": "Users",
   "adminSearch": "Search",
-  "adminShowDeleted": "Show deleted accounts",
   "adminInviteTitle": "Invite a user",
   "adminInviteSend": "Send invitation",
   "adminInviteSent": "Invitation sent.",
@@ -428,5 +427,7 @@
   "err_invalid_file": "Only PDF, JPEG, PNG and WebP files can be added.",
   "err_library_full": "The library is full (2 GB). Delete a document first.",
   "err_too_many_documents": "The library holds 500 documents. Delete one first.",
-  "err_busy": "The server is receiving other files. Try again in a moment."
+  "err_busy": "The server is receiving other files. Try again in a moment.",
+  "adminStatusLabel": "Which accounts",
+  "taskShowCategories": "Show category chips"
 }

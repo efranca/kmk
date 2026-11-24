@@ -16,6 +16,7 @@ DEFAULTS: dict = {
     "sidebar_collapsed": False,
     "tasks_view": "list",
     "show_tasks_on_schedule": False,
+    "show_task_categories": False,
     "dashboard_widgets": {"my_events": True, "all_events": True, "my_tasks": True},
 }
 
@@ -37,6 +38,7 @@ class PreferencesIn(BaseModel):
     sidebar_collapsed: bool | None = None
     tasks_view: Literal["list", "board"] | None = None
     show_tasks_on_schedule: bool | None = None
+    show_task_categories: bool | None = None
     dashboard_widgets: WidgetsIn | None = None
 
 

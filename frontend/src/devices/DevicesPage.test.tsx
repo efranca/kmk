@@ -96,6 +96,26 @@ describe("Devices page", () => {
     await waitFor(() => expect(called("POST /api/admin/users/2/devices/logout-all")).toBe(true));
   });
 
+  it("searches people and devices (name, browser, system, address, place)", async () => {
+    mockApi();
+    renderWithProviders(<DevicesPage />);
+    await screen.findByRole("region", { name: /Alice Roy/ });
+    fireEvent.click(screen.getByRole("button", { name: en.adminSearch }));
+    const box = screen.getByRole("searchbox");
+    fireEvent.change(box, { target: { value: "bob" } });
+    expect(screen.queryByRole("region", { name: /Alice Roy/ })).toBeNull();
+    expect(within(screen.getByRole("region", { name: /Bob Tremblay/ })).getAllByRole("listitem")).toHaveLength(2);
+    fireEvent.change(box, { target: { value: "safari" } });
+    expect(within(screen.getByRole("region", { name: /Bob Tremblay/ })).getAllByRole("listitem")).toHaveLength(1);
+    fireEvent.change(box, { target: { value: "montreal" } });
+    expect(screen.getByRole("region", { name: /Alice Roy/ })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Bob Tremblay/ })).toBeNull();
+    fireEvent.change(box, { target: { value: "203.0.113" } });
+    expect(within(screen.getByRole("region", { name: /Bob Tremblay/ })).getAllByRole("listitem")).toHaveLength(1);
+    fireEvent.change(box, { target: { value: "no such thing" } });
+    expect(screen.getByText(en.adminNoResults)).toBeInTheDocument();
+  });
+
   it("tells when the list cannot be loaded", async () => {
     mockApi(() => res(500, { error: "x" }));
     renderWithProviders(<DevicesPage />);

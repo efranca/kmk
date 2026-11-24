@@ -6,10 +6,13 @@ import { fold } from "../person";
 import { IconButton } from "../ui/Button";
 import { EmptyState } from "../ui/Feedback";
 import { PageHeader } from "../ui/PageHeader";
-import { Toggle } from "../ui/Toggle";
+import { Segmented } from "../ui/Segmented";
 import InviteDialog from "./InviteDialog";
 import UserDialog from "./UserDialog";
 import UserRow from "./UserRow";
+
+type StatusTab = AdminUser["status"];
+const TABS: StatusTab[] = ["active", "invited", "disabled", "deleted"];
 
 const ERRORS = {
   forbidden: "errForbidden",
@@ -28,7 +31,7 @@ export default function UsersPage({ session }: { session: Session }) {
   const [loadFailed, setLoadFailed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [showDeleted, setShowDeleted] = useState(false);
+  const [tab, setTab] = useState<StatusTab>("active");
   const [notice, setNotice] = useState<{ key: string; ok: boolean } | null>(null);
   const [inviting, setInviting] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
@@ -59,9 +62,12 @@ export default function UsersPage({ session }: { session: Session }) {
   }
 
   const needle = fold(search);
+  // As on Tasks: the tabs pick a status, and searching looks through everyone (the tabs step aside).
+  const searching = needle.length > 0;
   const visible = (users ?? []).filter(
-    (u) => (showDeleted || u.status !== "deleted") && (!needle || fold(u.username).includes(needle) || fold(u.email).includes(needle) || fold(u.name ?? "").includes(needle)),
+    (u) => (searching ? fold(u.username).includes(needle) || fold(u.email).includes(needle) || fold(u.name ?? "").includes(needle) : u.status === tab),
   );
+  const countOf = (status: StatusTab) => (users ?? []).filter((u) => u.status === status).length;
   const open = users?.find((u) => u.id === openId) ?? null;
   const dialogOpen = inviting || open !== null;
 
@@ -89,13 +95,16 @@ export default function UsersPage({ session }: { session: Session }) {
       />
       {!dialogOpen && message}
       <div className="users-toolbar">
+        {!searching && users && (
+          <Segmented label={t("adminStatusLabel")} value={tab} onChange={setTab}
+            options={TABS.map((s) => ({ value: s, label: `${t(`status_${s}`)} ${countOf(s)}` }))} />
+        )}
         {searchOpen && (
           <label className="users-toolbar__search">
             <span className="visually-hidden">{t("adminSearch")}</span>
             <input type="search" value={search} autoFocus autoCapitalize="none" placeholder={t("adminSearch")} onChange={(e) => setSearch(e.target.value)} />
           </label>
         )}
-        <Toggle label={t("adminShowDeleted")} checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} />
       </div>
       {loadFailed && <p className="error" role="alert">{t("networkError")}</p>}
       {users && visible.length === 0 && <EmptyState>{t("adminNoResults")}</EmptyState>}

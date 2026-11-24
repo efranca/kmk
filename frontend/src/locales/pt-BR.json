@@ -64,9 +64,8 @@
   "mfaMandatory": "A verificação em duas etapas é obrigatória para a sua função.",
   "mfaUnavailable": "A verificação em duas etapas está indisponível no momento.",
   "codesRemaining": "Restam {{count}} código(s) de recuperação. Considere gerar novos.",
-  "adminTitle": "Gerenciar usuários",
+  "adminTitle": "Usuários",
   "adminSearch": "Pesquisar",
-  "adminShowDeleted": "Mostrar contas excluídas",
   "adminInviteTitle": "Convidar um usuário",
   "adminInviteSend": "Enviar convite",
   "adminInviteSent": "Convite enviado.",
@@ -428,5 +427,7 @@
   "err_invalid_file": "Só é possível adicionar arquivos PDF, JPEG, PNG e WebP.",
   "err_library_full": "A biblioteca está cheia (2 GB). Exclua um documento primeiro.",
   "err_too_many_documents": "A biblioteca tem 500 documentos. Exclua um primeiro.",
-  "err_busy": "O servidor está recebendo outros arquivos. Tente de novo em instantes."
+  "err_busy": "O servidor está recebendo outros arquivos. Tente de novo em instantes.",
+  "adminStatusLabel": "Quais contas",
+  "taskShowCategories": "Mostrar as etiquetas de categoria"
 }

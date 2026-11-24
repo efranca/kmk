@@ -22,6 +22,7 @@ const PATHS = {
   settings: '<path d="M5 8h14M5 16h14"/><circle cx="9" cy="8" r="2.2"/><circle cx="15" cy="16" r="2.2"/>',
   devices: '<rect x="3" y="5" width="14" height="10" rx="2"/><path d="M7 19h6M10 15v4"/><rect x="17" y="9" width="4" height="9" rx="1.2"/>',
   document: '<path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5V8h4M9 12.5h6M9 16h6"/>',
+  tag: '<path d="M4 12V5.5A1.5 1.5 0 0 1 5.5 4H12l8 8-7.5 7.5a1.5 1.5 0 0 1-2.1 0z"/><circle cx="8.5" cy="8.5" r="1.2"/>',
   account: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/>',
 } as const;
 
