@@ -115,5 +115,7 @@
   "adminName": "Nome completo",
   "errInvalidInput": "Verifique os campos: o nome deve ter de 1 a 100 caracteres, sem símbolos especiais.",
   "close": "Fechar",
-  "everyone": "Todos"
+  "everyone": "Todos",
+  "navDashboard": "Painel",
+  "accountMenu": "Menu da conta"
 }

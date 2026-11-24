@@ -30,7 +30,7 @@ const TITLE_KEYS: Record<Page, string | null> = {
   setpw: "setPasswordTitle",
   verify: "mfaCodeTitle",
   setup: "mfaSetupTitle",
-  welcome: "navWelcome",
+  welcome: "navDashboard",
   account: "navAccount",
   admin: "adminTitle",
   notfound: "notFoundTitle",

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import i18n from "./i18n";
 import { forgetToken } from "./route";
+import { openAccountMenu } from "./testUtils";
 import frCA from "./locales/fr-CA.json";
 
 const BRAND = "KMK Entretien Ménager";
@@ -46,6 +47,8 @@ describe("signed-in pages", () => {
     expect(screen.getByText(frCA.welcomeTitle)).toBeInTheDocument();
     expect(screen.getByText(frCA.welcomeIntro)).toBeInTheDocument();
     expect(screen.getByRole("navigation")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: frCA.language })).toBeNull(); // language and sign-out sit behind the account menu
+    openAccountMenu();
     expect(screen.getByRole("combobox", { name: frCA.language })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: frCA.signOut })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: frCA.changePasswordTitle })).toBeNull(); // that lives on /account now
@@ -63,13 +66,16 @@ describe("signed-in pages", () => {
   it("marks the active entry and navigates without reloading", async () => {
     mockApi({ "GET /api/auth/me": signedIn() });
     render(<App />);
-    const home = await screen.findByRole("link", { name: frCA.navWelcome });
+    const home = await screen.findByRole("link", { name: frCA.navDashboard });
     expect(home).toHaveAttribute("aria-current", "page");
+    openAccountMenu();
+    expect(screen.getByRole("link", { name: frCA.navAccount })).not.toHaveAttribute("aria-current");
     fireEvent.click(screen.getByRole("link", { name: frCA.navAccount }));
     expect(await screen.findByRole("heading", { level: 2, name: frCA.changePasswordTitle })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/account");
+    expect(screen.getByRole("link", { name: frCA.navDashboard })).not.toHaveAttribute("aria-current");
+    openAccountMenu();
     expect(screen.getByRole("link", { name: frCA.navAccount })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: frCA.navWelcome })).not.toHaveAttribute("aria-current");
   });
 
   it("has a skip link that targets the main content", async () => {
@@ -84,9 +90,36 @@ describe("signed-in pages", () => {
     mockApi({ "GET /api/auth/me": signedIn("admin") });
     render(<App />);
     expect(await screen.findByText(frCA.mfaBannerAdmin)).toBeInTheDocument();
+    openAccountMenu();
     fireEvent.click(screen.getByRole("link", { name: frCA.navAccount }));
     await screen.findByRole("heading", { level: 2, name: frCA.changePasswordTitle });
     expect(screen.getByText(frCA.mfaBannerAdmin)).toBeInTheDocument();
+  });
+});
+
+describe("account menu", () => {
+  it("holds the account page, the language and sign out, and closes on Escape", async () => {
+    mockApi({ "GET /api/auth/me": signedIn() });
+    render(<App />);
+    await screen.findByRole("link", { name: frCA.navDashboard });
+    const button = openAccountMenu();
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: frCA.navAccount })).toHaveAttribute("href", "/account");
+    expect(screen.getByRole("combobox", { name: frCA.language })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: frCA.signOut })).toBeInTheDocument();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(screen.queryByRole("button", { name: frCA.signOut })).toBeNull();
+    expect(button).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("closes after choosing the account page", async () => {
+    mockApi({ "GET /api/auth/me": signedIn() });
+    render(<App />);
+    await screen.findByRole("link", { name: frCA.navDashboard });
+    openAccountMenu();
+    fireEvent.click(screen.getByRole("link", { name: frCA.navAccount }));
+    await screen.findByRole("heading", { level: 2, name: frCA.changePasswordTitle });
+    expect(screen.queryByRole("button", { name: frCA.signOut })).toBeNull();
   });
 });
 
@@ -98,7 +131,7 @@ describe("navigation by role", () => {
   ])("%s sees Users: %s", async (role, sees) => {
     mockApi({ "GET /api/auth/me": signedIn(role) });
     render(<App />);
-    await screen.findByRole("link", { name: frCA.navWelcome });
+    await screen.findByRole("link", { name: frCA.navDashboard });
     expect(!!screen.queryByRole("link", { name: frCA.navUsers })).toBe(sees);
   });
 
@@ -203,7 +236,7 @@ describe("titles and language", () => {
   };
 
   it("sets the page title from the page name", async () => {
-    expect(await titleAt("/", { "GET /api/auth/me": signedIn() })).toBe(`${frCA.navWelcome} · ${BRAND}`);
+    expect(await titleAt("/", { "GET /api/auth/me": signedIn() })).toBe(`${frCA.navDashboard} · ${BRAND}`);
     cleanup();
     expect(await titleAt("/account", { "GET /api/auth/me": signedIn() })).toBe(`${frCA.navAccount} · ${BRAND}`);
     cleanup();

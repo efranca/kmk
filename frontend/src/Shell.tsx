@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
-import { useTranslation } from "react-i18next";
 
 import type { User } from "./api";
-import LanguageSwitcher from "./LanguageSwitcher";
+import Layout, { type LayoutPage } from "./app/Layout";
 
 export type ShellPage = "welcome" | "account" | "admin" | "notfound";
 
-/** Frame for signed-in pages: logo, navigation (by role), language switcher and sign-out. */
+const PAGE_TO_LAYOUT: Record<ShellPage, LayoutPage> = { welcome: "dashboard", account: "account", admin: "admin", notfound: "other" };
+
+/** Frame for signed-in pages (see app/Layout): navigation by role, the account menu, and the page area. */
 export default function Shell({
   user,
   active,
@@ -24,45 +25,16 @@ export default function Shell({
   onSignOut: () => void;
   children: ReactNode;
 }) {
-  const { t } = useTranslation();
-  const link = (path: string, id: ShellPage, label: string) => (
-    <a
-      href={path}
-      aria-current={active === id ? "page" : undefined}
-      onClick={(e) => {
-        e.preventDefault();
-        onNavigate(path);
-      }}
-    >
-      {label}
-    </a>
-  );
-
   return (
-    <div className="shell">
-      <a className="skip" href="#main">{t("skipToContent")}</a>
-      <header className="shell-header">
-        <a
-          href="/"
-          className="brand"
-          onClick={(e) => {
-            e.preventDefault();
-            onNavigate("/");
-          }}
-        >
-          <img src="/logo-horizontal.png" alt="KMK Entretien Ménager" width="108" height="36" />
-        </a>
-        <nav aria-label="KMK">
-          {link("/", "welcome", t("navWelcome"))}
-          {link("/account", "account", t("navAccount"))}
-          {user.role !== "user" && link("/admin", "admin", t("navUsers"))}
-        </nav>
-        <div className="shell-right">
-          <LanguageSwitcher csrfToken={csrfToken} onChanged={onLanguageChanged} />
-          <button type="button" className="secondary" onClick={onSignOut}>{t("signOut")}</button>
-        </div>
-      </header>
-      <main id="main" className="card page">{children}</main>
-    </div>
+    <Layout
+      user={user}
+      active={PAGE_TO_LAYOUT[active]}
+      csrfToken={csrfToken}
+      onNavigate={onNavigate}
+      onLanguageChanged={onLanguageChanged}
+      onSignOut={onSignOut}
+    >
+      {children}
+    </Layout>
   );
 }

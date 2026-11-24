@@ -115,5 +115,7 @@
   "adminName": "Full name",
   "errInvalidInput": "Check the fields: the name must be 1 to 100 characters, without special symbols.",
   "close": "Close",
-  "everyone": "Everyone"
+  "everyone": "Everyone",
+  "navDashboard": "Dashboard",
+  "accountMenu": "Account menu"
 }
