@@ -88,3 +88,29 @@ def can_change_event(actor: User, creator_id: int, person_ids: frozenset[int]) -
 def check_event(actor: User, creator_id: int, person_ids: frozenset[int]) -> None:
     if not can_change_event(actor, creator_id, person_ids):
         raise ApiError(403, "forbidden")
+
+
+def can_change_task(actor: User, creator_id: int, person_ids: frozenset[int]) -> bool:
+    """Who may edit or delete a task: an admin or the super admin, its creator, or a person it is for.
+    A task for the whole team (no listed people) can be changed only by its creator or an admin."""
+    return actor.role in PRIVILEGED or actor.id == creator_id or actor.id in person_ids
+
+
+def can_set_task_status(actor: User, creator_id: int, person_ids: frozenset[int]) -> bool:
+    """Who may complete or reopen a task: whoever may edit it, and anyone for a task for the whole team."""
+    return can_change_task(actor, creator_id, person_ids) or not person_ids
+
+
+def can_manage_task_categories(actor: User) -> bool:
+    """Anyone adds a category; only admins rename, re-icon or delete one."""
+    return actor.role in PRIVILEGED
+
+
+def check_task(actor: User, creator_id: int, person_ids: frozenset[int]) -> None:
+    if not can_change_task(actor, creator_id, person_ids):
+        raise ApiError(403, "forbidden")
+
+
+def check_task_status(actor: User, creator_id: int, person_ids: frozenset[int]) -> None:
+    if not can_set_task_status(actor, creator_id, person_ids):
+        raise ApiError(403, "forbidden")

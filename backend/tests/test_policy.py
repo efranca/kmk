@@ -190,3 +190,40 @@ def test_check_event_raises_forbidden():
         policy.check_event(user(4), 1, frozenset({2}))
     assert (caught.value.status, caught.value.code) == FORBIDDEN
     policy.check_event(user(2), 1, frozenset({2}))  # no error
+
+
+# --- tasks: creator, a listed person or an admin edit; anyone ticks a whole-team task; admins manage categories ---
+
+@pytest.mark.parametrize(
+    "role,creator,listed,has_people,can_change,can_status",
+    [
+        ("user", True, False, True, True, True),
+        ("user", False, True, True, True, True),
+        ("user", False, False, True, False, False),
+        ("user", False, False, False, False, True),  # whole-team task: anyone ticks it, only creator or admin edits it
+        ("user", True, False, False, True, True),
+        ("admin", False, False, True, True, True),
+        ("superadmin", False, False, False, True, True),
+    ],
+)
+def test_task_change_rules(role, creator, listed, has_people, can_change, can_status):
+    actor = user(5, role=role)
+    people = frozenset({5} if listed else {2} if has_people else set())
+    creator_id = 5 if creator else 1
+    assert policy.can_change_task(actor, creator_id, people) is can_change
+    assert policy.can_set_task_status(actor, creator_id, people) is can_status
+
+
+def test_check_task_raises_forbidden():
+    with pytest.raises(ApiError) as e:
+        policy.check_task(user(4), 1, frozenset({2}))
+    assert (e.value.status, e.value.code) == (403, "forbidden")
+    policy.check_task(user(2), 1, frozenset({2}))
+    with pytest.raises(ApiError):
+        policy.check_task_status(user(4), 1, frozenset({2}))
+    policy.check_task_status(user(4), 1, frozenset())
+
+
+@pytest.mark.parametrize("role,allowed", [("user", False), ("admin", True), ("superadmin", True)])
+def test_only_admins_manage_task_categories(role, allowed):
+    assert policy.can_manage_task_categories(user(3, role=role)) is allowed
