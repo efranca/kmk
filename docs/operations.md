@@ -81,6 +81,10 @@ docker compose exec api python -m app.cli reset-mfa --username NAME
 
 `create-superadmin` refuses if a super admin already exists. `reset-mfa` is audited (`mfa_reset`, via `cli`); the user then signs in with the password alone and can enroll again.
 
+## Auto-deploy (optional)
+
+`infrastructure/deployments/` can deploy every new `origin/main` by itself (frontend build, `docker compose up -d --build`, smoke check on `/` and `/api/health`). It is **not installed**; steps, settings and troubleshooting are in `infrastructure/deployments/README.md`.
+
 ## Backups
 
 Encrypted, verified, automatic. Scripts and units are in `deploy/backup/`; the destination is `/mnt/shared/BACKUPS/kmk` (a partition on the same SSD as the system: see the limit below).

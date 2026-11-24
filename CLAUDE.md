@@ -14,6 +14,7 @@ The product plan is `scope.md`; what is actually built is described in `docs/`.
 - `backend/alembic/versions/` migrations (`0001` to `0006`). `backend/tests/` is the test suite.
 - `frontend/src/` React app: `App.tsx` routes by path to the card pages (sign-in, recovery, two-step screens) or to the signed-in `Shell.tsx` / `app/Layout.tsx` (Dashboard, Schedule, Account, Admin pages); `schedule/` (views, event dialog, drag, reminders), `dashboard/` (the two widgets) and `ui/` (shared pieces) hold the calendar; `lang.ts` has the language helpers; `locales/` has the three languages (flat keys, every key must exist in all three; schedule strings start with `sch`).
 - `deploy/` compose, Caddyfile, `.env.example`; `deploy/backup/` the encrypted backup scripts (backup, status, restore, key ceremony, installer, failure notifier) and their systemd units; `scripts/audit-deps.sh` scans dependencies.
+- `infrastructure/` operations around the app: `deployments/` auto-deploy (polls GitHub, builds in a git-ignored worktree, systemd timer; not installed until the owner runs its install steps), `utilities/` read-only helper scripts. Backups stay in `deploy/backup/`.
 - `docs/superpowers/specs/` design documents; `docs/superpowers/plans/` implementation plans. `.superpowers/` is git-ignored scratch (progress ledgers).
 
 ## Commands
