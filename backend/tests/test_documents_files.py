@@ -181,3 +181,20 @@ def test_audit_rows_carry_no_file_names(team, owner_engine):
     put(admin, h, did, PNG, name="Confidential-2.png")
     rows = " ".join(str(r) for r in sql(owner_engine, "SELECT action, details::text FROM audit_log"))
     assert "Confidential" not in rows
+
+
+def test_no_database_transaction_is_held_while_the_body_streams(team, app_engine, monkeypatch):
+    """A slow 50 MB upload must not sit 'idle in transaction' (the Postgres server is shared and has few connections)."""
+    from app.documents import uploads
+
+    admin, h = team["admin"]
+    did = new_document(admin, h)
+    real, idle = uploads.read_capped, []
+
+    async def watching(request):
+        idle.append(sql(app_engine, "SELECT count(*) FROM pg_stat_activity WHERE state = 'idle in transaction' AND datname = current_database() AND usename = current_user")[0][0])
+        return await real(request)
+
+    monkeypatch.setattr(uploads, "read_capped", watching)
+    assert put(admin, h, did, PDF).status_code == 204
+    assert idle == [0]

@@ -132,6 +132,7 @@ async def put_file(
     actor = auth[0]
     policy.check_documents(actor)
     service.get_document(db, actor, document_id)  # 404 before reading anything
+    db.rollback()  # do not hold a database connection open while a slow upload streams in
     uploads.slots.acquire()
     try:
         data = await uploads.read_capped(request)
