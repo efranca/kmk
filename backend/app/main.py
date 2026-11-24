@@ -8,6 +8,7 @@ from app.config import Settings, get_settings
 from app.auth.account import router as account_router
 from app.auth.admin import router as admin_router
 from app.auth.avatars import router as avatars_router
+from app.auth.devices import router as devices_router
 from app.auth.errors import ApiError
 from app.auth.mfa_routes import router as mfa_router
 from app.auth.routes import router as auth_router
@@ -43,6 +44,7 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
     app.include_router(auth_router)
     app.include_router(account_router)
     app.include_router(admin_router)
+    app.include_router(devices_router)
     app.include_router(avatars_router)
     app.include_router(mfa_router)
     app.include_router(schedule_router)

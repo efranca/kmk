@@ -41,6 +41,12 @@ def check(actor: User, target: User, action: str) -> None:
         raise error
 
 
+def check_super_admin(actor: User) -> None:
+    """Actions that concern the whole app rather than one person (for example connected devices): the super admin only."""
+    if actor.role != "superadmin":
+        raise ApiError(403, "forbidden")
+
+
 def state_allows(target: User, action: str) -> bool:
     status = target.status
     if action == "view":
