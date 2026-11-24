@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { User } from "../api";
+import { ReminderTray } from "../schedule/ReminderTray";
 import AccountMenu from "./AccountMenu";
 import Nav, { type NavId } from "./Nav";
 
@@ -58,6 +59,7 @@ export default function Layout({
           {bare ? children : <div className="card page">{children}</div>}
         </main>
       </div>
+      <ReminderTray />
     </div>
   );
 }

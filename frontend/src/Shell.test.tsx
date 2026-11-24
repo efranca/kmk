@@ -305,3 +305,16 @@ describe("titles and language", () => {
     expect(window.localStorage.getItem("kmk.lang")).toBe("pt-BR");
   });
 });
+
+describe("reminders", () => {
+  it("shows a due reminder on every signed-in page", async () => {
+    visit("/account");
+    mockApi({
+      "GET /api/auth/me": signedIn(),
+      "GET /api/schedule/reminders/due": () =>
+        res(200, { reminders: [{ event_id: 1, occurrence_date: "2026-11-05", title: "Visit client", start_date: "2026-11-05", start_time: "09:00", all_day: false, remind_at: "2026-11-05T07:00" }] }),
+    });
+    render(<App />);
+    expect(await screen.findByText("Visit client")).toBeInTheDocument();
+  });
+});

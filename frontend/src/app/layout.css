@@ -36,3 +36,12 @@ body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 10
   .topbar__brand { display: none; }
   .app__main { max-width: 1400px; width: 100%; margin: 0 auto; padding: 24px 28px 40px; }
 }
+
+/* reminders: on every signed-in page until dismissed */
+.reminders { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 30; display: flex; flex-direction: column; gap: 8px; max-width: min(22rem, calc(100vw - 32px)); }
+.reminder { display: flex; align-items: center; gap: 12px; padding: 10px 8px 10px 14px; border-radius: 14px; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-left: 4px solid var(--ev-amber); box-shadow: var(--shadow-m); }
+.reminder__icon { color: var(--ev-amber); display: inline-flex; }
+.reminder__text { display: flex; flex-direction: column; flex: 1; min-width: 0; font-size: 0.85rem; }
+.reminder__text b { overflow-wrap: anywhere; font-size: 0.95rem; }
+.reminder__text span { color: var(--text-muted); }
+@media (max-width: 767px) { .reminders { bottom: calc(76px + env(safe-area-inset-bottom)); } }
