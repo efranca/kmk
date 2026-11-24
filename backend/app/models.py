@@ -34,6 +34,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    preferences: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
 class UserSession(Base):

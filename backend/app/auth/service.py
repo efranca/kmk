@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.models import User, UserSession
+from app.preferences import normalize as normalize_preferences
 from app.security import DUMMY_HASH, hash_password, hash_token, needs_rehash, new_session_token, verify_password
 
 SESSION_COOKIE = "kmk_session"
@@ -83,4 +84,10 @@ def mfa_state(user: User, session: UserSession, settings: Settings) -> str:
 
 
 def auth_payload(user: User, state: str, csrf: str) -> dict:
-    return {"user": user_payload(user), "csrf_token": csrf, "mfa": state, "mfa_enabled": user.mfa_enabled}
+    return {
+        "user": user_payload(user),
+        "csrf_token": csrf,
+        "mfa": state,
+        "mfa_enabled": user.mfa_enabled,
+        "preferences": normalize_preferences(user.preferences),
+    }
