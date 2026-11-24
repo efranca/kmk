@@ -12,6 +12,7 @@ from app.auth.mfa_routes import router as mfa_router
 from app.auth.routes import router as auth_router
 from app.db import make_engine
 from app.schedule.routes import router as schedule_router
+from app.tasks.routes import router as tasks_router
 
 log = logging.getLogger("kmk")
 
@@ -41,6 +42,7 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
     app.include_router(admin_router)
     app.include_router(mfa_router)
     app.include_router(schedule_router)
+    app.include_router(tasks_router)
 
     @app.exception_handler(ApiError)
     async def api_error(request, exc: ApiError):
@@ -57,7 +59,7 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
                 response = await call_next(request)
         else:
             response = await call_next(request)
-        if path.startswith(("/api/auth", "/api/admin", "/api/schedule")):
+        if path.startswith(("/api/auth", "/api/admin", "/api/schedule", "/api/tasks")):
             response.headers["Cache-Control"] = "no-store"
         return response
 
