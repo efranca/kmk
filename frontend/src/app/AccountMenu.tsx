@@ -59,7 +59,7 @@ export default function AccountMenu({
         aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((o) => !o)}
       >
-        <Avatar person={{ id: user.id, name, color: memberColor(user.id) }} size="md" />
+        <Avatar person={{ id: user.id, name, color: memberColor(user.id), avatar_url: user.avatar_url }} size="md" />
         <span className="accountmenu__name">{name}</span>
         <Icon name="chev-down" size={16} />
       </button>

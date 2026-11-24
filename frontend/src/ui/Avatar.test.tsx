@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import "../i18n";
@@ -61,5 +61,21 @@ describe("AvatarGroup", () => {
   it("shows the people icon for everyone", () => {
     render(<AvatarGroup people={[]} everyone />);
     expect(screen.getByRole("img", { name: "Tout le monde" })).toBeInTheDocument();
+  });
+});
+
+describe("Avatar picture", () => {
+  it("shows the picture when the person has one, initials otherwise", () => {
+    const { container, rerender } = render(<Avatar person={{ ...maria, avatar_url: "/api/people/1/avatar?v=1" }} />);
+    expect(container.querySelector("img")).toHaveAttribute("src", "/api/people/1/avatar?v=1");
+    expect(container.textContent).toBe("");
+    rerender(<Avatar person={maria} />);
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.textContent).toBe("MS");
+  });
+  it("falls back to initials when the picture fails to load", () => {
+    const { container } = render(<Avatar person={{ ...maria, avatar_url: "/x" }} />);
+    fireEvent.error(container.querySelector("img")!);
+    expect(container.textContent).toBe("MS");
   });
 });

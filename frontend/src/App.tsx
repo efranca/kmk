@@ -131,6 +131,13 @@ function AppContent() {
     setState((s) => (s.kind === "auth" ? { kind: "auth", session: { ...s.session, ...patch } } : s));
   }
 
+  /** After a picture changed: read the signed-in user again, and every face that was loaded. */
+  async function refreshUser() {
+    const fresh = await me();
+    if (fresh) updateSession({ user: fresh.user });
+    void queryClient.invalidateQueries();
+  }
+
   // Pages with their own centered card (people who are not signed in, and the two-step screens).
   const card = (content: ReactNode, withPicker: boolean) => (
     <main className="card">
@@ -199,6 +206,7 @@ function AppContent() {
           mfaEnabled={session.mfaEnabled}
           recoveryCodesLeft={recoveryCodesLeft}
           onMfaChange={(enabled) => updateSession({ mfaEnabled: enabled })}
+          onAvatarChanged={refreshUser}
         />
       )}
       {page === "settings" && <SettingsPage />}

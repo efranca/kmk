@@ -364,5 +364,9 @@
   "settingsWidgetAllEvents": "All events",
   "settingsWidgetMyTasks": "My tasks",
   "dashAllHidden": "All Dashboard cards are hidden.",
-  "dashAllHiddenLink": "Settings"
+  "dashAllHiddenLink": "Settings",
+  "avatarChoose": "Choose a picture",
+  "avatarChange": "Change picture",
+  "avatarRemove": "Remove picture",
+  "avatarInvalid": "This file cannot be used as a picture. Choose a JPEG, PNG or WebP image."
 }
