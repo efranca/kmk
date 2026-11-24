@@ -2,7 +2,6 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { User } from "../api";
-import LanguageSwitcher from "../LanguageSwitcher";
 import { displayName } from "../person";
 import { Avatar } from "../ui/Avatar";
 import { Icon } from "../ui/Icon";
@@ -11,19 +10,15 @@ import { memberColor } from "../ui/memberColor";
 /** Your face at the bottom of the sidebar: opens Account, Settings, the language and Sign out. */
 export default function AccountMenu({
   user,
-  csrfToken,
   active,
   settingsActive = false,
   onNavigate,
-  onLanguageChanged,
   onSignOut,
 }: {
   user: User;
-  csrfToken: string;
   active: boolean;
   settingsActive?: boolean;
   onNavigate: (path: string) => void;
-  onLanguageChanged: (user: User) => void;
   onSignOut: () => void;
 }) {
   const { t } = useTranslation();
@@ -97,9 +92,6 @@ export default function AccountMenu({
             <Icon name="settings" size={18} />
             {t("navSettings")}
           </a>
-          <div className="accountmenu__item accountmenu__item--static">
-            <LanguageSwitcher csrfToken={csrfToken} onChanged={onLanguageChanged} />
-          </div>
           <button type="button" className="accountmenu__item" onClick={onSignOut}>
             <Icon name="logout" size={18} />
             {t("signOut")}

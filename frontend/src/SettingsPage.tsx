@@ -1,5 +1,8 @@
 import { useTranslation } from "react-i18next";
 
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useSession } from "./session";
+import type { User } from "./api";
 import { usePreferences, type Preferences } from "./preferences";
 import { PageHeader } from "./ui/PageHeader";
 import { Segmented } from "./ui/Segmented";
@@ -14,13 +17,18 @@ const WIDGETS = [
 ] as const satisfies readonly { key: keyof Preferences["dashboard_widgets"]; label: string }[];
 
 /** Per-person preferences. They belong to the account, so they follow the person to every device. */
-export default function SettingsPage() {
+export default function SettingsPage({ onLanguageChanged }: { onLanguageChanged: (user: User) => void }) {
   const { t } = useTranslation();
+  const { csrfToken } = useSession();
   const { prefs, update } = usePreferences();
   return (
     <>
       <PageHeader title={t("settingsTitle")} />
-      <section className="section">
+      <section className="section settings-card">
+        <h2>{t("settingsLanguage")}</h2>
+        <LanguageSwitcher csrfToken={csrfToken} onChanged={onLanguageChanged} />
+      </section>
+      <section className="section settings-card">
         <h2>{t("settingsTheme")}</h2>
         <Segmented
           label={t("settingsTheme")}
@@ -29,7 +37,7 @@ export default function SettingsPage() {
           options={(Object.keys(THEME_LABELS) as Theme[]).map((value) => ({ value, label: t(THEME_LABELS[value]) }))}
         />
       </section>
-      <section className="section">
+      <section className="section settings-card">
         <h2>{t("settingsDashboard")}</h2>
         <p className="status">{t("settingsDashboardHint")}</p>
         <div className="settings-toggles">

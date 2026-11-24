@@ -192,9 +192,7 @@ function AppContent() {
     <Shell
       user={session.user}
       active={shellPage}
-      csrfToken={session.csrfToken}
       onNavigate={navigate}
-      onLanguageChanged={(user) => updateSession({ user })}
       onSignOut={signOut}
       bare={page === "schedule" || page === "welcome" || page === "tasks"}
     >
@@ -209,7 +207,7 @@ function AppContent() {
           onAvatarChanged={refreshUser}
         />
       )}
-      {page === "settings" && <SettingsPage />}
+      {page === "settings" && <SettingsPage onLanguageChanged={(user) => updateSession({ user })} />}
       {page === "admin" && <UsersPage session={session} />}
       {page === "schedule" && <SchedulePage />}
       {page === "tasks" && <TasksPage />}

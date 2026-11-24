@@ -8,7 +8,7 @@ import Layout from "./Layout";
 function setup(onNavigate = vi.fn(), preferences?: Preferences) {
   const view = render(
     <Providers preferences={preferences}>
-      <Layout user={testUser} active="tasks" csrfToken="t" onNavigate={onNavigate} onLanguageChanged={vi.fn()} onSignOut={vi.fn()}>
+      <Layout user={testUser} active="tasks" onNavigate={onNavigate} onSignOut={vi.fn()}>
         <p>content</p>
       </Layout>
     </Providers>,

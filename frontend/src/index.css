@@ -78,6 +78,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 a { color: var(--pine); font-size: 0.9rem; }
 .section { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.settings-card { margin-top: 16px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
 .section h2 { font-family: Montserrat, Inter, system-ui, sans-serif; font-size: 1.1rem; margin: 0 0 4px; color: var(--ink); }
 button.secondary { background: transparent; color: var(--pine); border: 1px solid var(--pine); margin-top: 20px; }
 button.secondary:hover:not(:disabled) { background: var(--mist); }
