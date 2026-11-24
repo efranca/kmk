@@ -112,6 +112,16 @@ def can_manage_task_categories(actor: User) -> bool:
     return actor.role in PRIVILEGED
 
 
+def can_manage_documents(actor: User) -> bool:
+    """Who adds, edits, replaces and deletes company documents and manages their categories."""
+    return actor.role in PRIVILEGED
+
+
+def check_documents(actor: User) -> None:
+    if not can_manage_documents(actor):
+        raise ApiError(403, "forbidden")
+
+
 def check_task(actor: User, creator_id: int, person_ids: frozenset[int]) -> None:
     if not can_change_task(actor, creator_id, person_ids):
         raise ApiError(403, "forbidden")
