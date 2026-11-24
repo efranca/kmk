@@ -430,5 +430,11 @@
   "adminStatusLabel": "Quais contas",
   "taskShowCategories": "Mostrar as etiquetas de categoria",
   "navAbout": "Sobre",
-  "docShowCategories": "Mostrar as etiquetas de categoria"
+  "docShowCategories": "Mostrar as etiquetas de categoria",
+  "settingsMenu": "Menu",
+  "settingsMenuLabels": "Mostrar os nomes das páginas na barra de baixo",
+  "settingsMenuLabelsHint": "Só em celulares. Os ícones continuam aparecendo.",
+  "navMore": "Mais",
+  "navMoreTitle": "Outras páginas",
+  "taskMovedTo": "Movida para “{{status}}”."
 }

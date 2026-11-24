@@ -156,7 +156,8 @@ export function TasksPage() {
             : (
               view === "board" ? (
                 <TaskBoard tasks={visible} people={byId} categoryById={categoryById} today={today}
-                  canMove={(x) => canSetTaskStatus(user, x)} onMove={(x, to) => move.mutate({ task: x, status: to }, { onError: () => toast(t("taskMoveFailed")) })} onOpen={setEditing} />
+                  canMove={(x) => canSetTaskStatus(user, x)} narrow={narrow}
+                  onMove={(x, to) => move.mutate({ task: x, status: to }, { onError: () => toast(t("taskMoveFailed")), onSuccess: () => narrow && toast(t("taskMovedTo", { status: t(STATUS_KEYS[to]) })) })} onOpen={setEditing} />
               ) : (
               <div className="taskgroups">
                 {groups.map((g) => (

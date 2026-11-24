@@ -430,5 +430,11 @@
   "adminStatusLabel": "Which accounts",
   "taskShowCategories": "Show category chips",
   "navAbout": "About",
-  "docShowCategories": "Show category chips"
+  "docShowCategories": "Show category chips",
+  "settingsMenu": "Menu",
+  "settingsMenuLabels": "Show page names in the bottom bar",
+  "settingsMenuLabelsHint": "Smartphones only. The icons stay either way.",
+  "navMore": "More",
+  "navMoreTitle": "More pages",
+  "taskMovedTo": "Moved to {{status}}."
 }

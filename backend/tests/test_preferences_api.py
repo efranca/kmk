@@ -9,6 +9,7 @@ DEFAULTS = {
     "show_tasks_on_schedule": False,
     "show_task_categories": False,
     "show_document_categories": False,
+    "show_menu_labels": True,
     "dashboard_widgets": {"my_events": True, "all_events": True, "my_tasks": True},
 }
 
@@ -97,3 +98,12 @@ def test_category_chips_on_the_documents_page_are_off_until_chosen_and_follow_th
     assert r.status_code == 200 and r.json()["preferences"]["show_document_categories"] is True
     assert login(make_client(), "alice").json()["preferences"]["show_document_categories"] is True
     assert c.patch("/api/me/preferences", json={"show_document_categories": 1}, headers=h).status_code == 422
+
+
+def test_menu_names_in_the_phone_bar_are_on_until_turned_off_and_follow_the_account(make_client, add_user):
+    c, h, first = session(make_client, add_user)
+    assert first["preferences"]["show_menu_labels"] is True
+    r = c.patch("/api/me/preferences", json={"show_menu_labels": False}, headers=h)
+    assert r.status_code == 200 and r.json()["preferences"]["show_menu_labels"] is False
+    assert login(make_client(), "alice").json()["preferences"]["show_menu_labels"] is False
+    assert c.patch("/api/me/preferences", json={"show_menu_labels": "no"}, headers=h).status_code == 422

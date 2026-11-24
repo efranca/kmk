@@ -430,5 +430,11 @@
   "adminStatusLabel": "Quels comptes",
   "taskShowCategories": "Afficher les pastilles de catégorie",
   "navAbout": "À propos",
-  "docShowCategories": "Afficher les pastilles de catégorie"
+  "docShowCategories": "Afficher les pastilles de catégorie",
+  "settingsMenu": "Menu",
+  "settingsMenuLabels": "Afficher les noms des pages dans la barre du bas",
+  "settingsMenuLabelsHint": "Téléphones seulement. Les icônes restent affichées.",
+  "navMore": "Plus",
+  "navMoreTitle": "Autres pages",
+  "taskMovedTo": "Déplacée vers « {{status}} »."
 }

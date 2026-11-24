@@ -39,6 +39,13 @@ export default function SettingsPage({ onLanguageChanged }: { onLanguageChanged:
         />
       </section>
       <section className="section settings-card">
+        <h2>{t("settingsMenu")}</h2>
+        <p className="status">{t("settingsMenuLabelsHint")}</p>
+        <div className="settings-toggles">
+          <Toggle label={t("settingsMenuLabels")} checked={prefs.show_menu_labels} onChange={(e) => update({ show_menu_labels: e.target.checked })} />
+        </div>
+      </section>
+      <section className="section settings-card">
         <h2>{t("settingsDashboard")}</h2>
         <p className="status">{t("settingsDashboardHint")}</p>
         <div className="settings-toggles">

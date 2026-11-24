@@ -17,7 +17,8 @@ body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 10
 
 .appnav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: flex; align-items: stretch; background: var(--surface); border-top: 1px solid var(--line); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
 .appnav__brand, .appnav__toggle { display: none; }
-.appnav > a:not(.appnav__brand) { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 12px; min-width: 64px; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-decoration: none; }
+.appnav__more { margin: 0; border: 0; background: transparent; font-family: inherit; cursor: pointer; }
+.appnav > a:not(.appnav__brand), .appnav > .appnav__more { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 12px; min-width: 64px; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-decoration: none; }
 .appnav > a[aria-current="page"] { color: var(--accent); }
 .appnav__footer { display: flex; align-items: center; justify-content: center; padding: 0 4px; }
 
@@ -80,3 +81,14 @@ body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 10
 /* the logo is dark teal: on a dark theme it is lightened so it stays visible */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-theme="dark"]) .appnav__brand img { filter: brightness(2.2) saturate(1.2); } }
 :root[data-theme="dark"] .appnav__brand img { filter: brightness(2.2) saturate(1.2); }
+
+/* Phone bar: the person may keep just the icons (a setting), and the pages that do not fit are behind "More". */
+@media (max-width: 767px) {
+  .appnav--icons > a:not(.appnav__brand) span, .appnav--icons > .appnav__more span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .appnav--icons > a:not(.appnav__brand), .appnav--icons > .appnav__more { justify-content: center; padding-block: 12px; }
+}
+.appnav > .appnav__more[aria-current="page"] { color: var(--accent); }
+.more-sheet { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.more-sheet__link { display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 12px; color: var(--text); text-decoration: none; font-weight: 600; }
+.more-sheet__link:hover { background: var(--surface-2); }
+.more-sheet__link[aria-current="page"] { background: var(--surface-2); color: var(--accent); }

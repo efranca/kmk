@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icon, type IconName } from "../ui/Icon";
+import MoreSheet from "./MoreSheet";
+import { fitTabs, MIN_TAB_PX } from "./navFit";
 
 export type NavId = "dashboard" | "schedule" | "tasks" | "documents" | "admin" | "devices";
 type NavItem = { id: NavId; to: string; labelKey: string; icon: IconName; adminOnly?: boolean; superAdminOnly?: boolean };
@@ -15,12 +17,40 @@ const ITEMS: NavItem[] = [
   { id: "devices", to: "/devices", labelKey: "navDevices", icon: "devices", superAdminOnly: true },
 ];
 
+const PHONE = "(max-width: 767px)";
+
+/** Width of the bar on a phone (0 elsewhere, or until measured): only there do pages ever move behind "More". Follows the breakpoint as it is crossed. */
+function useBarWidth(ref: React.RefObject<HTMLElement | null>): number {
+  const [phone, setPhone] = useState(() => window.matchMedia?.(PHONE).matches ?? false);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const query = window.matchMedia?.(PHONE);
+    if (!query) return;
+    const update = () => setPhone(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    const el = ref.current;
+    if (!phone || !el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => setWidth(entries[0]?.contentRect.width ?? 0));
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      setWidth(0);
+    };
+  }, [ref, phone]);
+  return phone ? width : 0;
+}
+
 /** The main navigation: a bar along the bottom of a phone, an icon rail from 768px, the full sidebar (collapsible) from 1024px. */
 export default function Nav({
   active,
   isAdmin,
   isSuperAdmin,
   collapsed,
+  showLabels = true,
   onToggle,
   footer,
   onNavigate,
@@ -29,14 +59,23 @@ export default function Nav({
   isAdmin: boolean;
   isSuperAdmin: boolean;
   collapsed: boolean;
+  /** Page names in the phone's bottom bar (the person can turn them off in Settings; the icons stay). */
+  showLabels?: boolean;
   onToggle: () => void;
   /** Sits at the bottom of the sidebar (last in the phone bar): the account menu. */
   footer: ReactNode;
   onNavigate: (path: string) => void;
 }) {
   const { t } = useTranslation();
+  const ref = useRef<HTMLElement>(null);
+  const width = useBarWidth(ref);
+  const [sheet, setSheet] = useState(false);
+  const items = ITEMS.filter((item) => (!item.adminOnly || isAdmin) && (!item.superAdminOnly || isSuperAdmin));
+  // On a phone the account button takes one slot of the bar.
+  const { shown, more } = fitTabs(items, width > 0 ? width - MIN_TAB_PX : 0);
+  if (sheet && more.length === 0) setSheet(false); // the sheet must not reopen if the pages fit again later
   return (
-    <nav className="appnav" aria-label="KMK">
+    <nav className={showLabels ? "appnav" : "appnav appnav--icons"} aria-label="KMK" ref={ref}>
       <a
         href="/"
         className="appnav__brand"
@@ -56,7 +95,7 @@ export default function Nav({
       >
         <Icon name={collapsed ? "chev-right" : "chev-left"} size={18} />
       </button>
-      {ITEMS.filter((item) => (!item.adminOnly || isAdmin) && (!item.superAdminOnly || isSuperAdmin)).map((item) => (
+      {shown.map((item) => (
         <a
           key={item.id}
           href={item.to}
@@ -71,6 +110,16 @@ export default function Nav({
           <span>{t(item.labelKey)}</span>
         </a>
       ))}
+      {more.length > 0 && (
+        <>
+          <button type="button" className="appnav__more" aria-haspopup="dialog" title={t("navMore")} aria-current={more.some((item) => item.id === active) ? "page" : undefined} onClick={() => setSheet(true)}>
+            <Icon name="more" size={22} />
+            <span>{t("navMore")}</span>
+          </button>
+          <MoreSheet open={sheet} onClose={() => setSheet(false)} onNavigate={onNavigate}
+            items={more.map((item) => ({ to: item.to, label: t(item.labelKey), icon: item.icon, current: item.id === active }))} />
+        </>
+      )}
       <div className="appnav__footer">{footer}</div>
     </nav>
   );

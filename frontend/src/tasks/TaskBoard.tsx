@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Segmented } from "../ui/Segmented";
 import { AvatarGroup } from "../ui/AvatarGroup";
 import type { Person } from "../ui/Avatar";
 import { DEFAULT_CATEGORY_ICON } from "./CategoryChips";
@@ -27,6 +28,7 @@ export function TaskBoard({
   canMove,
   onMove,
   onOpen,
+  narrow = false,
 }: {
   tasks: Task[];
   people: ReadonlyMap<number, Person>;
@@ -35,10 +37,13 @@ export function TaskBoard({
   canMove: (task: Task) => boolean;
   onMove: (task: Task, status: TaskStatus) => void;
   onOpen: (task: Task) => void;
+  /** On a phone: one column at a time behind tabs (nobody drags a card there, and three columns do not fit). */
+  narrow?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const [over, setOver] = useState<TaskStatus | null>(null);
   const [dragging, setDragging] = useState<Task | null>(null);
+  const [tab, setTab] = useState<TaskStatus>("pending");
   const dateFormat = new Intl.DateTimeFormat(i18n.language, { weekday: "short", day: "numeric", month: "short" });
 
   const drop = (status: TaskStatus) => {
@@ -49,8 +54,15 @@ export function TaskBoard({
   };
 
   return (
-    <div className="board">
-      {COLUMNS.map(({ status, label }) => {
+    <>
+    {narrow && (
+      <div className="board-tabs">
+        <Segmented label={t("taskStatusLabel")} value={tab} onChange={setTab}
+          options={COLUMNS.map(({ status, label }) => ({ value: status, label: `${t(label)} ${tasks.filter((x) => x.status === status).length}` }))} />
+      </div>
+    )}
+    <div className={narrow ? "board board--tabs" : "board"}>
+      {COLUMNS.filter(({ status }) => !narrow || status === tab).map(({ status, label }) => {
         const cards = tasks.filter((x) => x.status === status).sort(byDueThenNewest);
         return (
           <section
@@ -125,5 +137,6 @@ export function TaskBoard({
         );
       })}
     </div>
+    </>
   );
 }
