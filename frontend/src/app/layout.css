@@ -1,23 +1,25 @@
-/* The signed-in frame. Phone: a bottom bar. From 768px: a rail on the left and pages up to 1400px wide. */
+/* The signed-in frame. Phone: a bottom bar. From 768px: an icon rail on the left. From 1024px: the full sidebar,
+   which the toggle collapses back to the rail. Pages use all the width beside it. */
 body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 100dvh; }
 .app { min-height: 100dvh; color: var(--text); }
 .app__body { min-width: 0; }
-.topbar { position: sticky; top: 0; z-index: 15; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
-.topbar__brand { display: inline-flex; }
-.topbar__brand img { height: 36px; width: auto; }
 .app__main { padding: 16px 16px calc(88px + env(safe-area-inset-bottom)); }
-.app__main > .card.page { max-width: 960px; margin: 0 auto; text-align: left; }
+.app__main > .card.page { max-width: none; margin: 0; text-align: left; }
+.app h1 { font-size: clamp(0.85rem, 2vw, 0.95rem); }
 
-.appnav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: flex; background: var(--surface); border-top: 1px solid var(--line); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
-.appnav__brand { display: none; }
+.appnav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: flex; align-items: stretch; background: var(--surface); border-top: 1px solid var(--line); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
+.appnav__brand, .appnav__toggle { display: none; }
 .appnav a:not(.appnav__brand) { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 12px; min-width: 64px; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-decoration: none; }
 .appnav a[aria-current="page"] { color: var(--accent); }
+.appnav__footer { display: flex; align-items: center; justify-content: center; padding: 0 4px; }
 
 .accountmenu { position: relative; }
-.accountmenu__button { display: inline-flex; align-items: center; gap: 4px; margin: 0; padding: 2px 6px 2px 2px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); cursor: pointer; }
+.accountmenu__button { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin: 0; padding: 2px 6px 2px 2px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); cursor: pointer; }
 .accountmenu__button:hover:not(:disabled) { background: var(--surface-2); }
-.accountmenu__button .avatar { border-color: transparent; }
-.accountmenu__panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; min-width: 230px; display: grid; gap: 2px; padding: 8px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-m); }
+.accountmenu__button .avatar { border-color: transparent; flex: none; }
+.accountmenu__name { display: none; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; font-weight: 600; text-align: left; }
+/* the menu opens upward: it lives at the bottom of the screen */
+.accountmenu__panel { position: absolute; right: 0; bottom: calc(100% + 12px); z-index: 30; min-width: 230px; display: grid; gap: 2px; padding: 8px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-m); }
 .accountmenu__who { margin: 4px 10px 6px; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
 .accountmenu__item { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0; padding: 9px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 0.95rem; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; }
 .accountmenu__item:hover:not(:disabled):not(.accountmenu__item--static) { background: var(--surface-2); }
@@ -25,16 +27,36 @@ body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 10
 .accountmenu__item--static { cursor: default; }
 
 @media (min-width: 768px) {
-  .app { display: grid; grid-template-columns: 224px minmax(0, 1fr); }
-  .appnav { position: sticky; top: 0; left: auto; right: auto; bottom: auto; height: 100dvh; flex-direction: column; align-items: stretch; gap: 4px; padding: 18px 12px; border-top: 0; border-right: 1px solid var(--line); }
-  .appnav__brand { display: inline-flex; margin: 0 0 14px 8px; }
-  .appnav__brand img { height: 44px; width: auto; }
-  .appnav a:not(.appnav__brand) { flex: none; flex-direction: row; gap: 12px; padding: 10px 12px; font-size: 0.95rem; }
+  .app { display: grid; grid-template-columns: 72px minmax(0, 1fr); }
+  .appnav { position: sticky; top: 0; left: auto; right: auto; bottom: auto; height: 100dvh; flex-direction: column; align-items: stretch; gap: 4px; padding: 18px 10px; border-top: 0; border-right: 1px solid var(--line); overflow-y: auto; }
+  .appnav__brand { display: inline-flex; justify-content: center; margin: 0 0 14px; overflow: hidden; }
+  /* the rail shows only the left part of the logo (its mark) */
+  .appnav__brand img { height: 36px; width: 36px; object-fit: cover; object-position: left center; }
+  .appnav a:not(.appnav__brand) { flex: none; flex-direction: row; justify-content: center; gap: 12px; padding: 10px; font-size: 0.95rem; }
+  .appnav a:not(.appnav__brand) span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .appnav a:not(.appnav__brand):hover { background: var(--surface-2); }
   .appnav a[aria-current="page"] { background: var(--surface-2); }
-  .topbar { justify-content: flex-end; padding: 10px 28px; }
-  .topbar__brand { display: none; }
-  .app__main { max-width: 1400px; width: 100%; margin: 0 auto; padding: 24px 28px 40px; }
+  .appnav__footer { margin-top: auto; padding: 12px 0 0; justify-content: center; }
+  .accountmenu__panel { right: auto; left: 0; }
+  .app__main { width: 100%; padding: 24px 28px 40px; }
+}
+
+@media (min-width: 1024px) {
+  .app:not(.app--collapsed) { grid-template-columns: 224px minmax(0, 1fr); }
+  .app:not(.app--collapsed) .appnav { padding: 18px 12px; }
+  .app:not(.app--collapsed) .appnav__brand { justify-content: flex-start; margin-left: 8px; }
+  .app:not(.app--collapsed) .appnav__brand img { width: auto; height: 44px; object-fit: contain; }
+  .app:not(.app--collapsed) .appnav a:not(.appnav__brand) { justify-content: flex-start; padding: 10px 12px; }
+  .app:not(.app--collapsed) .appnav a:not(.appnav__brand) span { position: static; width: auto; height: auto; clip: auto; overflow: visible; }
+  .app:not(.app--collapsed) .appnav__footer { justify-content: stretch; }
+  .app:not(.app--collapsed) .accountmenu { width: 100%; }
+  .app:not(.app--collapsed) .accountmenu__button { width: 100%; }
+  .app:not(.app--collapsed) .accountmenu__name { display: block; }
+  .app:not(.app--collapsed) .accountmenu__button > .icon { display: none; }
+  .appnav__toggle { display: inline-flex; align-items: center; justify-content: center; align-self: flex-end; width: 28px; height: 28px; margin: 0 0 6px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--text-muted); }
+  .appnav__toggle:hover:not(:disabled) { background: var(--surface-2); }
+  .app--collapsed .appnav__toggle { align-self: center; }
+  .app:not(.app--collapsed) .appnav__brand { margin-top: 0; }
 }
 
 /* reminders: on every signed-in page until dismissed */

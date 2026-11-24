@@ -341,5 +341,8 @@
   "taskDashTomorrow": "Tomorrow",
   "taskDashMore": "+{{count}} more",
   "taskDashEmpty": "Nothing waiting for you.",
-  "schShowTasks": "Show tasks"
+  "schShowTasks": "Show tasks",
+  "navSettings": "Settings",
+  "sidebarCollapse": "Collapse menu",
+  "sidebarExpand": "Expand menu"
 }
