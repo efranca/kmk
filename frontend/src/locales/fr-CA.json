@@ -344,5 +344,10 @@
   "schShowTasks": "Afficher les tâches",
   "navSettings": "Paramètres",
   "sidebarCollapse": "Réduire le menu",
-  "sidebarExpand": "Agrandir le menu"
+  "sidebarExpand": "Agrandir le menu",
+  "settingsTitle": "Paramètres",
+  "settingsTheme": "Thème",
+  "themeKmk": "KMK",
+  "themeLight": "Clair",
+  "themeDark": "Sombre"
 }

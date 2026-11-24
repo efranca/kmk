@@ -20,11 +20,12 @@ import { SchedulePage } from "./schedule/SchedulePage";
 import { TasksPage } from "./tasks/TasksPage";
 import { SessionProvider } from "./session";
 import { ToastProvider } from "./ui/Toast";
+import SettingsPage from "./SettingsPage";
 import SetPassword from "./SetPassword";
 import Shell, { type ShellPage } from "./Shell";
 
 type State = { kind: "checking" } | { kind: "anon" } | { kind: "auth"; session: Session };
-type Page = "checking" | "signin" | "forgot" | "setpw" | "verify" | "setup" | "welcome" | "schedule" | "tasks" | "account" | "admin" | "notfound";
+type Page = "checking" | "signin" | "forgot" | "setpw" | "verify" | "setup" | "welcome" | "schedule" | "tasks" | "account" | "settings" | "admin" | "notfound";
 
 const BRAND = "KMK Entretien Ménager";
 const TITLE_KEYS: Record<Page, string | null> = {
@@ -38,6 +39,7 @@ const TITLE_KEYS: Record<Page, string | null> = {
   schedule: "schTitle",
   tasks: "taskTitle",
   account: "navAccount",
+  settings: "settingsTitle",
   admin: "adminTitle",
   notfound: "notFoundTitle",
 };
@@ -46,13 +48,14 @@ function pageFor(path: string, state: State): Page {
   if (path === "/set-password") return "setpw";
   if (path === "/forgot-password") return "forgot";
   if (state.kind === "checking") return "checking";
-  if (state.kind === "anon") return ["/", "/schedule", "/tasks", "/account", "/admin"].includes(path) ? "signin" : "notfound";
+  if (state.kind === "anon") return ["/", "/schedule", "/tasks", "/account", "/settings", "/admin"].includes(path) ? "signin" : "notfound";
   if (state.session.mfa === "verify") return "verify";
   if (state.session.mfa === "setup") return "setup";
   if (path === "/") return "welcome";
   if (path === "/schedule") return "schedule";
   if (path === "/tasks") return "tasks";
   if (path === "/account") return "account";
+  if (path === "/settings") return "settings";
   if (path === "/admin") return state.session.user.role !== "user" ? "admin" : "welcome"; // plain users just see the welcome page
   return "notfound";
 }
@@ -172,7 +175,7 @@ function AppContent() {
 
   if (state.kind !== "auth") return null;
   const { session } = state;
-  const shellPage: ShellPage = page === "welcome" || page === "schedule" || page === "tasks" || page === "account" || page === "admin" ? page : "notfound";
+  const shellPage: ShellPage = page === "welcome" || page === "schedule" || page === "tasks" || page === "account" || page === "settings" || page === "admin" ? page : "notfound";
 
   return (
     <SessionProvider value={{ user: session.user, csrfToken: session.csrfToken }}>
@@ -196,6 +199,7 @@ function AppContent() {
           onMfaChange={(enabled) => updateSession({ mfaEnabled: enabled })}
         />
       )}
+      {page === "settings" && <SettingsPage />}
       {page === "admin" && <AdminPage session={session} />}
       {page === "schedule" && <SchedulePage />}
       {page === "tasks" && <TasksPage />}
