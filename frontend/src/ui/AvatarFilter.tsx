@@ -17,6 +17,8 @@ interface Props {
   max: number;
   size?: "sm" | "md";
   disabled?: boolean;
+  /** Each face with its name under it (shortened if need be), in one row: for a form with room. */
+  showNames?: boolean;
 }
 
 /**
@@ -24,7 +26,7 @@ interface Props {
  * overlapping a little; with many people the first `max` show and the rest are behind a "+N" that opens a list with a
  * checkbox, face and name for each.
  */
-export function AvatarFilter({ people, selected, onChange, label, everyoneLabel, moreLabel, max, size = "md", disabled = false }: Props) {
+export function AvatarFilter({ people, selected, onChange, label, everyoneLabel, moreLabel, max, size = "md", disabled = false, showNames = false }: Props) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLSpanElement>(null);
   const shown = people.slice(0, max);
@@ -44,20 +46,22 @@ export function AvatarFilter({ people, selected, onChange, label, everyoneLabel,
 
   return (
     <div
-      className="avatarfilter"
+      className={`avatarfilter ${showNames ? "avatarfilter--names" : ""}`}
       role="group"
       aria-label={label}
       onKeyDown={(e) => {
         if (e.key === "Escape") setOpen(false);
       }}
     >
-      <span className={`avatargroup avatargroup--${size}`}>
+      <span className={`avatargroup avatargroup--${size} ${showNames ? "avatargroup--apart" : ""}`}>
         <button type="button" className="avatarpick" aria-pressed={selected.length === 0} aria-label={everyoneLabel} title={everyoneLabel} disabled={disabled} onClick={() => onChange([])}>
           <EveryoneAvatar size={size} label={everyoneLabel} />
+          {showNames && <span className="avatarpick__name" aria-hidden="true">{everyoneLabel}</span>}
         </button>
         {shown.map((p) => (
           <button key={p.id} type="button" className="avatarpick" aria-pressed={selected.includes(p.id)} aria-label={p.name} title={p.name} disabled={disabled} onClick={() => toggle(p.id)}>
             <Avatar person={p} size={size} />
+            {showNames && <span className="avatarpick__name" aria-hidden="true">{p.name}</span>}
           </button>
         ))}
         {rest.length > 0 && (

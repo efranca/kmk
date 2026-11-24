@@ -121,6 +121,14 @@ describe("schedule page", () => {
     expect(document.title).toBe(`${frCA.schTitle} · ${BRAND}`);
   });
 
+  it("opens the new-event dialog from the Add button inside the real app", async () => {
+    visit("/schedule");
+    mockApi({ "GET /api/auth/me": signedIn(), ...scheduleApi });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: frCA.schAdd }));
+    expect(await screen.findByRole("dialog", { name: frCA.schFormNewTitle })).toBeInTheDocument();
+  });
+
   it("asks anonymous visitors to sign in first", async () => {
     visit("/schedule");
     render(<App />);

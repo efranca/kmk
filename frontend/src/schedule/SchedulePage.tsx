@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { IconButton } from "../ui/Button";
+import { EventDialog, type EventDialogTarget } from "./EventDialog";
 import { ErrorNotice, Loading } from "../ui/Feedback";
 import { PageHeader } from "../ui/PageHeader";
 import { useOccurrences, usePeople } from "./hooks";
@@ -26,20 +27,17 @@ function rangeLabel(view: ScheduleViewKind, date: string, days: string[], locale
   }
 }
 
-/** The shared calendar: Day, Week, Month and Year views. `onOpenEvent` and `onCreate` are where events are edited and added. */
-export function SchedulePage({
-  onOpenEvent = () => {},
-  onCreate = () => {},
-}: {
-  onOpenEvent?: (item: Occurrence) => void;
-  onCreate?: (date: string, minutes?: number) => void;
-}) {
+/** The shared calendar: Day, Week, Month and Year views; an event or an empty spot opens the event dialog. */
+export function SchedulePage() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
   const { view, date, people, q, today, set } = useScheduleView();
   const narrow = useNarrow();
   const everyone = usePeople();
   const [searchOpen, setSearchOpen] = useState(q.length > 0);
+  const [dialog, setDialog] = useState<EventDialogTarget | null>(null);
+  const onOpenEvent = (item: Occurrence) => setDialog({ kind: "item", item });
+  const onCreate = (day: string, minutes?: number) => setDialog({ kind: "new", date: day, minutes });
   const firstDay = firstDayOf(i18n.language);
 
   const [from, to] = visibleRange(view, date, firstDay, narrow);
@@ -114,6 +112,7 @@ export function SchedulePage({
           <TimeGrid days={gridDays} items={range.data} today={today} locale={locale} onOpenItem={onOpenEvent} onCreateAt={(day, minutes) => onCreate(day, minutes)} />
         )}
       </div>
+      {dialog && <EventDialog key={dialog.kind === "item" ? `${dialog.item.event_id}-${dialog.item.original_date}` : `new-${dialog.date}-${dialog.minutes ?? ""}`} target={dialog} onClose={() => setDialog(null)} />}
     </div>
   );
 }

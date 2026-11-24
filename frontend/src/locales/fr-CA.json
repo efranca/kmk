@@ -255,5 +255,21 @@
   "err_forbidden": "Vous n’avez pas le droit de faire cela.",
   "err_not_found": "Cet événement n’existe plus.",
   "err_range_too_large": "Cette période est trop longue.",
-  "err_bad_range": "La fin de la période précède son début."
+  "err_bad_range": "La fin de la période précède son début.",
+  "save": "Enregistrer",
+  "cancel": "Annuler",
+  "delete": "Supprimer",
+  "optional": "facultatif",
+  "schFormIcon": "Icône",
+  "schFormIconNone": "Aucune icône",
+  "schViewOnly": "Vous pouvez seulement consulter cet événement.",
+  "err_series_field_changed": "Une occurrence ne peut changer que son titre, ses notes, sa date et son heure.",
+  "err_unknown_person": "Une des personnes ne peut plus être choisie.",
+  "err_too_many_reminders": "Au plus 10 rappels.",
+  "err_duplicate_reminder": "Chaque rappel doit être différent.",
+  "err_before_start": "La date de fin précède l’événement.",
+  "err_no_occurrence": "La règle de répétition n’a aucune date à partir de ce jour.",
+  "err_occurrence_date_required": "Indiquez à quelle occurrence cela s’applique.",
+  "err_not_an_occurrence": "L’événement n’a pas lieu à cette date.",
+  "err_invalid_people": "Le filtre de personnes n’est pas valide."
 }

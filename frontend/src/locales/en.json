@@ -255,5 +255,21 @@
   "err_forbidden": "You may not do that.",
   "err_not_found": "That event no longer exists.",
   "err_range_too_large": "That period is too long.",
-  "err_bad_range": "The end of the period is before its start."
+  "err_bad_range": "The end of the period is before its start.",
+  "save": "Save",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "optional": "optional",
+  "schFormIcon": "Icon",
+  "schFormIconNone": "No icon",
+  "schViewOnly": "You can only view this event.",
+  "err_series_field_changed": "One occurrence can only change its title, notes, date and time.",
+  "err_unknown_person": "One of the people can no longer be chosen.",
+  "err_too_many_reminders": "At most 10 reminders.",
+  "err_duplicate_reminder": "Each reminder must be different.",
+  "err_before_start": "The end date is before the event.",
+  "err_no_occurrence": "The repeat rule has no date from this day on.",
+  "err_occurrence_date_required": "Say which occurrence this applies to.",
+  "err_not_an_occurrence": "The event does not take place on that date.",
+  "err_invalid_people": "The people filter is not valid."
 }

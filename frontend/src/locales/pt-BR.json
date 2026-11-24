@@ -255,5 +255,21 @@
   "err_forbidden": "Você não tem permissão para fazer isso.",
   "err_not_found": "Esse evento não existe mais.",
   "err_range_too_large": "Esse período é longo demais.",
-  "err_bad_range": "O fim do período é anterior ao início."
+  "err_bad_range": "O fim do período é anterior ao início.",
+  "save": "Salvar",
+  "cancel": "Cancelar",
+  "delete": "Excluir",
+  "optional": "opcional",
+  "schFormIcon": "Ícone",
+  "schFormIconNone": "Sem ícone",
+  "schViewOnly": "Você só pode visualizar este evento.",
+  "err_series_field_changed": "Uma ocorrência só pode mudar título, notas, data e hora.",
+  "err_unknown_person": "Uma das pessoas não pode mais ser escolhida.",
+  "err_too_many_reminders": "No máximo 10 lembretes.",
+  "err_duplicate_reminder": "Cada lembrete deve ser diferente.",
+  "err_before_start": "A data final é anterior ao evento.",
+  "err_no_occurrence": "A regra de repetição não tem nenhuma data a partir deste dia.",
+  "err_occurrence_date_required": "Diga a qual ocorrência isso se aplica.",
+  "err_not_an_occurrence": "O evento não acontece nessa data.",
+  "err_invalid_people": "O filtro de pessoas não é válido."
 }

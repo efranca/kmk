@@ -84,3 +84,33 @@
   .month__day { min-height: 72px; }
   .search__row { grid-template-columns: 1fr; }
 }
+
+/* event dialog */
+.sched-form { display: grid; gap: 14px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.sched-form__title { display: flex; align-items: flex-end; gap: 10px; }
+.sched-form__title > .field { flex: 1; }
+.sched-form__when { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 0 12px; }
+.check { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 0.95rem; color: var(--text); }
+.check input { width: 18px; height: 18px; padding: 0; margin: 0; accent-color: var(--accent); flex: none; }
+.sched-repeat { display: flex; flex-direction: column; gap: 8px; }
+.sched-repeat__every { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.sched-repeat__every .input { width: 5rem; }
+.sched-repeat__nth, .sched-reminders__row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sched-repeat__nth .input { width: auto; }
+.sched-reminders__row .input[type="number"] { width: 5rem; }
+.sched-reminders__row .input[aria-label*="unit"], .sched-reminders__row select { width: auto; }
+.sched-reminders { border: 0; padding: 0; margin: 0; min-width: 0; }
+.sched-reminders__before { color: var(--text-muted); font-size: 0.9rem; }
+.sched-repeat__summary { margin: 0; font-weight: 600; color: var(--text); }
+.sched-colors { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sched-colors__swatch { width: 28px; height: 28px; margin: 0; padding: 0; border-radius: 50%; border: 2px solid var(--surface); cursor: pointer; box-shadow: 0 0 0 1px var(--line); }
+.sched-colors__swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--text); }
+.sched-colors__auto { min-height: 28px; margin: 0; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; font: inherit; font-size: 0.8rem; font-weight: 600; }
+.sched-colors__auto[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.sched-scope { display: flex; flex-direction: column; gap: 8px; }
+.sched-scope__title { margin: 0 0 8px; font-size: 1rem; color: var(--text); }
+.sched-scope__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.dialog__question { margin: 0 auto 0 0; font-weight: 600; color: var(--text); }
+.dialog__left { margin-right: auto; }
+.notice { margin: 0; padding: 10px 14px; border-radius: 10px; background: var(--surface-2); color: var(--text); font-size: 0.9rem; text-align: left; }
+.sched-repeat .field { gap: 4px; }

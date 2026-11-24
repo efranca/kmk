@@ -17,6 +17,7 @@ import { makeQueryClient } from "./queryClient";
 import { useRoute } from "./route";
 import { SchedulePage } from "./schedule/SchedulePage";
 import { SessionProvider } from "./session";
+import { ToastProvider } from "./ui/Toast";
 import SetPassword from "./SetPassword";
 import Shell, { type ShellPage } from "./Shell";
 import WelcomePage from "./WelcomePage";
@@ -170,6 +171,7 @@ function AppContent() {
 
   return (
     <SessionProvider value={{ user: session.user, csrfToken: session.csrfToken }}>
+    <ToastProvider>
     <Shell
       user={session.user}
       active={shellPage}
@@ -193,6 +195,7 @@ function AppContent() {
       {page === "schedule" && <SchedulePage />}
       {page === "notfound" && <NotFound onHome={() => navigate("/")} />}
     </Shell>
+    </ToastProvider>
     </SessionProvider>
   );
 }

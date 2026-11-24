@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useLocation } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { mockApi, occurrence, person, renderWithProviders, reply, resetLanguage, useEnglish } from "../testUtils";
 import { todayIn, COMPANY_TIME_ZONE } from "./scheduleDates";
@@ -205,17 +205,41 @@ describe("SchedulePage errors", () => {
 });
 
 describe("SchedulePage actions", () => {
-  it("opening an event or adding one is reported to the caller", async () => {
-    const onOpenEvent = vi.fn();
-    const onCreate = vi.fn();
+  const eventDetail = {
+    id: 1, title: "Swimming", notes: null, icon: null, color: null, display_color: "blue", all_day: false, start_date: "2026-11-12", start_time: "18:00",
+    duration_minutes: 60, recurrence: null, ends_on: null, max_count: null, people: [], reminders: [], exceptions: [], created_by: 1, updated_by: 1,
+  };
+  const open = () => {
     mockApi({
-      "GET /api/schedule/events": () => ({ occurrences: [swimming] }),
+      "GET /api/schedule/events": () => ({ occurrences: [{ ...swimming, event_id: 1, repeating: false }] }),
+      "GET /api/schedule/events/1": () => ({ event: eventDetail }),
       "GET /api/schedule/people": () => ({ people: [alice] }),
     });
-    renderWithProviders(<SchedulePage onOpenEvent={onOpenEvent} onCreate={onCreate} />, { route: "/schedule?view=week&date=2026-11-12" });
+    renderWithProviders(<SchedulePage />, { route: "/schedule?view=week&date=2026-11-12" });
+  };
+
+  it("clicking an event opens it in the dialog", async () => {
+    open();
     await userEvent.click(await screen.findByRole("button", { name: /Swimming/ }));
-    expect(onOpenEvent).toHaveBeenCalledWith(swimming);
+    expect(await screen.findByRole("dialog", { name: "Edit event" })).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("Swimming")).toBeInTheDocument();
+  });
+
+  it("the plus button opens a new event, on today when the view is a week", async () => {
+    open();
+    await screen.findByRole("button", { name: /Swimming/ });
     await userEvent.click(screen.getByRole("button", { name: "Add event" }));
-    expect(onCreate).toHaveBeenCalledWith(todayIn(COMPANY_TIME_ZONE));
+    expect(await screen.findByRole("dialog", { name: "New event" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Date")).toHaveValue(todayIn(COMPANY_TIME_ZONE));
+  });
+
+  it("an empty spot of the grid opens a new event at that day and time", async () => {
+    open();
+    await screen.findByRole("button", { name: /Swimming/ });
+    const column = document.querySelector('.grid__col[data-date="2026-11-13"]') as HTMLElement;
+    column.getBoundingClientRect = () => ({ top: 0, height: 1000, left: 0, right: 100, bottom: 1000, width: 100, x: 0, y: 0, toJSON: () => ({}) });
+    await userEvent.pointer({ target: column, keys: "[MouseLeft]", coords: { clientY: 500 } });
+    expect(await screen.findByRole("dialog", { name: "New event" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Date")).toHaveValue("2026-11-13");
   });
 });
