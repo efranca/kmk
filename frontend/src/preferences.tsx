@@ -11,6 +11,8 @@ export type Preferences = {
   show_tasks_on_schedule: boolean;
   show_task_categories: boolean;
   show_document_categories: boolean;
+  show_menu_labels: boolean;
+  documents_view: "list" | "tiles";
   dashboard_widgets: { my_events: boolean; all_events: boolean; my_tasks: boolean };
 };
 
@@ -23,6 +25,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   show_tasks_on_schedule: false,
   show_task_categories: false,
   show_document_categories: false,
+  show_menu_labels: true,
+  documents_view: "list",
   dashboard_widgets: { my_events: true, all_events: true, my_tasks: true },
 };
 

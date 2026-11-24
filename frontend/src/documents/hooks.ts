@@ -1,12 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useSession } from "../session";
+import { makePreview } from "./previews";
 import {
-  createCategory, createDocument, deleteCategory, deleteDocument, listDocuments, updateCategory, updateDocument, uploadFile,
+  createCategory, createDocument, deleteCategory, deleteDocument, listDocuments, updateCategory, updateDocument, uploadFile, uploadPreview,
   type DocumentInput,
 } from "./api";
 
 const KEY = ["documents"] as const;
+
+/** The tiles view's small picture. Best effort: with no preview the tile shows an icon, and the upload is already done. */
+async function sendPreview(id: number, file: Blob, csrf: string): Promise<void> {
+  try {
+    const preview = await makePreview(file as File);
+    if (preview) await uploadPreview(id, preview, csrf);
+  } catch {
+    // ignored on purpose
+  }
+}
 
 export function useDocuments() {
   return useQuery({ queryKey: KEY, queryFn: listDocuments });
@@ -29,7 +40,10 @@ export function useSaveDocument() {
     mutationFn: async ({ id, input, file, onProgress }: { id?: number; input: DocumentInput; file?: { blob: Blob; name: string }; onProgress?: (f: number) => void }) => {
       if (id !== undefined) {
         await updateDocument(id, input, csrfToken);
-        if (file) await uploadFile(id, file.blob, file.name, csrfToken, onProgress);
+        if (file) {
+          await uploadFile(id, file.blob, file.name, csrfToken, onProgress);
+          await sendPreview(id, file.blob, csrfToken);
+        }
         return id;
       }
       const created = await createDocument(input, csrfToken);
@@ -39,6 +53,7 @@ export function useSaveDocument() {
         await deleteDocument(created.id, csrfToken).catch(() => undefined); // the server also purges pending ones after an hour
         throw error;
       }
+      if (file) await sendPreview(created.id, file.blob, csrfToken);
       return created.id;
     },
     onSettled: () => client.invalidateQueries({ queryKey: KEY }),

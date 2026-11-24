@@ -67,7 +67,13 @@
 .card-task__foot { display: flex; align-items: center; gap: 8px; }
 .card-task__people { margin-left: auto; display: inline-flex; }
 .card-task__move { max-width: 9rem; font: inherit; font-size: 0.8rem; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px; }
-@media (max-width: 767px) {
-  .board { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: minmax(78%, 1fr); overflow-x: auto; scroll-snap-type: x mandatory; }
-  .board__column { scroll-snap-align: start; }
-}
+/* On a phone: tabs pick the column, so there is no sideways scrolling; bigger touch targets. */
+.board-tabs { margin-bottom: 12px; }
+.board-tabs .segmented { display: flex; }
+.board-tabs .segmented__option { flex: 1; white-space: nowrap; padding-inline: 6px; }
+.board--tabs { display: block; }
+.board--tabs .board__title { display: none; }
+.board--tabs .board__column { min-height: 0; padding: 0; background: transparent; border: 0; }
+.board--tabs .card-task { padding: 12px 14px; }
+.board--tabs .card-task__open { min-height: 44px; justify-content: center; }
+.board--tabs .card-task__move { min-height: 40px; font-size: 0.9rem; max-width: 12rem; padding: 6px 10px; }

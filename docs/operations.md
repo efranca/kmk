@@ -139,7 +139,7 @@ The shared project scripts (`/home/evandro/projects/shared/scripts/pg-backup.sh`
 
 ## Documents: disk, backups and limits
 
-Document files are stored in the database, so the database and **every daily and weekly encrypted backup** grow with the library (at most 2 GB of files, plus the copies kept by the backup rotation). Check free space on the host (`df -h /`) before large uploads; the library cap is `MAX_LIBRARY_BYTES` in `backend/app/documents/limits.py` (raise it deliberately, and consider moving backups off this disk first). Only `PUT /api/documents/{id}/file` accepts a large body (Caddy, 51 MiB); the API container's `mem_limit` is 1536m because one upload holds a few copies of the file (at most 2 uploads at once). After a Caddyfile change auto-deploy restarts Caddy by itself; by hand: `docker compose restart caddy`.
+Document files are stored in the database, so the database and **every daily and weekly encrypted backup** grow with the library (at most 2 GB of files, plus the copies kept by the backup rotation). Check free space on the host (`df -h /`) before large uploads; the library cap is `MAX_LIBRARY_BYTES` in `backend/app/documents/limits.py` (raise it deliberately, and consider moving backups off this disk first). Only `PUT /api/documents/{id}/file` accepts a large body (Caddy, 51 MiB), and `PUT .../preview` a 128 KB one; PDF previews use the pdf.js worker, a same-origin `.mjs` asset that Caddy serves as JavaScript (checked with the real Caddyfile); the API container's `mem_limit` is 1536m because one upload holds a few copies of the file (at most 2 uploads at once). After a Caddyfile change auto-deploy restarts Caddy by itself; by hand: `docker compose restart caddy`.
 
 ## Container limits, logs and health
 

@@ -6,20 +6,29 @@ import type { TasksView } from "./useTasksView";
 
 const ITEMS = '[role="menuitem"], [role="menuitemradio"]';
 
+export type ViewOption<V extends string> = { id: V; label: string };
+
 /**
- * The gear next to "+": how the tasks are shown (list or board) and the categories. While the category manager is
- * open the gear is just the button that takes you back.
+ * The gear next to "+": how the items are shown (tasks: list or board; documents: list or tiles) and the categories.
+ * While the category manager is open the gear is just the button that takes you back.
  */
-export function ViewMenuButton({
+export function ViewMenuButton<V extends string = TasksView>({
   view,
   onView,
   onManage,
   managing,
+  views,
+  menuLabel,
+  heading,
 }: {
-  view: TasksView;
-  onView: (view: TasksView) => void;
+  view: V;
+  onView: (view: V) => void;
   onManage: () => void;
   managing: boolean;
+  /** The choices; the tasks' list and board when left out. */
+  views?: ViewOption<V>[];
+  menuLabel?: string;
+  heading?: string;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -60,25 +69,26 @@ export function ViewMenuButton({
     }
   }
 
-  const views: { id: TasksView; label: string }[] = [
+  const options = views ?? ([
     { id: "list", label: t("taskViewList") },
     { id: "board", label: t("taskViewBoard") },
-  ];
+  ] as unknown as ViewOption<V>[]);
+  const label = menuLabel ?? t("taskViewMenu");
 
   return (
     <span className="viewmenu" ref={root}>
       <IconButton
         icon="settings"
-        label={t("taskViewMenu")}
+        label={label}
         aria-haspopup={managing ? undefined : "menu"}
         aria-expanded={managing ? undefined : open}
         aria-pressed={managing ? true : undefined}
         onClick={() => (managing ? onManage() : setOpen((o) => !o))}
       />
       {open && (
-        <div ref={panel} className="viewmenu__panel" role="menu" aria-label={t("taskViewMenu")} onKeyDown={onKeyDown}>
-          <p className="viewmenu__heading" aria-hidden="true">{t("taskView")}</p>
-          {views.map((v) => (
+        <div ref={panel} className="viewmenu__panel" role="menu" aria-label={label} onKeyDown={onKeyDown}>
+          <p className="viewmenu__heading" aria-hidden="true">{heading ?? t("taskView")}</p>
+          {options.map((v) => (
             <button key={v.id} type="button" role="menuitemradio" aria-checked={view === v.id} className="viewmenu__item"
               onClick={() => { onView(v.id); close(true); }}>
               {v.label}

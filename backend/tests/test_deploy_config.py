@@ -77,3 +77,9 @@ def test_only_the_document_upload_route_may_carry_a_large_body():
     from app.documents.limits import MAX_FILE_BYTES
 
     assert MAX_FILE_BYTES < 51 * 1024 * 1024
+    # ...and the preview picture (at most 100 KB in the API) has its own small allowance.
+    from app.documents.limits import MAX_PREVIEW_BYTES
+
+    preview = text[text.index("@docpreview {"):text.index("handle /api/*")]
+    assert "path_regexp ^/api/documents/[0-9]+/preview$" in preview and "max_size 128KB" in preview
+    assert text.count("max_size 128KB") == 1 and MAX_PREVIEW_BYTES <= 128 * 1000

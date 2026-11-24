@@ -1,7 +1,8 @@
 import { MAX_FILE_BYTES, type Visibility } from "./api";
+import { isAcceptedName } from "./fileKind";
 
-export const DOCUMENT_ACCEPT = "application/pdf,image/jpeg,image/png,image/webp";
-const ALLOWED = new Set(DOCUMENT_ACCEPT.split(","));
+export { DOCUMENT_ACCEPT } from "./fileKind";
+const SCALABLE = new Set(["image/jpeg", "image/png", "image/webp", "image/bmp"]); // a GIF keeps its frames, HEIC and the like are left alone
 const SCALE_ABOVE_BYTES = 1.5 * 1024 * 1024;
 const LONGEST_SIDE = 2400;
 
@@ -11,9 +12,9 @@ const LONGEST_SIDE = 2400;
  * both again (by the file's first bytes).
  */
 export async function prepareDocument(file: File): Promise<File> {
-  if (!ALLOWED.has(file.type)) throw new Error("invalid_file");
+  if (!isAcceptedName(file.name)) throw new Error("invalid_file"); // the browser's type is empty for Markdown, logs and the like
   let result = file;
-  if (file.type.startsWith("image/") && file.size > SCALE_ABOVE_BYTES) result = (await scaleDown(file)) ?? file;
+  if (SCALABLE.has(file.type) && file.size > SCALE_ABOVE_BYTES) result = (await scaleDown(file)) ?? file;
   if (result.size > MAX_FILE_BYTES) throw new Error("file_too_large");
   return result;
 }

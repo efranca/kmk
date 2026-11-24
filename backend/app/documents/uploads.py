@@ -27,17 +27,17 @@ class Slots:
 slots = Slots()
 
 
-async def read_capped(request: Request) -> bytes:
-    """The request body, refused as soon as it is (or is declared) over the file limit."""
-    limit = limits.MAX_FILE_BYTES
+async def read_capped(request: Request, limit: int | None = None, error: str = "file_too_large") -> bytes:
+    """The request body, refused as soon as it is (or is declared) over the limit (the file limit unless given)."""
+    limit = limits.MAX_FILE_BYTES if limit is None else limit
     declared = request.headers.get("content-length")
     if declared and declared.isdigit() and int(declared) > limit:
-        raise ApiError(422, "file_too_large")
+        raise ApiError(422, error)
     buffer = bytearray()
     async for chunk in request.stream():
         buffer += chunk
         if len(buffer) > limit:
-            raise ApiError(422, "file_too_large")
+            raise ApiError(422, error)
     return bytes(buffer)
 
 

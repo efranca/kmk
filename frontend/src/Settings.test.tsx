@@ -64,6 +64,19 @@ describe("Settings page", () => {
     expect(JSON.parse(String(init.body))).toEqual({ dashboard_widgets: { my_tasks: false } });
   });
 
+  it("lets a person keep just the icons in the phone's bottom bar, and saves it to the account", async () => {
+    const fetchMock = vi.fn(async () => res(200, { preferences: {} }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Providers><SettingsPage onLanguageChanged={vi.fn()} /></Providers>);
+    const toggle = screen.getByRole("switch", { name: frCA.settingsMenuLabels });
+    expect(toggle).toBeChecked(); // names are shown until turned off
+    fireEvent.click(toggle);
+    expect(screen.getByRole("switch", { name: frCA.settingsMenuLabels })).not.toBeChecked();
+    const patch = () => (fetchMock.mock.calls as unknown as [string, RequestInit][]).find(([url]) => url === "/api/me/preferences");
+    await waitFor(() => expect(patch()).toBeDefined());
+    expect(JSON.parse(String(patch()![1].body))).toEqual({ show_menu_labels: false });
+  });
+
   it("is a page of its own for signed-in people", async () => {
     visit("/settings");
     mockApi(true);

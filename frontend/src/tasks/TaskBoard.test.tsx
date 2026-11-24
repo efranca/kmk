@@ -18,10 +18,10 @@ const task = (over: Partial<Task> = {}): Task => {
 beforeEach(async () => { await useEnglish(); });
 afterEach(async () => { await resetLanguage(); });
 
-function setup(tasks: Task[], canMove: (t: Task) => boolean = () => true) {
+function setup(tasks: Task[], canMove: (t: Task) => boolean = () => true, narrow = false) {
   const onMove = vi.fn<(t: Task, s: TaskStatus) => void>();
   const onOpen = vi.fn();
-  render(<TaskBoard tasks={tasks} people={new Map()} categoryById={new Map()} today="2026-11-24" canMove={canMove} onMove={onMove} onOpen={onOpen} />);
+  render(<TaskBoard tasks={tasks} people={new Map()} categoryById={new Map()} today="2026-11-24" canMove={canMove} onMove={onMove} onOpen={onOpen} narrow={narrow} />);
   return { onMove, onOpen };
 }
 const column = (name: string) => screen.getByRole("group", { name: new RegExp(`^${name}`) });
@@ -82,5 +82,47 @@ describe("TaskBoard", () => {
     const { onOpen } = setup([task({ title: "A" })]);
     fireEvent.click(screen.getByRole("button", { name: /A/ }));
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ title: "A" }));
+  });
+});
+
+
+describe("on a phone", () => {
+  const mixed = () => [task({ title: "Todo one" }), task({ title: "Doing one", status: "in_progress" }), task({ title: "Doing two", status: "in_progress" }), task({ title: "Done one", status: "completed" })];
+
+  it("shows one column at a time, chosen with tabs that carry the counts, instead of scrolling sideways", () => {
+    setup(mixed(), () => true, true);
+    expect(screen.getAllByRole("radio").map((r) => r.textContent)).toEqual(["To do 1", "In progress 2", "Done 1"]);
+    expect(screen.getByText("Todo one")).toBeInTheDocument();
+    expect(screen.queryByText("Doing one")).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "In progress 2" }));
+    expect(screen.getByText("Doing one")).toBeInTheDocument();
+    expect(screen.getByText("Doing two")).toBeInTheDocument();
+    expect(screen.queryByText("Todo one")).toBeNull();
+    expect(screen.getAllByRole("group")).toHaveLength(1);
+  });
+
+  it("starts on To do and opens a card", () => {
+    const { onOpen } = setup(mixed(), () => true, true);
+    expect(screen.getByRole("radio", { name: "To do 1" })).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("button", { name: /Todo one/ }));
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ title: "Todo one" }));
+  });
+
+  it("moves a card with its control, which sends it to the other tab", () => {
+    const { onMove } = setup(mixed(), () => true, true);
+    fireEvent.change(screen.getByLabelText(/Move .*Todo one/i), { target: { value: "in_progress" } });
+    expect(onMove).toHaveBeenCalledWith(expect.objectContaining({ title: "Todo one" }), "in_progress");
+  });
+
+  it("tells when the tab is empty", () => {
+    setup([task({ title: "Only todo" })], () => true, true);
+    fireEvent.click(screen.getByRole("radio", { name: "Done 0" }));
+    expect(screen.getByText(/nothing here/i)).toBeInTheDocument();
+  });
+
+  it("keeps all three columns on a wide screen", () => {
+    setup(mixed());
+    expect(screen.queryByRole("radio")).toBeNull();
+    expect(screen.getAllByRole("group")).toHaveLength(3);
   });
 });

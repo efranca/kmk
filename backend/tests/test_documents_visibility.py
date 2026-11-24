@@ -1,6 +1,6 @@
 import pytest
 
-from app.documents.files import sniff_document
+from app.documents.files import detect_document
 from app.documents.visibility import can_view, visible_levels
 
 
@@ -31,9 +31,9 @@ WEBP = b"RIFF\x24\x00\x00\x00WEBPVP8 "
 
 @pytest.mark.parametrize("data, kind", [(PDF, "application/pdf"), (JPEG, "image/jpeg"), (PNG, "image/png"), (WEBP, "image/webp")])
 def test_known_types_by_their_first_bytes(data, kind):
-    assert sniff_document(data) == kind
+    assert detect_document(data, 'file') == kind
 
 
 @pytest.mark.parametrize("data", [b"", b"hello", b"<html>%PDF-</html>", b" %PDF-1.4", b"PK\x03\x04zip", b"MZ\x90\x00exe"])
 def test_everything_else_is_refused(data):
-    assert sniff_document(data) is None
+    assert detect_document(data, 'file') is None

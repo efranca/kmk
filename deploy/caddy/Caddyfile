@@ -43,6 +43,18 @@ http://app.kmk-entretien.ca:8081 {
 		import api_proxy
 	}
 
+	# The small preview picture of a document (the API accepts at most 100 KB).
+	@docpreview {
+		method PUT
+		path_regexp ^/api/documents/[0-9]+/preview$
+	}
+	handle @docpreview {
+		request_body {
+			max_size 128KB
+		}
+		import api_proxy
+	}
+
 	handle /api/* {
 		# Every other API request body is tiny JSON: refuse anything bigger before it reaches the application.
 		request_body {

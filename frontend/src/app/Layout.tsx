@@ -5,6 +5,7 @@ import type { User } from "../api";
 import { ReminderTray } from "../schedule/ReminderTray";
 import AccountMenu from "./AccountMenu";
 import { useSidebarCollapsed } from "./useSidebarCollapsed";
+import { usePreferences } from "../preferences";
 import Nav, { type NavId } from "./Nav";
 
 export type LayoutPage = NavId | "account" | "settings" | "about" | "other";
@@ -28,10 +29,11 @@ export default function Layout({
 }) {
   const { t } = useTranslation();
   const [collapsed, toggle] = useSidebarCollapsed();
+  const { prefs } = usePreferences();
   return (
     <div className={collapsed ? "app app--collapsed" : "app"}>
       <a className="skip" href="#main">{t("skipToContent")}</a>
-      <Nav active={active === "account" || active === "settings" || active === "about" || active === "other" ? null : active} isAdmin={user.role !== "user"} isSuperAdmin={user.role === "superadmin"} collapsed={collapsed}
+      <Nav active={active === "account" || active === "settings" || active === "about" || active === "other" ? null : active} isAdmin={user.role !== "user"} isSuperAdmin={user.role === "superadmin"} collapsed={collapsed} showLabels={prefs.show_menu_labels}
         onToggle={toggle}
         onNavigate={onNavigate}
         footer={
