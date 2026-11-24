@@ -17,7 +17,7 @@
   --ev-pink: #b0306b;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
     --surface: #1e323c;
     --surface-2: #26404b;
     --text: #e8f1f1;
@@ -34,6 +34,32 @@
     --ev-violet: #9370e0;
     --ev-pink: #d9628f;
   }
+}
+/* Light: neutral white and grey with the KMK green accent. */
+:root[data-theme="light"] {
+  --surface: #ffffff;
+  --surface-2: #eef0f2;
+  --text: #1d2329;
+  --text-muted: #5b646b;
+  --line: rgba(29, 35, 41, 0.13);
+}
+/* Dark: neutral charcoal with the bright KMK accent. */
+:root[data-theme="dark"] {
+  --surface: #1c1f22;
+  --surface-2: #262a2e;
+  --text: #e8eaec;
+  --text-muted: #a3a9ae;
+  --accent-ink: #0d1d24;
+  --danger: #ff8a80;
+  --line: rgba(232, 241, 241, 0.16);
+  --ev-red: #d95b4c;
+  --ev-orange: #d9742b;
+  --ev-amber: #c98a1d;
+  --ev-green: #4aa04f;
+  --ev-teal: #2aa6bd;
+  --ev-blue: #4d8de0;
+  --ev-violet: #9370e0;
+  --ev-pink: #d9628f;
 }
 
 .icon { flex: none; }

@@ -16,12 +16,15 @@
   --bg: var(--paper);
   --accent: var(--pine);
 }
+/* Themes: data-theme on <html> ("kmk" is the default and follows the OS; "light" and "dark" are forced). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
     --bg: var(--deep);
     --accent: var(--spark);
   }
 }
+:root[data-theme="light"] { --bg: #f6f7f8; --accent: var(--pine); }
+:root[data-theme="dark"] { --bg: #121416; --accent: var(--spark); }
 * { box-sizing: border-box; }
 body {
   margin: 0;
