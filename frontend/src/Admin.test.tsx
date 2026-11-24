@@ -42,6 +42,11 @@ const bodyOf = (call: unknown[]) => JSON.parse((call[1] as RequestInit).body as 
 const headersOf = (call: unknown[]) => (call[1] as RequestInit).headers as Record<string, string>;
 const rowOf = (name: string) => screen.getByRole("article", { name });
 const click = (scope: { getByRole: typeof screen.getByRole }, name: string) => fireEvent.click(scope.getByRole("button", { name }));
+/** Taps a person's row and returns queries scoped to the dialog that opens. */
+const openUser = (name: string) => {
+  fireEvent.click(within(rowOf(name)).getByRole("button"));
+  return within(screen.getByRole("dialog"));
+};
 
 async function openAdmin(users: AdminRow[], role = "admin", extra: Record<string, Handler> = {}) {
   window.history.pushState({}, "", "/admin");
@@ -95,18 +100,25 @@ describe("the list", () => {
     row({ id: 12, username: "gone", email: "gone@example.com", status: "deleted" }),
   ];
 
-  it("shows role, status, two-step state and last sign-in, and flags admins without two-step", async () => {
+  it("shows the role, notes an account that is not active, and flags admins without two-step", async () => {
     await openAdmin(users);
     const alice = within(rowOf("alice"));
     expect(alice.getByText(frCA.role_user)).toBeInTheDocument();
-    expect(alice.getByText(frCA.status_active)).toBeInTheDocument();
-    expect(alice.getByText(frCA.adminMfaOn)).toBeInTheDocument();
+    expect(alice.queryByText(frCA.status_active)).toBeNull(); // nothing to say about a normal account
+    expect(alice.queryByText(frCA.adminAdminNoMfa)).toBeNull();
     const marc = within(rowOf("marc"));
     expect(marc.getByText(frCA.role_admin)).toBeInTheDocument();
     expect(marc.getByText(frCA.status_invited)).toBeInTheDocument();
-    expect(marc.getByText(frCA.adminNever)).toBeInTheDocument();
     expect(marc.getByText(frCA.adminAdminNoMfa)).toBeInTheDocument();
-    expect(alice.queryByText(frCA.adminAdminNoMfa)).toBeNull();
+  });
+
+  it("shows the two-step state and last sign-in in the person's dialog", async () => {
+    await openAdmin(users);
+    const alice = openUser("alice");
+    expect(alice.getByText(frCA.adminMfaOn)).toBeInTheDocument();
+    expect(alice.getByText(new RegExp(frCA.adminLastSignIn))).not.toHaveTextContent(frCA.adminNever);
+    fireEvent.click(alice.getByRole("button", { name: "Fermer" }));
+    expect(openUser("marc").getByText(new RegExp(`${frCA.adminLastSignIn}: ${frCA.adminNever}`))).toBeInTheDocument();
   });
 
   it("hides deleted accounts until asked, and searches by name or email", async () => {
@@ -114,7 +126,8 @@ describe("the list", () => {
     expect(screen.queryByRole("article", { name: "gone" })).toBeNull();
     fireEvent.click(screen.getByLabelText(frCA.adminShowDeleted));
     expect(screen.getByRole("article", { name: "gone" })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText(frCA.adminSearch), { target: { value: "MARC@" } });
+    fireEvent.click(screen.getByRole("button", { name: frCA.adminSearch }));
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "MARC@" } });
     expect(screen.getByRole("article", { name: "marc" })).toBeInTheDocument();
     expect(screen.queryByRole("article", { name: "alice" })).toBeNull();
   });
@@ -130,13 +143,16 @@ describe("buttons come only from the server's list of actions", () => {
       ],
       "superadmin",
     );
-    expect(within(rowOf("alice")).queryAllByRole("button")).toHaveLength(0);
-    const bob = within(rowOf("bob"));
+    const alice = openUser("alice");
+    expect(alice.queryAllByRole("button").map((b) => b.textContent)).toEqual([""]); // only the dialog's close button
+    fireEvent.click(alice.getByRole("button"));
+    const bob = openUser("bob");
     for (const k of ["act_edit", "act_reset_password", "act_disable", "act_make_admin"] as const) {
       expect(bob.getByRole("button", { name: frCA[k] })).toBeInTheDocument();
     }
     expect(bob.queryByRole("button", { name: frCA.act_delete })).toBeNull();
-    const carl = within(rowOf("carl"));
+    fireEvent.click(bob.getByRole("button", { name: "Fermer" }));
+    const carl = openUser("carl");
     expect(carl.getByRole("button", { name: frCA.act_make_user })).toBeInTheDocument();
     expect(carl.getByRole("button", { name: frCA.act_restore })).toBeInTheDocument();
     expect(carl.queryByRole("button", { name: frCA.act_make_admin })).toBeNull();
@@ -146,18 +162,22 @@ describe("buttons come only from the server's list of actions", () => {
 describe("actions", () => {
   const bob = row({ id: 11, username: "bob", actions: ["view", "disable", "enable", "delete", "reset_mfa", "set_role", "restore", "resend_invite"] });
 
-  it("asks for an inline confirmation before disabling, then reloads", async () => {
+  it("asks for a confirmation before disabling, then reloads", async () => {
     const fn = await openAdmin([bob], "admin", { "POST /api/admin/users/11/disable": () => res(200, { status: "ok" }) });
-    click(within(rowOf("bob")), frCA.act_disable);
+    let dialog = openUser("bob");
+    click(dialog, frCA.act_disable);
     expect(calls(fn, "POST /api/admin/users/11/disable")).toHaveLength(0);
-    click(within(rowOf("bob")), frCA.adminCancel);
+    click(dialog, frCA.adminCancel);
     expect(calls(fn, "POST /api/admin/users/11/disable")).toHaveLength(0);
-    click(within(rowOf("bob")), frCA.act_disable);
-    click(within(rowOf("bob")), frCA.confirm);
+    click(dialog, frCA.act_disable);
+    click(dialog, frCA.confirm);
     expect(await screen.findByText(frCA.adminDone)).toBeInTheDocument();
     const call = calls(fn, "POST /api/admin/users/11/disable")[0];
     expect(headersOf(call)["X-CSRF-Token"]).toBe("tok-1");
     expect(calls(fn, "GET /api/admin/users")).toHaveLength(2); // reloaded
+    expect(screen.queryByRole("dialog")).toBeNull(); // and the dialog closed
+    dialog = openUser("bob");
+    expect(dialog.getByRole("button", { name: frCA.act_disable })).toBeInTheDocument();
   });
 
   it("confirms delete, two-step reset and role change too, and sends enable, restore and resend at once", async () => {
@@ -175,10 +195,12 @@ describe("actions", () => {
       [frCA.act_reset_mfa, "POST /api/admin/users/11/reset-mfa"],
       [frCA.act_make_admin, "POST /api/admin/users/11/role"],
     ] as const) {
-      click(within(rowOf("bob")), label);
+      const dialog = openUser("bob");
+      click(dialog, label);
       expect(calls(fn, route)).toHaveLength(0);
-      click(within(rowOf("bob")), frCA.confirm);
+      click(dialog, frCA.confirm);
       await waitFor(() => expect(calls(fn, route)).toHaveLength(1));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     }
     expect(bodyOf(calls(fn, "POST /api/admin/users/11/role")[0])).toEqual({ role: "admin" });
     for (const [label, route] of [
@@ -186,8 +208,9 @@ describe("actions", () => {
       [frCA.act_restore, "POST /api/admin/users/11/restore"],
       [frCA.act_resend_invite, "POST /api/admin/users/11/invite"],
     ] as const) {
-      click(within(rowOf("bob")), label);
+      click(openUser("bob"), label);
       await waitFor(() => expect(calls(fn, route)).toHaveLength(1));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     }
   });
 
@@ -196,10 +219,10 @@ describe("actions", () => {
     [403, { error: "cannot_target_self" }, "errSelf"],
     [409, { error: "invalid_state" }, "errInvalidState"],
     [409, { error: "last_admin" }, "errLastAdmin"],
-  ] as const)("explains a %s %j", async (status, body, key) => {
+  ] as const)("explains a %s %j inside the dialog, which stays open", async (status, body, key) => {
     await openAdmin([bob], "admin", { "POST /api/admin/users/11/enable": () => res(status, body) });
-    click(within(rowOf("bob")), frCA.act_enable);
-    expect(await screen.findByText(frCA[key])).toBeInTheDocument();
+    click(openUser("bob"), frCA.act_enable);
+    expect(await within(screen.getByRole("dialog")).findByText(frCA[key])).toBeInTheDocument();
   });
 
   it("shows a network error when the request fails", async () => {
@@ -208,8 +231,19 @@ describe("actions", () => {
         throw new Error("offline");
       },
     });
-    click(within(rowOf("bob")), frCA.act_enable);
+    click(openUser("bob"), frCA.act_enable);
     expect(await screen.findByText(frCA.networkError)).toBeInTheDocument();
+  });
+
+  it("lets an admin take down someone's picture, only when there is one", async () => {
+    const withPicture = row({ id: 11, username: "bob", avatar_url: "/api/people/11/avatar?v=1", actions: ["view", "edit"] });
+    const none = row({ id: 12, username: "zed", avatar_url: null, actions: ["view", "edit"] });
+    const fn = await openAdmin([withPicture, none], "admin", { "DELETE /api/admin/users/11/avatar": () => res(204) });
+    expect(openUser("zed").queryByRole("button", { name: frCA.avatarRemove })).toBeNull();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Fermer" }));
+    click(openUser("bob"), frCA.avatarRemove);
+    await waitFor(() => expect(calls(fn, "DELETE /api/admin/users/11/avatar")).toHaveLength(1));
+    expect(headersOf(calls(fn, "DELETE /api/admin/users/11/avatar")[0])["X-CSRF-Token"]).toBe("tok-1");
   });
 });
 
@@ -220,15 +254,16 @@ describe("editing", () => {
       "admin",
       { "PATCH /api/admin/users/10": () => res(200, { user: {} }), "PATCH /api/admin/users/11": () => res(200, { user: {} }) },
     );
-    const alice = within(rowOf("alice"));
+    const alice = openUser("alice");
     click(alice, frCA.act_edit);
     expect(alice.queryByLabelText(frCA.adminEmail)).toBeNull();
     fireEvent.change(alice.getByLabelText(frCA.adminLanguage), { target: { value: "en" } });
     click(alice, frCA.adminSave);
     await waitFor(() => expect(calls(fn, "PATCH /api/admin/users/10")).toHaveLength(1));
     expect(bodyOf(calls(fn, "PATCH /api/admin/users/10")[0])).toEqual({ locale: "en" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
-    const inv = within(rowOf("inv"));
+    const inv = openUser("inv");
     click(inv, frCA.act_edit);
     fireEvent.change(inv.getByLabelText(frCA.adminEmail), { target: { value: "fixed@example.com" } });
     click(inv, frCA.adminSave);
@@ -238,6 +273,7 @@ describe("editing", () => {
 });
 
 describe("inviting", () => {
+  const plus = () => fireEvent.click(screen.getByRole("button", { name: frCA.adminInviteTitle }));
   const fill = () => {
     fireEvent.change(screen.getByLabelText(frCA.adminName), { target: { value: "Nadia Newbie" } });
     fireEvent.change(screen.getByLabelText(frCA.adminUsername), { target: { value: "newbie" } });
@@ -246,18 +282,28 @@ describe("inviting", () => {
   };
   const submit = () => fireEvent.click(screen.getByRole("button", { name: frCA.adminInviteSend }));
 
-  it("always invites a plain user when the viewer is an admin (no role choice), then reloads", async () => {
+  it("opens from the plus button", async () => {
+    await openAdmin([row({})]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    plus();
+    expect(screen.getByRole("dialog", { name: frCA.adminInviteTitle })).toBeInTheDocument();
+  });
+
+  it("always invites a plain user when the viewer is an admin (no role choice), then reloads and closes", async () => {
     const fn = await openAdmin([row({})], "admin", { "POST /api/admin/users": () => res(201, { user: {}, email_queued: true }) });
+    plus();
     expect(screen.queryByLabelText(frCA.adminRole)).toBeNull();
     fill();
     submit();
     expect(await screen.findByText(frCA.adminInviteSent)).toBeInTheDocument();
     expect(bodyOf(calls(fn, "POST /api/admin/users")[0])).toEqual({ name: "Nadia Newbie", username: "newbie", email: "newbie@example.com", locale: "pt-BR", role: "user" });
     expect(calls(fn, "GET /api/admin/users")).toHaveLength(2);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("lets the super admin choose the role", async () => {
     const fn = await openAdmin([row({})], "superadmin", { "POST /api/admin/users": () => res(201, { user: {}, email_queued: true }) });
+    plus();
     fill();
     fireEvent.change(screen.getByLabelText(frCA.adminRole), { target: { value: "admin" } });
     submit();
@@ -265,10 +311,11 @@ describe("inviting", () => {
     expect(bodyOf(calls(fn, "POST /api/admin/users")[0]).role).toBe("admin");
   });
 
-  it("explains a duplicate", async () => {
+  it("explains a duplicate and keeps the form open", async () => {
     await openAdmin([row({})], "admin", { "POST /api/admin/users": () => res(409, { error: "already_exists" }) });
+    plus();
     fill();
     submit();
-    expect(await screen.findByText(frCA.errExists)).toBeInTheDocument();
+    expect(await within(screen.getByRole("dialog")).findByText(frCA.errExists)).toBeInTheDocument();
   });
 });

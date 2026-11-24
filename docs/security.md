@@ -107,6 +107,13 @@ Details never contain passwords, hashes, tokens, links, TOTP secrets, codes or r
 - Writes are audit-logged: `task_created`, `task_updated` (with the names of the fields that changed), `task_completed`, `task_started`, `task_reopened`, `task_deleted`, `tasks_cleared` (a count), `task_category_created`, `task_category_updated`, `task_category_deleted`; **never a title, description or category name**.
 - Reads need a verified session but no CSRF token; changes need both. Responses under `/api/tasks` are `Cache-Control: no-store`.
 
+## Profile pictures and preferences
+
+- A picture is stored in the database (so the encrypted backups cover it), at most 50 KB. The browser crops it square and re-draws it as a 256 px JPEG, which also drops anything that is not pixels. The server still checks: the type comes from the first bytes of the body (JPEG, PNG or WebP; the declared type and file name are ignored), the size is capped while reading, and anything else is `422 invalid_image`. The database also enforces the type and size.
+- It is served only to signed-in, fully verified people, as an image only: the stored content type, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox; default-src 'none'`, `Cache-Control: private, max-age=0, must-revalidate` and an `ETag`.
+- Only you can put up your picture. An administrator can take one down with the same authority they need to edit that person (the super admin for admins). Audit actions `avatar_set` and `avatar_removed` carry no content.
+- Preferences are a closed schema (a fixed list of keys and values, strict types), kept as one JSON object on the user row. They are never sent in admin lists. They hold no secrets.
+
 ## Secrets
 
 Only in git-ignored `.env` files with mode 600: database passwords, `SESSION_SECRET`, `RESEND_API_KEY`, `MFA_ENCRYPTION_KEY`. The Docker image does not contain them (they are passed at run time). The compose file gives each container only the variables it needs: the database **owner's** URL reaches only the one-shot `migrate` container, never the long-running API. The development email backend (`log`) prints full messages, links included, to the API log, so it must not be used once real users exist.

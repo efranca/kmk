@@ -217,6 +217,7 @@ export type AdminUser = {
   mfaEnabled: boolean;
   createdAt: string;
   lastSignIn: string | null;
+  avatarUrl: string | null;
   actions: string[];
 };
 
@@ -239,6 +240,7 @@ export async function adminList(): Promise<AdminUser[] | null> {
       mfaEnabled: u.mfa_enabled,
       createdAt: u.created_at,
       lastSignIn: u.last_sign_in ?? null,
+      avatarUrl: u.avatar_url ?? null,
       actions: u.actions ?? [],
     }));
   } catch {
@@ -274,6 +276,7 @@ export const adminInvite = (csrf: string, v: { name: string; username: string; e
 export const adminAct = (csrf: string, id: number, action: "invite" | "reset" | "disable" | "enable" | "delete" | "restore" | "reset-mfa") =>
   adminCall(csrf, "POST", `users/${id}/${action}`);
 export const adminSetRole = (csrf: string, id: number, role: "user" | "admin") => adminCall(csrf, "POST", `users/${id}/role`, { role });
+export const adminRemoveAvatar = (csrf: string, id: number) => adminCall(csrf, "DELETE", `users/${id}/avatar`);
 export const adminEdit = (csrf: string, id: number, v: { locale?: string; email?: string; name?: string }) => adminCall(csrf, "PATCH", `users/${id}`, v);
 
 export async function setLocale(csrfToken: string, locale: string): Promise<{ ok: true; user: User } | { ok: false }> {

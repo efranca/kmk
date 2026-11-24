@@ -368,5 +368,6 @@
   "avatarChoose": "Choisir une photo",
   "avatarChange": "Changer la photo",
   "avatarRemove": "Retirer la photo",
-  "avatarInvalid": "Ce fichier ne peut pas servir de photo. Choisissez une image JPEG, PNG ou WebP."
+  "avatarInvalid": "Ce fichier ne peut pas servir de photo. Choisissez une image JPEG, PNG ou WebP.",
+  "adminNoResults": "Personne ne correspond."
 }

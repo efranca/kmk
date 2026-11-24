@@ -118,14 +118,16 @@ describe("admin list", () => {
 
   it.each(["elise", "ÉLISE", "gagnon", "egagnon", "e.g@example"])("finds the person when searching for %s", async (needle) => {
     await open();
-    fireEvent.change(screen.getByLabelText(frCA.adminSearch), { target: { value: needle } });
+    fireEvent.click(screen.getByRole("button", { name: frCA.adminSearch }));
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: needle } });
     expect(screen.getByRole("article", { name: "Élise Gagnon" })).toBeInTheDocument();
     expect(screen.queryByRole("article", { name: "bob" })).toBeNull();
   });
 
   it("edits a name and sends only what changed", async () => {
     const fn = await open({ "PATCH /api/admin/users/12": () => res(200, { user: {} }) });
-    const marie = within(screen.getByRole("article", { name: "Marie Tremblay" }));
+    fireEvent.click(within(screen.getByRole("article", { name: "Marie Tremblay" })).getByRole("button"));
+    const marie = within(screen.getByRole("dialog"));
     fireEvent.click(marie.getByRole("button", { name: frCA.act_edit }));
     const field = marie.getByLabelText(frCA.adminName) as HTMLInputElement;
     expect(field.value).toBe("Marie Tremblay"); // prefilled
@@ -137,7 +139,8 @@ describe("admin list", () => {
 
   it("explains an invalid name returned by the server", async () => {
     await open({ "PATCH /api/admin/users/12": () => res(422, { detail: [] }) });
-    const marie = within(screen.getByRole("article", { name: "Marie Tremblay" }));
+    fireEvent.click(within(screen.getByRole("article", { name: "Marie Tremblay" })).getByRole("button"));
+    const marie = within(screen.getByRole("dialog"));
     fireEvent.click(marie.getByRole("button", { name: frCA.act_edit }));
     fireEvent.change(marie.getByLabelText(frCA.adminName), { target: { value: "Bad <name>" } });
     fireEvent.click(marie.getByRole("button", { name: frCA.adminSave }));
@@ -153,7 +156,8 @@ describe("admin list", () => {
       "PATCH /api/admin/users/1": () => res(200, { user: {} }),
     });
     render(<App />);
-    const own = within(await screen.findByRole("article", { name: "Rita Root" }));
+    fireEvent.click(within(await screen.findByRole("article", { name: "Rita Root" })).getByRole("button"));
+    const own = within(screen.getByRole("dialog"));
     fireEvent.click(own.getByRole("button", { name: frCA.act_edit }));
     fireEvent.change(own.getByLabelText(frCA.adminName), { target: { value: "Rita R. Root" } });
     fireEvent.click(own.getByRole("button", { name: frCA.adminSave }));
@@ -171,6 +175,7 @@ describe("inviting needs a name", () => {
     });
     render(<App />);
     await screen.findByRole("article", { name: "alice" });
+    fireEvent.click(screen.getByRole("button", { name: frCA.adminInviteTitle }));
     const field = screen.getByLabelText(frCA.adminName) as HTMLInputElement;
     expect(field).toBeRequired();
     expect(field.maxLength).toBe(100);

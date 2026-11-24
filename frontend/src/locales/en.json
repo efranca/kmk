@@ -368,5 +368,6 @@
   "avatarChoose": "Choose a picture",
   "avatarChange": "Change picture",
   "avatarRemove": "Remove picture",
-  "avatarInvalid": "This file cannot be used as a picture. Choose a JPEG, PNG or WebP image."
+  "avatarInvalid": "This file cannot be used as a picture. Choose a JPEG, PNG or WebP image.",
+  "adminNoResults": "No one matches."
 }

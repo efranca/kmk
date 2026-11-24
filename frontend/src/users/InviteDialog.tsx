@@ -1,16 +1,23 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { adminInvite, type AdminResult } from "./api";
+import { adminInvite, type AdminResult } from "../api";
+import { Button } from "../ui/Button";
+import { Dialog } from "../ui/Dialog";
 
-export default function AdminInvite({
+/** Invite someone: they get an email to choose their password. Only the super admin picks the role. */
+export default function InviteDialog({
   csrfToken,
   viewerRole,
   run,
+  notice,
+  onClose,
 }: {
   csrfToken: string;
   viewerRole: "user" | "admin" | "superadmin";
   run: (p: Promise<AdminResult>, okKey?: string) => Promise<boolean>;
+  notice: ReactNode;
+  onClose: () => void;
 }) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
@@ -23,21 +30,25 @@ export default function AdminInvite({
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
-    // Only the super admin may pick a role; the server enforces it too.
     const ok = await run(adminInvite(csrfToken, { name, username, email, locale, role: viewerRole === "superadmin" ? role : "user" }), "adminInviteSent");
     setBusy(false);
-    if (ok) {
-      setName("");
-      setUsername("");
-      setEmail("");
-      setRole("user");
-    }
+    if (ok) onClose();
   }
 
   return (
-    <section className="section">
-      <h2>{t("adminInviteTitle")}</h2>
-      <form onSubmit={submit} className="form">
+    <Dialog
+      open
+      title={t("adminInviteTitle")}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>{t("adminCancel")}</Button>
+          <Button type="submit" form="invite-form" variant="primary" busy={busy}>{t("adminInviteSend")}</Button>
+        </>
+      }
+    >
+      {notice}
+      <form id="invite-form" onSubmit={submit} className="form">
         <label>
           {t("adminName")}
           <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required maxLength={100} />
@@ -67,8 +78,7 @@ export default function AdminInvite({
             </select>
           </label>
         )}
-        <button type="submit" disabled={busy}>{t("adminInviteSend")}</button>
       </form>
-    </section>
+    </Dialog>
   );
 }

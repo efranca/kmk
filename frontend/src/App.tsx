@@ -5,7 +5,7 @@ import { BrowserRouter } from "react-router";
 
 import AccountPage from "./AccountPage";
 import { DashboardPage } from "./dashboard/DashboardPage";
-import AdminPage from "./AdminPage";
+import UsersPage from "./users/UsersPage";
 import { logout, me, type Session, type User } from "./api";
 import ForgotPassword from "./ForgotPassword";
 import LanguagePicker from "./LanguagePicker";
@@ -210,7 +210,7 @@ function AppContent() {
         />
       )}
       {page === "settings" && <SettingsPage />}
-      {page === "admin" && <AdminPage session={session} />}
+      {page === "admin" && <UsersPage session={session} />}
       {page === "schedule" && <SchedulePage />}
       {page === "tasks" && <TasksPage />}
       {page === "notfound" && <NotFound onHome={() => navigate("/")} />}

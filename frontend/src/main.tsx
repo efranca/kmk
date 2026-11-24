@@ -7,6 +7,7 @@ import "./app/layout.css";
 import "./schedule/schedule.css";
 import "./dashboard/dashboard.css";
 import "./tasks/tasks.css";
+import "./users/users.css";
 import "./i18n";
 import { initTheme } from "./theme";
 
