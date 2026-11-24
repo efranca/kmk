@@ -40,6 +40,7 @@ const listOf = (users: AdminRow[]) => () => res(200, { users });
 const calls = (fn: ReturnType<typeof mockApi>, route: string) => fn.mock.calls.filter(([u, i]) => `${i?.method ?? "GET"} ${u}` === route);
 const bodyOf = (call: unknown[]) => JSON.parse((call[1] as RequestInit).body as string);
 const headersOf = (call: unknown[]) => (call[1] as RequestInit).headers as Record<string, string>;
+const tab = (status: string) => fireEvent.click(screen.getByRole("radio", { name: new RegExp(`^${frCA[`status_${status}` as keyof typeof frCA]} \\d+$`) }));
 const rowOf = (name: string) => screen.getByRole("article", { name });
 const click = (scope: { getByRole: typeof screen.getByRole }, name: string) => fireEvent.click(scope.getByRole("button", { name }));
 /** Taps a person's row and returns queries scoped to the dialog that opens. */
@@ -106,6 +107,7 @@ describe("the list", () => {
     expect(alice.getByText(frCA.role_user)).toBeInTheDocument();
     expect(alice.queryByText(frCA.status_active)).toBeNull(); // nothing to say about a normal account
     expect(alice.queryByText(frCA.adminAdminNoMfa)).toBeNull();
+    tab("invited");
     const marc = within(rowOf("marc"));
     expect(marc.getByText(frCA.role_admin)).toBeInTheDocument();
     expect(marc.getByText(frCA.status_invited)).toBeInTheDocument();
@@ -118,18 +120,36 @@ describe("the list", () => {
     expect(alice.getByText(frCA.adminMfaOn)).toBeInTheDocument();
     expect(alice.getByText(new RegExp(frCA.adminLastSignIn))).not.toHaveTextContent(frCA.adminNever);
     fireEvent.click(alice.getByRole("button", { name: "Fermer" }));
+    tab("invited");
     expect(openUser("marc").getByText(new RegExp(`${frCA.adminLastSignIn}: ${frCA.adminNever}`))).toBeInTheDocument();
   });
 
-  it("hides deleted accounts until asked, and searches by name or email", async () => {
+  it("shows active accounts first, and the other statuses under their own tab (like the task tabs)", async () => {
     await openAdmin(users);
+    expect(screen.getByRole("article", { name: "alice" })).toBeInTheDocument();
     expect(screen.queryByRole("article", { name: "gone" })).toBeNull();
-    fireEvent.click(screen.getByLabelText(frCA.adminShowDeleted));
+    expect(screen.queryByRole("article", { name: "marc" })).toBeNull();
+    tab("deleted");
     expect(screen.getByRole("article", { name: "gone" })).toBeInTheDocument();
+    expect(screen.queryByRole("article", { name: "alice" })).toBeNull();
+    tab("invited");
+    expect(screen.getByRole("article", { name: "marc" })).toBeInTheDocument();
+  });
+
+  it("puts a count on each tab", async () => {
+    await openAdmin(users);
+    for (const status of ["active", "invited", "disabled", "deleted"]) {
+      expect(screen.getByRole("radio", { name: new RegExp(`^${frCA[`status_${status}` as keyof typeof frCA]} \\d+$`) })).toBeInTheDocument();
+    }
+  });
+
+  it("searches by name or email through every status, and the tabs step aside", async () => {
+    await openAdmin(users);
     fireEvent.click(screen.getByRole("button", { name: frCA.adminSearch }));
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "MARC@" } });
-    expect(screen.getByRole("article", { name: "marc" })).toBeInTheDocument();
+    expect(screen.getByRole("article", { name: "marc" })).toBeInTheDocument(); // invited, found without opening its tab
     expect(screen.queryByRole("article", { name: "alice" })).toBeNull();
+    expect(screen.queryByRole("radio", { name: new RegExp(frCA.status_active) })).toBeNull();
   });
 });
 
@@ -263,6 +283,7 @@ describe("editing", () => {
     expect(bodyOf(calls(fn, "PATCH /api/admin/users/10")[0])).toEqual({ locale: "en" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
+    tab("invited");
     const inv = openUser("inv");
     click(inv, frCA.act_edit);
     fireEvent.change(inv.getByLabelText(frCA.adminEmail), { target: { value: "fixed@example.com" } });

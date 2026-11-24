@@ -200,7 +200,7 @@ function AppContent() {
       active={shellPage}
       onNavigate={navigate}
       onSignOut={signOut}
-      bare={page === "schedule" || page === "welcome" || page === "tasks" || page === "documents"}
+      bare={page === "schedule" || page === "welcome" || page === "tasks" || page === "documents" || page === "admin" || page === "devices"}
     >
       {page === "welcome" && <DashboardPage user={session.user} mfaEnabled={session.mfaEnabled} recoveryCodesLeft={recoveryCodesLeft} />}
       {page === "account" && (

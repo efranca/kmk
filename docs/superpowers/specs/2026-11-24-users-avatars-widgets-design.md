@@ -1,5 +1,7 @@
 # Users page, avatars, Dashboard widget settings (round 3)
 
+> Update (after review): the Users page now looks and works like Tasks: no card around it, the title is "Users" (the nav label), and the "Show deleted" switch became status tabs (Active, Invited, Disabled, Deleted, each with a count) in the same place as the task tabs. Searching looks through every status and the tabs step aside, as on Tasks. Devices uses the same bare frame.
+
 ## Intent
 Make Users look and work like Tasks, let people have a face instead of initials, and let each person decide which Dashboard cards they see.
 
