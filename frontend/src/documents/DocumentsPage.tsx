@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { usePreferences } from "../preferences";
 import { useSession } from "../session";
 import { Button, IconButton } from "../ui/Button";
 import { EmptyState, ErrorNotice, Loading } from "../ui/Feedback";
@@ -20,6 +21,8 @@ export function DocumentsPage() {
   const { t, i18n } = useTranslation();
   const { user } = useSession();
   const canManage = user.role !== "user";
+  const { prefs, update } = usePreferences();
+  const showChips = prefs.show_document_categories; // off until the person turns them on; it follows their account
   const { data, isPending, isError, error, refetch } = useDocuments();
   const [searchOpen, setSearchOpen] = useState(false);
   const [text, setText] = useState("");
@@ -34,7 +37,8 @@ export function DocumentsPage() {
   const matching = searching
     ? documents.filter((d) => matchesSearch(text, d.title, d.note, d.file_name, d.category_id ? categoryById.get(d.category_id)?.name : ""))
     : documents;
-  const selected = pick !== null && categoryById.has(pick) ? pick : null;
+  // Hidden chips cannot filter: with them off, every document shows.
+  const selected = showChips && pick !== null && categoryById.has(pick) ? pick : null;
   const countOf = new Map<number, number>();
   for (const d of matching) if (d.category_id !== null) countOf.set(d.category_id, (countOf.get(d.category_id) ?? 0) + 1);
   const visible = selected !== null ? matching.filter((d) => d.category_id === selected) : matching;
@@ -46,6 +50,7 @@ export function DocumentsPage() {
         actions={
           <>
             <IconButton icon="search" label={t("docSearchLabel")} aria-pressed={searchOpen} onClick={() => { setManaging(false); if (searchOpen) setText(""); setSearchOpen(!searchOpen); }} />
+            <IconButton icon="tag" label={t("docShowCategories")} aria-pressed={showChips} onClick={() => update({ show_document_categories: !showChips })} />
             <IconButton icon="settings" label={t("docCategories")} aria-pressed={managing} onClick={() => { setSearchOpen(false); setText(""); setManaging(!managing); }} />
             {canManage && <IconButton icon="plus" variant="primary" label={t("docNew")} onClick={() => setEditing("new")} />}
           </>
@@ -59,7 +64,7 @@ export function DocumentsPage() {
               <input type="search" value={text} autoFocus placeholder={t("docSearchPlaceholder")} onChange={(e) => setText(e.target.value)} />
             </label>
           )}
-          {categories.length > 0 && (
+          {showChips && categories.length > 0 && (
             <CategoryChips label={t("docCatFilter")} allLabel={t("taskCatAll")} allCount={matching.length}
               options={categories.map((c) => ({ id: c.id, name: c.name, icon: c.icon, count: countOf.get(c.id) ?? 0 }))}
               selected={selected} onSelect={setPick} />

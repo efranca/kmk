@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
 
-import AboutSection from "./AboutSection";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useSession } from "./session";
 import type { User } from "./api";
@@ -25,6 +24,7 @@ export default function SettingsPage({ onLanguageChanged }: { onLanguageChanged:
   return (
     <>
       <PageHeader title={t("settingsTitle")} />
+      <div className="cards">
       <section className="section settings-card">
         <h2>{t("settingsLanguage")}</h2>
         <LanguageSwitcher csrfToken={csrfToken} onChanged={onLanguageChanged} />
@@ -47,7 +47,7 @@ export default function SettingsPage({ onLanguageChanged }: { onLanguageChanged:
           ))}
         </div>
       </section>
-      <AboutSection />
+      </div>
     </>
   );
 }

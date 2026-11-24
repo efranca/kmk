@@ -209,6 +209,15 @@ describe("navigation by role", () => {
     expect(await screen.findByRole("link", { name: frCA.navDocuments })).toBeInTheDocument();
   });
 
+  it("reaches About from the account menu", async () => {
+    mockApi({ "GET /api/auth/me": signedIn("user"), "GET /api/version": () => res(200, { version: "0.2.9", commit: "abc1234", built_at: null }) });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: new RegExp(frCA.accountMenu) }));
+    fireEvent.click(screen.getByRole("link", { name: frCA.navAbout }));
+    expect(await screen.findByRole("heading", { level: 1, name: frCA.navAbout })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/about");
+  });
+
   it("sends an admin who types /devices to the Dashboard", async () => {
     visit("/devices");
     mockApi({ "GET /api/auth/me": signedIn("admin") });

@@ -17,6 +17,7 @@ DEFAULTS: dict = {
     "tasks_view": "list",
     "show_tasks_on_schedule": False,
     "show_task_categories": False,
+    "show_document_categories": False,
     "dashboard_widgets": {"my_events": True, "all_events": True, "my_tasks": True},
 }
 
@@ -39,6 +40,7 @@ class PreferencesIn(BaseModel):
     tasks_view: Literal["list", "board"] | None = None
     show_tasks_on_schedule: bool | None = None
     show_task_categories: bool | None = None
+    show_document_categories: bool | None = None
     dashboard_widgets: WidgetsIn | None = None
 
 

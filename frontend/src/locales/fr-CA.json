@@ -371,7 +371,6 @@
   "avatarInvalid": "Ce fichier ne peut pas servir de photo. Choisissez une image JPEG, PNG ou WebP.",
   "adminNoResults": "Personne ne correspond.",
   "taskMoveFailed": "Cette tâche n'a pas pu être déplacée. Réessayez.",
-  "settingsAbout": "À propos",
   "aboutApp": "Application",
   "aboutServer": "Serveur",
   "aboutVersion": "Version",
@@ -429,5 +428,7 @@
   "err_too_many_documents": "La bibliothèque contient 500 documents. Supprimez-en un d’abord.",
   "err_busy": "Le serveur reçoit d’autres fichiers. Réessayez dans un instant.",
   "adminStatusLabel": "Quels comptes",
-  "taskShowCategories": "Afficher les pastilles de catégorie"
+  "taskShowCategories": "Afficher les pastilles de catégorie",
+  "navAbout": "À propos",
+  "docShowCategories": "Afficher les pastilles de catégorie"
 }
