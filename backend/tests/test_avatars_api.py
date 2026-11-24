@@ -121,3 +121,15 @@ def test_audit_rows_have_no_content(make_client, add_user, owner_engine):
     rows = sql(owner_engine, "SELECT action, details FROM audit_log WHERE action IN ('avatar_set', 'avatar_removed') ORDER BY id")
     assert [r[0] for r in rows] == ["avatar_set", "avatar_removed"]
     assert "jjjj" not in str(rows)
+
+
+def test_deleting_an_account_takes_its_picture_down(make_client, add_user, owner_engine):
+    a, ha = session(make_client, add_user, "alice")
+    put(a, ha, JPEG)
+    boss, hb = session(make_client, add_user, "boss", role="admin")
+    alice_id = uid(owner_engine, "alice")
+    assert boss.post(f"/api/admin/users/{alice_id}/delete", headers=hb).status_code == 200
+    assert sql(owner_engine, "SELECT count(*) FROM user_avatars")[0][0] == 0
+    assert boss.get(f"/api/people/{alice_id}/avatar").status_code == 404
+    people = {p["id"]: p for p in boss.get("/api/schedule/people").json()["people"]}
+    assert people[alice_id]["avatar_url"] is None

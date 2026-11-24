@@ -8,3 +8,4 @@ __pycache__/
 *.pyc
 infrastructure/deployments/logs/
 infrastructure/deployments/worktree/
+*.tsbuildinfo

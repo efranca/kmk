@@ -1,5 +1,7 @@
 # Shell and layout (round 1)
 
+> Update: the sidebar state and theme became per-account preferences (see 2026-11-24-users-avatars-widgets-design.md). `localStorage` only mirrors the theme for the first paint.
+
 ## Intent
 The signed-in frame wastes space (top bar, narrow centred columns) and the sidebar cannot be collapsed. Model it on FamillAI (`~/projects/famillai/ui/src`: `app/Nav.tsx`, `hooks/useSidebarCollapsed.ts`, `styles/app.css`, `components/UserMenu.tsx`).
 

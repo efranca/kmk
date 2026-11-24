@@ -50,10 +50,22 @@ export function PreferencesProvider({ initial, csrfToken, children }: { initial:
       latest.current = next;
       setPrefs(next);
       request("PATCH", "/api/me/preferences", csrfToken, patch).catch(() => {
-        // Put back only what this change touched, so a newer change made meanwhile is kept.
-        const restore: Partial<Preferences> = {};
-        for (const key of Object.keys(patch) as (keyof Preferences)[]) (restore as Record<string, unknown>)[key] = before[key];
-        const back = { ...latest.current, ...restore };
+        // Put back only the values this change set and that still hold it: a newer change made meanwhile (even to the
+        // same setting) is kept, and so is whatever else was changed in the widgets.
+        const now = latest.current;
+        const restore: PreferencesPatch = {};
+        for (const key of Object.keys(patch) as (keyof Preferences)[]) {
+          if (key === "dashboard_widgets") {
+            const widgets: Partial<Preferences["dashboard_widgets"]> = {};
+            for (const w of Object.keys(patch.dashboard_widgets ?? {}) as (keyof Preferences["dashboard_widgets"])[]) {
+              if (now.dashboard_widgets[w] === patch.dashboard_widgets?.[w]) widgets[w] = before.dashboard_widgets[w];
+            }
+            restore.dashboard_widgets = widgets;
+          } else if (now[key] === patch[key]) {
+            (restore as Record<string, unknown>)[key] = before[key];
+          }
+        }
+        const back = mergePreferences(now, restore);
         latest.current = back;
         setPrefs(back);
       });

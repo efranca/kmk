@@ -183,7 +183,6 @@ describe("TasksPage", () => {
   });
 
   it("the view menu switches to the board and a card moves to in progress on the server", async () => {
-    localStorage.removeItem("kmk.tasks.view");
     const { calls } = api([task({ title: "Mop the floor" })], { "POST /api/tasks/1/start": { task: {} }, "PATCH /api/me/preferences": { preferences: {} } });
     n = 0;
     page();
@@ -193,6 +192,5 @@ describe("TasksPage", () => {
     expect(screen.queryAllByRole("radio", { name: "Done" })).toHaveLength(0); // tabs are gone
     fireEvent.change(await screen.findByRole("combobox", { name: "Move Mop the floor to" }), { target: { value: "in_progress" } });
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path.endsWith("/start"))).toBe(true));
-    localStorage.removeItem("kmk.tasks.view");
   });
 });

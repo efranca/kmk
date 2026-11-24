@@ -6,12 +6,12 @@ allowed by the account's current state.
 
 from datetime import datetime, timezone
 
-from sqlalchemy import text
+from sqlalchemy import delete as sql_delete, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.errors import ApiError
-from app.models import User
+from app.models import User, UserAvatar
 
 ROLES = ("user", "admin")
 
@@ -67,6 +67,9 @@ def delete(db: Session, target: User) -> None:
     target.updated_at = _now()
     revoke_sessions(db, target.id)
     void_tokens(db, target.id)
+    # A deleted person's picture goes with the account (nobody can see it or take it down afterwards).
+    db.execute(sql_delete(UserAvatar).where(UserAvatar.user_id == target.id))
+    target.avatar_updated_at = None
 
 
 def restore(db: Session, target: User) -> None:
