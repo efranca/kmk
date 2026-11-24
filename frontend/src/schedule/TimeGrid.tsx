@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { eventColorVar } from "../ui/memberColor";
+import { moveSlot, resizeSlot, sameSlot, timeOfMinutes, type Slot } from "./dragMove";
 import { busyHours, hourBands, layoutColumn, minutesAt, positionOf, toMinutes, unionWindow, windowFor, type GridItem } from "./gridLayout";
 import { isWeekend } from "./scheduleDates";
 import { ScheduleChip } from "./ScheduleChip";
@@ -26,15 +27,30 @@ interface TimeGridProps {
   onOpenItem?: (item: Occurrence) => void;
   /** An empty spot of a day was clicked: the day and the minute of the day, rounded to 30 minutes. */
   onCreateAt?: (date: string, minutes: number) => void;
+  /** An event was dragged to another time or day, or resized: where it now is. When absent, events can't be dragged. */
+  onMoveEvent?: (item: Occurrence, slot: { date: string; start: string; end: string }) => void;
+  /** Which events may be dragged (the person may change them); all of them when absent. */
+  canMove?: (item: Occurrence) => boolean;
 }
+
+/** A drag or resize under way: what the ghost shows. */
+interface Drag { key: string; mode: "move" | "resize"; slot: Slot }
+interface Gesture {
+  item: Occurrence; key: string; mode: "move" | "resize"; original: Slot; pointerId: number; startX: number; startY: number;
+  grabMin: number; active: boolean; touch: boolean; timer?: ReturnType<typeof setTimeout>; latest: Slot;
+}
+
+const LONG_PRESS_MS = 350; // on a touch screen a drag starts after a press, so scrolling the day still works
 
 /**
  * Hours down the side, one column per day, events as blocks at their time. The whole day is there: the grid opens on
  * the working hours and the hours before and after are a scroll away (shaded). Hours with nothing in them on any day
  * shown are compacted, which leaves the room to the hours in use. All-day events sit in a strip on top, which stays in
- * view while the hours scroll. Weekend columns are tinted.
+ * view while the hours scroll. Weekend columns are tinted. An event can be dragged to another time or day, and its bottom
+ * edge dragged to change how long it lasts (on a touch screen after pressing it for a moment); both snap to a quarter
+ * of an hour and are reported to `onMoveEvent`.
  */
-export function TimeGrid({ days, items, today, locale, onOpenItem, onCreateAt }: TimeGridProps) {
+export function TimeGrid({ days, items, today, locale, onOpenItem, onCreateAt, onMoveEvent, canMove }: TimeGridProps) {
   const { t } = useTranslation();
   const window = unionWindow(days);
   const timed = days.flatMap((d) => items.filter((i) => i.date === d && !i.all_day && i.start_time));
@@ -89,8 +105,92 @@ export function TimeGrid({ days, items, today, locale, onOpenItem, onCreateAt }:
 
   const byDay = (date: string) => items.filter((i) => i.date === date);
 
+  // ---- dragging and resizing ----
+  const columns = useRef(new Map<string, HTMLDivElement>());
+  const gesture = useRef<Gesture | null>(null);
+  const suppressClick = useRef(false);
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const live = useRef({ bands, onMoveEvent });
+  useEffect(() => { live.current = { bands, onMoveEvent }; });
+
+  // The handlers live in one object made once: they are added to and removed from `window`, so they must be the same
+  // functions each time. They read what changes (the bands, the callback) through `live`.
+  const dnd = useMemo(() => {
+    /** The day column under a point (the fallback when it is outside all of them) and the minute of the day at its height. */
+    function pointAt(x: number, y: number, fallbackDate: string): { date: string; minutes: number } {
+      let date = fallbackDate;
+      for (const [d, el] of columns.current) {
+        const r = el.getBoundingClientRect();
+        if (x >= r.left && x < r.right) { date = d; break; }
+      }
+      const rect = columns.current.get(date)?.getBoundingClientRect();
+      return { date, minutes: minutesAt(live.current.bands, rect && rect.height ? (y - rect.top) / rect.height : 0) };
+    }
+
+    function finish() {
+      const g = gesture.current;
+      gesture.current = null;
+      globalThis.clearTimeout(g?.timer);
+      globalThis.removeEventListener("pointermove", onMove);
+      globalThis.removeEventListener("pointerup", onUp);
+      globalThis.removeEventListener("pointercancel", onCancel);
+      globalThis.removeEventListener("touchmove", onTouchMove);
+      return g;
+    }
+    function onTouchMove(e: TouchEvent) { if (gesture.current?.active) e.preventDefault(); } // no scrolling while an event is carried
+    function onMove(e: PointerEvent) {
+      const g = gesture.current;
+      if (!g || e.pointerId !== g.pointerId) return;
+      const moved = Math.hypot(e.clientX - g.startX, e.clientY - g.startY);
+      if (!g.active) {
+        if (g.touch) { if (moved > 8) finish(); return; } // a swipe before the press: it was scrolling
+        if (moved < 4) return;
+        g.active = true;
+      }
+      const at = pointAt(e.clientX, e.clientY, g.original.date);
+      g.latest = g.mode === "move" ? moveSlot(g.original, at.minutes - g.grabMin, at.date) : resizeSlot(g.original, at.minutes - g.grabMin);
+      setDrag({ key: g.key, mode: g.mode, slot: g.latest });
+    }
+    function onUp(e: PointerEvent) {
+      const g = gesture.current;
+      if (!g || e.pointerId !== g.pointerId) return;
+      finish();
+      setDrag(null);
+      if (g.active) {
+        suppressClick.current = true; // the click that follows a drop is not a tap on the event
+        globalThis.setTimeout(() => { suppressClick.current = false; }, 100);
+        if (!sameSlot(g.latest, g.original)) {
+          live.current.onMoveEvent?.(g.item, { date: g.latest.date, start: timeOfMinutes(g.latest.startMin), end: timeOfMinutes(g.latest.endMin) });
+        }
+      }
+    }
+    function onCancel(e: PointerEvent) {
+      if (gesture.current && e.pointerId === gesture.current.pointerId) { finish(); setDrag(null); }
+    }
+    function begin(e: ReactPointerEvent, item: Occurrence, key: string, mode: "move" | "resize", original: Slot) {
+      if (!live.current.onMoveEvent || e.button !== 0 || gesture.current) return;
+      const touch = e.pointerType === "touch";
+      const grab = pointAt(e.clientX, e.clientY, original.date);
+      const g: Gesture = { item, key, mode, original, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, grabMin: grab.minutes, active: false, touch, latest: original };
+      if (touch) {
+        g.timer = globalThis.setTimeout(() => {
+          if (gesture.current === g) { g.active = true; navigator.vibrate?.(10); setDrag({ key, mode, slot: original }); }
+        }, LONG_PRESS_MS);
+      }
+      gesture.current = g;
+      globalThis.addEventListener("pointermove", onMove);
+      globalThis.addEventListener("pointerup", onUp);
+      globalThis.addEventListener("pointercancel", onCancel);
+      globalThis.addEventListener("touchmove", onTouchMove, { passive: false });
+    }
+
+    return { begin, finish };
+  }, []);
+  const { begin } = dnd;
+  useEffect(() => () => { dnd.finish(); }, [dnd]);
+
   function createAt(date: string, e: MouseEvent<HTMLDivElement>) {
-    if (!onCreateAt || e.target !== e.currentTarget) return;
+    if (!onCreateAt || e.target !== e.currentTarget || suppressClick.current) return; // (a drop can end over an empty spot)
     const rect = e.currentTarget.getBoundingClientRect();
     const minutes = minutesAt(bands, rect.height ? (e.clientY - rect.top) / rect.height : 0);
     onCreateAt(date, Math.min(23 * 60 + 30, Math.round(minutes / 30) * 30));
@@ -135,6 +235,7 @@ export function TimeGrid({ days, items, today, locale, onOpenItem, onCreateAt }:
             key={d}
             data-date={d}
             onClick={(e) => createAt(d, e)}
+            ref={(el) => { if (el) columns.current.set(d, el); else columns.current.delete(d); }}
             className={`grid__col ${isWeekend(d) ? "grid__col--weekend" : ""} ${d === today ? "grid__col--today" : ""}`}
             style={{ height }}
           >
@@ -143,12 +244,16 @@ export function TimeGrid({ days, items, today, locale, onOpenItem, onCreateAt }:
             {own.end < 24 && <div className="grid__off" style={{ top: `${positionOf(bands, own.end * 60) * 100}%`, bottom: 0 }} />}
             {placed.map(({ item: { item, startMin, endMin }, col, cols }) => {
               const top = positionOf(bands, startMin);
+              const key = keyOf(item);
+              const original: Slot = { date: d, startMin, endMin };
+              const movable = !!onMoveEvent && (canMove?.(item) ?? true);
               return (
                 <button
-                  key={keyOf(item)}
+                  key={key}
                   type="button"
-                  className="grid__event"
+                  className={`grid__event ${movable ? "grid__event--movable" : ""} ${drag?.key === key ? "grid__event--dragging" : ""}`}
                   aria-label={`${item.title}, ${item.start_time}`}
+                  onPointerDown={(e) => { if (movable) begin(e, item, key, "move", original); }}
                   style={{
                     top: `${top * 100}%`,
                     height: `${(positionOf(bands, endMin) - top) * 100}%`,
@@ -156,13 +261,28 @@ export function TimeGrid({ days, items, today, locale, onOpenItem, onCreateAt }:
                     width: `calc(${100 / cols}% - 2px)`,
                     "--ev": eventColorVar(item.color),
                   } as CSSProperties}
-                  onClick={() => onOpenItem?.(item)}
+                  onClick={() => { if (!suppressClick.current) onOpenItem?.(item); }}
                 >
                   <span className="grid__event-title">{item.icon && <span aria-hidden="true">{item.icon} </span>}{item.title}</span>
                   <span className="grid__event-time">{item.start_time}</span>
+                  {movable && <span className="grid__resize" aria-hidden="true" onPointerDown={(e) => { e.stopPropagation(); begin(e, item, key, "resize", original); }} />}
                 </button>
               );
             })}
+            {drag && drag.slot.date === d && (() => {
+              const moving = items.find((i) => keyOf(i) === drag.key);
+              const top = positionOf(bands, drag.slot.startMin);
+              return (
+                <div
+                  className="grid__event grid__event--ghost"
+                  aria-hidden="true"
+                  style={{ top: `${top * 100}%`, height: `${(positionOf(bands, drag.slot.endMin) - top) * 100}%`, left: 0, width: "calc(100% - 2px)", "--ev": moving ? eventColorVar(moving.color) : "var(--accent)" } as CSSProperties}
+                >
+                  <span className="grid__event-title">{moving?.icon && <span>{moving.icon} </span>}{moving?.title}</span>
+                  <span className="grid__event-time">{timeOfMinutes(drag.slot.startMin)}–{timeOfMinutes(drag.slot.endMin)}</span>
+                </div>
+              );
+            })()}
           </div>
         );
       })}

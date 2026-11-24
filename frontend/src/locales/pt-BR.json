@@ -271,5 +271,6 @@
   "err_no_occurrence": "A regra de repetição não tem nenhuma data a partir deste dia.",
   "err_occurrence_date_required": "Diga a qual ocorrência isso se aplica.",
   "err_not_an_occurrence": "O evento não acontece nessa data.",
-  "err_invalid_people": "O filtro de pessoas não é válido."
+  "err_invalid_people": "O filtro de pessoas não é válido.",
+  "undo": "Desfazer"
 }

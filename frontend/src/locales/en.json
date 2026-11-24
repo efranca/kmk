@@ -271,5 +271,6 @@
   "err_no_occurrence": "The repeat rule has no date from this day on.",
   "err_occurrence_date_required": "Say which occurrence this applies to.",
   "err_not_an_occurrence": "The event does not take place on that date.",
-  "err_invalid_people": "The people filter is not valid."
+  "err_invalid_people": "The people filter is not valid.",
+  "undo": "Undo"
 }

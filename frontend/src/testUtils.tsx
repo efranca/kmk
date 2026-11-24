@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, type RenderResult } from "@testing-library/react";
-import type { ReactElement } from "react";
+import { useState, type ReactElement, type ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 
@@ -13,22 +13,27 @@ import { ToastProvider } from "./ui/Toast";
 
 export const testUser: User = { id: 1, username: "alice", name: "Alice Roy", email: "alice@example.com", role: "user", locale: "en" };
 
-/** Renders under a memory router, a fresh query client with retries off, a session and the toast area. */
+/** The providers the schedule's components need: a query client (retries off), a session, toasts and a memory router. */
+export function Providers({ children, route = "/", session }: { children: ReactNode; route?: string; session?: Partial<SessionValue> }) {
+  const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } }));
+  const value: SessionValue = { user: testUser, csrfToken: "tok-1", ...session };
+  return (
+    <QueryClientProvider client={client}>
+      <SessionProvider value={value}>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+        </ToastProvider>
+      </SessionProvider>
+    </QueryClientProvider>
+  );
+}
+
+/** Renders under those providers. */
 export function renderWithProviders(
   ui: ReactElement,
   { route = "/", session }: { route?: string; session?: Partial<SessionValue> } = {},
 ): RenderResult {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
-  const value: SessionValue = { user: testUser, csrfToken: "tok-1", ...session };
-  return render(
-    <QueryClientProvider client={client}>
-      <SessionProvider value={value}>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
-        </ToastProvider>
-      </SessionProvider>
-    </QueryClientProvider>,
-  );
+  return render(<Providers route={route} session={session}>{ui}</Providers>);
 }
 
 /** Opens the signed-in account menu (the avatar button) and returns the button; language independent. */

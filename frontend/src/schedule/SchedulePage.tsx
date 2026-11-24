@@ -5,13 +5,17 @@ import { IconButton } from "../ui/Button";
 import { EventDialog, type EventDialogTarget } from "./EventDialog";
 import { ErrorNotice, Loading } from "../ui/Feedback";
 import { PageHeader } from "../ui/PageHeader";
+import { useSession } from "../session";
 import { useOccurrences, usePeople } from "./hooks";
+import { canChangeEvent } from "./permissions";
 import { MonthView } from "./MonthView";
 import { COMPANY_TIME_ZONE, addDays, firstDayOf, todayIn, weekStart } from "./scheduleDates";
 import { ScheduleToolbar } from "./ScheduleToolbar";
 import { SearchResults } from "./SearchResults";
 import { shiftDate, useScheduleView, visibleRange, type ScheduleViewKind } from "./scheduleView";
 import { TimeGrid } from "./TimeGrid";
+import { useMoveEvent } from "./useMoveEvent";
+import { useSwipe } from "./useSwipe";
 import type { Occurrence } from "./types";
 import { useNarrow } from "./useNarrow";
 import { YearView } from "./YearView";
@@ -33,6 +37,8 @@ export function SchedulePage() {
   const locale = i18n.language;
   const { view, date, people, q, today, set } = useScheduleView();
   const narrow = useNarrow();
+  const { user } = useSession();
+  const moveEvent = useMoveEvent();
   const everyone = usePeople();
   const [searchOpen, setSearchOpen] = useState(q.length > 0);
   const [dialog, setDialog] = useState<EventDialogTarget | null>(null);
@@ -53,6 +59,8 @@ export function SchedulePage() {
     return () => clearTimeout(id);
   }, [text, q, set]);
   const searching = q.length >= 2;
+
+  const swipe = useSwipe(() => set({ date: shiftDate(view, date, -1, narrow) }), () => set({ date: shiftDate(view, date, 1, narrow) }));
 
   const gridDays = view === "day" ? [date] : narrow ? [0, 1, 2].map((n) => addDays(date, n)) : Array.from({ length: 7 }, (_, n) => addDays(weekStart(date, firstDay), n));
 
@@ -90,7 +98,7 @@ export function SchedulePage() {
         onSearch={setText}
         searchOpen={searchOpen}
       />
-      <div className="sched-swipe">
+      <div className="sched-swipe" {...swipe}>
         {searching ? (
           <SearchResults
             query={q}
@@ -109,9 +117,11 @@ export function SchedulePage() {
         ) : view === "month" ? (
           <MonthView year={Number(date.slice(0, 4))} month={Number(date.slice(5, 7))} items={range.data} today={today} firstDay={firstDay} locale={locale} onOpenDay={(day) => set({ view: "day", date: day })} onOpenItem={onOpenEvent} />
         ) : (
-          <TimeGrid days={gridDays} items={range.data} today={today} locale={locale} onOpenItem={onOpenEvent} onCreateAt={(day, minutes) => onCreate(day, minutes)} />
+          <TimeGrid days={gridDays} items={range.data} today={today} locale={locale} onOpenItem={onOpenEvent} onCreateAt={(day, minutes) => onCreate(day, minutes)}
+            canMove={(item) => canChangeEvent(user, item)} onMoveEvent={(item, slot) => void moveEvent.move(item, slot)} />
         )}
       </div>
+      {moveEvent.dialog}
       {dialog && <EventDialog key={dialog.kind === "item" ? `${dialog.item.event_id}-${dialog.item.original_date}` : `new-${dialog.date}-${dialog.minutes ?? ""}`} target={dialog} onClose={() => setDialog(null)} />}
     </div>
   );
