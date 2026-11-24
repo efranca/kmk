@@ -16,7 +16,7 @@
 - Never expose `token_hash`; the public handle is `sessions.id` (uuid).
 - Only unexpired, unrevoked sessions are listed. Last-seen write at most once per 5 minutes per session.
 - Location is informational: sanitized (country `^[A-Z]{2}$`, city control characters removed, trimmed, 100 chars), rendered as text only.
-- Migration `0011` is hand-written SQL, `app/models.py` kept in step, `kmk_app` grants checked by `test_schema_permissions.py`. (Documents uses `0012`; keep numbering in merge order, renumber if About/Documents land first. No migration in About.)
+- Migration `0010` is hand-written SQL, `app/models.py` kept in step, `kmk_app` grants checked by `test_schema_permissions.py`. (Documents uses `0011`; About has no migration. Renumber if merge order changes.)
 - Three locales, identical key sets. Commit trailer as usual.
 
 ## Review Focus
@@ -30,7 +30,7 @@
 
 ### Task 1: Migration and model
 
-**Files:** Create `backend/alembic/versions/0011_session_devices.py`; modify `backend/app/models.py` (`UserSession`); test `backend/tests/test_schema_devices.py`.
+**Files:** Create `backend/alembic/versions/0010_session_devices.py`; modify `backend/app/models.py` (`UserSession`); test `backend/tests/test_schema_devices.py`.
 **Interfaces:** Produces `UserSession.id` (uuid, unique, server default `gen_random_uuid()`), `last_seen_at` (timestamptz, default now), `last_ip` (text null), `country` (char(2) null), `city` (varchar(100) null).
 
 - [ ] **Step 1: Failing test** `test_schema_devices.py`: after `alembic upgrade head` the five columns exist with those types; existing rows get an `id` and `last_seen_at`; `kmk_app` can UPDATE `last_seen_at, last_ip, country, city` (follow `test_schema_permissions.py` style).

@@ -19,7 +19,7 @@
 - Audit (plain INSERT, no content or file name): `document_added/updated/replaced/deleted/visibility_changed`, category actions.
 - Default visibility when adding: `admins`. Deleting a category sets `category_id` NULL.
 - Compose: api `mem_limit: 1536m`. Caddy: `/api/*` stays `max_size 64KB`; only `PUT /api/documents/*/file` allows `51MB`.
-- Migration `0012` hand-written, models in step, `kmk_app` grants, seed categories (Contracts, Insurance, HR, Finance, Safety, Clients, Other, with icons). Three locales (keys `doc*`), identical sets. Commit trailer as usual.
+- Migration `0011` hand-written, models in step, `kmk_app` grants, seed categories (Contracts, Insurance, HR, Finance, Safety, Clients, Other, with icons). Three locales (keys `doc*`), identical sets. Commit trailer as usual.
 
 ## Review Focus
 - A user must not see admin-only documents by list, by id, by file URL, by search or in category counts; admin must not touch superadmin-only ones; all answer 404.
@@ -32,7 +32,7 @@
 
 ### Task 1: Migration, models, limits, visibility
 
-**Files:** Create `backend/alembic/versions/0012_documents.py`, `backend/app/documents/{__init__,limits,visibility,files}.py`, `backend/tests/test_schema_documents.py`, `backend/tests/test_documents_visibility.py`; modify `backend/app/models.py`.
+**Files:** Create `backend/alembic/versions/0011_documents.py`, `backend/app/documents/{__init__,limits,visibility,files}.py`, `backend/tests/test_schema_documents.py`, `backend/tests/test_documents_visibility.py`; modify `backend/app/models.py`.
 **Interfaces:** Produces models `DocumentCategory(id, name, icon, created_by, created_at)`, `Document(id, title, note, category_id, visibility, created_by, updated_by, created_at, updated_at, file_name, content_type, size_bytes)`, `DocumentFile(document_id, data)`; `visible_levels(role: str) -> frozenset[str]`; `can_view(role, visibility) -> bool`; `files.sniff_document(data: bytes) -> str | None` (returns content type).
 
 - [ ] **Step 1: Failing tests:** schema (tables, CHECK on visibility, cascade from `documents` to `document_files`, grants for `kmk_app`, seeded categories); `visible_levels` for the three roles; `sniff_document`: real PDF/JPEG/PNG/WebP bytes accepted, text with `%PDF` missing rejected, empty rejected, a PDF header inside an image body rejected.
