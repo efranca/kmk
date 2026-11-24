@@ -1,3 +1,4 @@
+import hashlib
 from typing import Annotated
 from urllib.parse import quote
 
@@ -9,7 +10,7 @@ from app.auth.guard import guard
 from app.auth.routes import request_ip
 from app.config import Settings
 from app.auth import policy
-from app.documents import service, uploads
+from app.documents import limits, service, uploads
 from app.documents.files import INLINE_TYPES, served_type
 from app.documents.schemas import CategoryIn, DocumentIn, DocumentPatch
 from app.models import User, UserSession
@@ -172,3 +173,40 @@ def get_file(
             "Cache-Control": "private, no-store",
         },
     )
+
+
+@router.put("/api/documents/{document_id}/preview", status_code=204)
+async def put_preview(
+    document_id: DocumentId,
+    request: Request,
+    auth: tuple[User, UserSession] = Depends(guard()),
+    db: Session = Depends(get_db),
+):
+    actor = auth[0]
+    policy.check_documents(actor)
+    service.get_document(db, actor, document_id)  # 404 before reading anything
+    db.rollback()  # no database connection held while the body arrives
+    data = await uploads.read_capped(request, limits.MAX_PREVIEW_BYTES, "invalid_file")
+    service.store_preview(db, actor, document_id, data)
+    db.commit()
+    return Response(status_code=204)
+
+
+@router.get("/api/documents/{document_id}/preview")
+def get_preview(
+    document_id: DocumentId,
+    request: Request,
+    auth: tuple[User, UserSession] = Depends(reader),
+    db: Session = Depends(get_db),
+):
+    data = service.read_preview(db, auth[0], document_id)
+    etag = '"' + hashlib.sha256(data).hexdigest()[:32] + '"'
+    headers = {
+        "ETag": etag,
+        "Cache-Control": "private, max-age=0, must-revalidate",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "sandbox; default-src 'none'",
+    }
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
+    return Response(content=data, media_type="image/jpeg", headers=headers)

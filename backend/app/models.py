@@ -261,3 +261,13 @@ class DocumentFile(Base):
 
     document_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True)
     data: Mapped[bytes] = mapped_column(LargeBinary)
+
+
+class DocumentPreview(Base):
+    """A small JPEG the browser makes for the tiles view."""
+
+    __tablename__ = "document_previews"
+
+    document_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True)
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -12,7 +12,7 @@ from app.documents import limits
 from app.documents.files import detect_document
 from app.documents.schemas import CategoryIn, DocumentIn, DocumentPatch
 from app.documents.visibility import visible_levels
-from app.models import Document, DocumentCategory, DocumentFile, User
+from app.models import Document, DocumentCategory, DocumentFile, DocumentPreview, User
 
 
 def _iso(value) -> str | None:
@@ -109,6 +109,7 @@ def document_payloads(db: Session, documents: list[Document]) -> list[dict]:
     if ids:
         for uid, name, username in db.execute(select(User.id, User.name, User.username).where(User.id.in_(ids))):
             names[uid] = name or username
+    with_preview = set(db.scalars(select(DocumentPreview.document_id).where(DocumentPreview.document_id.in_([d.id for d in documents])))) if documents else set()
     return [
         {
             "id": d.id,
@@ -120,6 +121,7 @@ def document_payloads(db: Session, documents: list[Document]) -> list[dict]:
             "content_type": d.content_type,
             "size_bytes": d.size_bytes,
             "has_file": d.size_bytes is not None,
+            "has_preview": d.id in with_preview,
             "created_by": {"id": d.created_by, "name": names.get(d.created_by)},
             "created_at": _iso(d.created_at),
             "updated_at": _iso(d.updated_at),
@@ -210,6 +212,7 @@ def store_file(db: Session, actor: User, document_id: int, data: bytes, file_nam
         db.add(DocumentFile(document_id=document.id, data=data))
     else:
         row.data = data
+    db.execute(delete(DocumentPreview).where(DocumentPreview.document_id == document.id))  # a new file needs a new preview
     document.file_name, document.content_type, document.size_bytes = file_name, content_type, len(data)
     document.updated_by = actor.id
     document.updated_at = func.now()
@@ -223,3 +226,26 @@ def read_file(db: Session, actor: User, document_id: int) -> tuple[Document, byt
     if row is None or document.size_bytes is None:
         raise ApiError(404, "not_found")
     return document, row.data
+
+
+def store_preview(db: Session, actor: User, document_id: int, data: bytes) -> None:
+    """Keep the small JPEG the browser made for the tiles view (only a JPEG, checked by its first bytes)."""
+    policy.check_documents(actor)
+    document = get_document(db, actor, document_id)
+    if document.size_bytes is None:
+        raise ApiError(404, "not_found")  # no file yet: nothing to show a preview of
+    if data[:3] != b"\xff\xd8\xff":
+        raise ApiError(422, "invalid_file")
+    row = db.get(DocumentPreview, document.id)
+    if row is None:
+        db.add(DocumentPreview(document_id=document.id, data=data))
+    else:
+        row.data, row.updated_at = data, func.now()
+
+
+def read_preview(db: Session, actor: User, document_id: int) -> bytes:
+    document = get_document(db, actor, document_id)
+    row = db.get(DocumentPreview, document.id)
+    if row is None:
+        raise ApiError(404, "not_found")
+    return row.data
