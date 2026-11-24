@@ -9,8 +9,8 @@ body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 10
 
 .appnav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: flex; align-items: stretch; background: var(--surface); border-top: 1px solid var(--line); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
 .appnav__brand, .appnav__toggle { display: none; }
-.appnav a:not(.appnav__brand) { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 12px; min-width: 64px; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-decoration: none; }
-.appnav a[aria-current="page"] { color: var(--accent); }
+.appnav > a:not(.appnav__brand) { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 12px; min-width: 64px; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-decoration: none; }
+.appnav > a[aria-current="page"] { color: var(--accent); }
 .appnav__footer { display: flex; align-items: center; justify-content: center; padding: 0 4px; }
 
 .accountmenu { position: relative; }
@@ -32,10 +32,10 @@ body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 10
   .appnav__brand { display: inline-flex; justify-content: center; margin: 0 0 14px; overflow: hidden; }
   /* the rail shows only the left part of the logo (its mark) */
   .appnav__brand img { height: 36px; width: 36px; object-fit: cover; object-position: left center; }
-  .appnav a:not(.appnav__brand) { flex: none; flex-direction: row; justify-content: center; gap: 12px; padding: 10px; font-size: 0.95rem; }
-  .appnav a:not(.appnav__brand) span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .appnav a:not(.appnav__brand):hover { background: var(--surface-2); }
-  .appnav a[aria-current="page"] { background: var(--surface-2); }
+  .appnav > a:not(.appnav__brand) { flex: none; flex-direction: row; justify-content: center; gap: 12px; padding: 10px; font-size: 0.95rem; }
+  .appnav > a:not(.appnav__brand) span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .appnav > a:not(.appnav__brand):hover { background: var(--surface-2); }
+  .appnav > a[aria-current="page"] { background: var(--surface-2); }
   .appnav__footer { margin-top: auto; padding: 12px 0 0; justify-content: center; }
   .accountmenu__panel { right: auto; left: 0; }
   .app__main { width: 100%; padding: 24px 28px 40px; }
@@ -46,8 +46,8 @@ body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 10
   .app:not(.app--collapsed) .appnav { padding: 18px 12px; }
   .app:not(.app--collapsed) .appnav__brand { justify-content: flex-start; margin-left: 8px; }
   .app:not(.app--collapsed) .appnav__brand img { width: auto; height: 44px; object-fit: contain; }
-  .app:not(.app--collapsed) .appnav a:not(.appnav__brand) { justify-content: flex-start; padding: 10px 12px; }
-  .app:not(.app--collapsed) .appnav a:not(.appnav__brand) span { position: static; width: auto; height: auto; clip: auto; overflow: visible; }
+  .app:not(.app--collapsed) .appnav > a:not(.appnav__brand) { justify-content: flex-start; padding: 10px 12px; }
+  .app:not(.app--collapsed) .appnav > a:not(.appnav__brand) span { position: static; width: auto; height: auto; clip: auto; overflow: visible; }
   .app:not(.app--collapsed) .appnav__footer { justify-content: stretch; }
   .app:not(.app--collapsed) .accountmenu { width: 100%; }
   .app:not(.app--collapsed) .accountmenu__button { width: 100%; }
