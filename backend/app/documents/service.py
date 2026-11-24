@@ -9,9 +9,10 @@ from sqlalchemy.orm import Session
 from app.auth import audit, policy
 from app.auth.errors import ApiError
 from app.documents import limits
+from app.documents.files import sniff_document
 from app.documents.schemas import CategoryIn, DocumentIn, DocumentPatch
 from app.documents.visibility import visible_levels
-from app.models import Document, DocumentCategory, User
+from app.models import Document, DocumentCategory, DocumentFile, User
 
 
 def _iso(value) -> str | None:
@@ -188,3 +189,37 @@ def delete_document(db: Session, actor: User, document_id: int, ip: str) -> None
     document = get_document(db, actor, document_id)
     db.delete(document)  # its bytes go with it (ON DELETE CASCADE)
     audit.log(db, "document_deleted", actor_user_id=actor.id, ip=ip, details={"document_id": document_id})
+
+
+# ---- files --------------------------------------------------------------------------------------------------------
+
+
+def store_file(db: Session, actor: User, document_id: int, data: bytes, file_name: str, ip: str) -> None:
+    """Check the bytes and the library limit, then save them (first file or a replacement) with the document's facts."""
+    policy.check_documents(actor)
+    document = get_document(db, actor, document_id)
+    content_type = sniff_document(data) if data else None
+    if content_type is None:
+        raise ApiError(422, "invalid_file")
+    used = db.scalar(select(func.coalesce(func.sum(Document.size_bytes), 0)).where(Document.id != document.id)) or 0
+    if used + len(data) > limits.MAX_LIBRARY_BYTES:
+        raise ApiError(422, "library_full")
+    replacing = document.size_bytes is not None
+    row = db.get(DocumentFile, document.id)
+    if row is None:
+        db.add(DocumentFile(document_id=document.id, data=data))
+    else:
+        row.data = data
+    document.file_name, document.content_type, document.size_bytes = file_name, content_type, len(data)
+    document.updated_by = actor.id
+    document.updated_at = func.now()
+    if replacing:
+        audit.log(db, "document_replaced", actor_user_id=actor.id, ip=ip, details={"document_id": document.id})
+
+
+def read_file(db: Session, actor: User, document_id: int) -> tuple[Document, bytes]:
+    document = get_document(db, actor, document_id)
+    row = db.get(DocumentFile, document.id)
+    if row is None or document.size_bytes is None:
+        raise ApiError(404, "not_found")
+    return document, row.data
