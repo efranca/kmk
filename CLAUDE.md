@@ -11,8 +11,9 @@ The product plan is `scope.md`; what is actually built is described in `docs/`.
 
 - `backend/app/` application code. `auth/` holds routes, the guard, services, rate limiting, audit, tokens, MFA. `emails/` is the mail layer. `mfa.py` and `security.py` are pure helpers. `cli.py` is the server-side admin tool.
 - `backend/app/schedule/` the shared calendar: `recurrence.py` (repeat rule, `rrule`), `occurrences.py` (expansion with one-off changes), `service.py`, `routes.py`.
-- `backend/alembic/versions/` migrations (`0001` to `0010`). `backend/tests/` is the test suite.
+- `backend/alembic/versions/` migrations (`0001` to `0011`). `backend/tests/` is the test suite.
 - `backend/app/tasks/` the task list and its categories: `schemas.py`, `service.py`, `routes.py`.
+- `backend/app/documents/` the company library: `visibility.py` (who sees what, applied in SQL), `limits.py`, `files.py` (type by bytes), `uploads.py` (capped read, upload slots), `service.py`, `routes.py`. `backend/app/auth/devices.py` and `geo.py` are connected devices.
 - `frontend/src/` React app: `App.tsx` routes by path to the card pages (sign-in, recovery, two-step screens) or to the signed-in `Shell.tsx` / `app/Layout.tsx` (Dashboard, Schedule, Account, Admin pages); `schedule/` (views, event dialog, drag, reminders), `dashboard/` (the three widgets: My events, All events, My tasks), `tasks/` (the task list, dialog, categories) and `ui/` (shared pieces) hold the calendar; `lang.ts` has the language helpers; `locales/` has the three languages (flat keys, every key must exist in all three; schedule strings start with `sch`, task strings with `task`).
 - `deploy/` compose, Caddyfile, `.env.example`; `deploy/backup/` the encrypted backup scripts (backup, status, restore, key ceremony, installer, failure notifier) and their systemd units; `scripts/audit-deps.sh` scans dependencies.
 - `infrastructure/` operations around the app: `deployments/` auto-deploy (polls GitHub, builds in a git-ignored worktree, systemd timer; not installed until the owner runs its install steps), `utilities/` read-only helper scripts. Backups stay in `deploy/backup/`.
