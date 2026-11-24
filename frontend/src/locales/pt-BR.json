@@ -336,5 +336,9 @@
   "taskCatDeleteTitle": "Excluir “{{name}}”?",
   "taskCatDeleteBody": "As tarefas dela são mantidas, sem categoria.",
   "taskCatFilter": "Filtrar por categoria",
-  "taskCatAll": "Todas"
+  "taskCatAll": "Todas",
+  "dashMyTasks": "Minhas tarefas",
+  "taskDashTomorrow": "Amanhã",
+  "taskDashMore": "+{{count}} a mais",
+  "taskDashEmpty": "Nada esperando por você."
 }

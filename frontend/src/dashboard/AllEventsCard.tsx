@@ -44,7 +44,7 @@ export function AllEventsCard({
     </>
   );
   return (
-    <DashCard title={t("dashAllEvents")} onOpenSchedule={onOpenSchedule} state={state} empty={everyone.length === 0 && byPerson.length === 0}>
+    <DashCard title={t("dashAllEvents")} onOpen={onOpenSchedule} state={state} empty={everyone.length === 0 && byPerson.length === 0}>
       {everyone.length > 0 && (
         <div className="dash__group" role="group" aria-label={t("everyone")}>
           <h3 className="dash__heading"><EveryoneAvatar size="sm" /> {t("everyone")}</h3>
