@@ -28,10 +28,10 @@ an email and a push notification.
 - **Fields:**
   - Contact (all required): name (1-100), email (valid address), phone (7-30 characters, digits, spaces, `+ ( ) - .`).
   - Type (required): **Airbnb** or **Commercial**.
-  - Airbnb: address or neighbourhood (required), kind (house / apartment / condo / other), bedrooms (0-20),
+  - Both types: **city** (required, 1-60 characters: the only place name that tasks, Agenda items, the notice and the push ever show, because everyone can read those) and **address or neighbourhood** (required, up to 200 characters, read only by admins on the quote). Airbnb: kind (house / apartment / condo / other), bedrooms (0-20),
     bathrooms (0-20, halves allowed), approximate area in ft² (optional), frequency (once / per booking / weekly /
     every two weeks / monthly / not sure).
-  - Commercial: address (required), kind of space (office / clinic / shop / restaurant / industrial / other), approximate
+  - Commercial: kind of space (office / clinic / shop / restaurant / industrial / other), approximate
     area in ft² (optional), frequency (same list without "per booking", plus "after construction / one-time big clean").
   - Free text (both types): "Tell us about your place". Optional for Airbnb, required for Commercial ("all the
     information"), at most **2000 words** and at most 20 000 characters. A live word counter shows "N / 2000 words".

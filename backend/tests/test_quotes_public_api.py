@@ -2,7 +2,8 @@ import hashlib
 
 import pytest
 
-from app.quotes import arrival, limits
+from app.documents import uploads
+from app.quotes import arrival, intake, limits
 from helpers import ORIGIN, sql
 
 JPEG = b"\xff\xd8\xff\xe0" + b"0" * 100
@@ -13,7 +14,7 @@ HEIC = b"\x00\x00\x00\x18ftypheic" + b"0" * 100
 def qbody(**kw):
     base = dict(
         name="Maria Silva", email="Maria@Example.com", phone="418-555-0100", locale="fr-CA", kind="airbnb", city="Québec",
-        property="apartment", bedrooms=2, bathrooms=1.5, frequency="weekly",
+        property="apartment", bedrooms=2, bathrooms=1.5, frequency="weekly", address="123 rue Saint-Jean, app. 4",
     )
     base.update(kw)
     return base
@@ -107,7 +108,7 @@ def test_airbnb_fields_are_refused_on_commercial(client):
 
 @pytest.mark.parametrize(
     "bad",
-    [dict(email="nope"), dict(phone="call me"), dict(name=""), dict(locale="en"), dict(kind="villa"), dict(frequency="daily"), dict(bedrooms=21), dict(city="")],
+    [dict(email="nope"), dict(phone="call me"), dict(name=""), dict(locale="en"), dict(kind="villa"), dict(frequency="daily"), dict(bedrooms=21), dict(city=""), dict(address=""), dict(city="x" * 61), dict(bedrooms=2.5), dict(area_sqft=0)],
 )
 def test_invalid_fields_are_refused(client, bad):
     assert start(client, **bad).status_code == 422
@@ -171,3 +172,100 @@ def test_config_returns_only_the_phone(client, owner_engine):
     sql(owner_engine, "INSERT INTO app_settings (key, value) VALUES ('public_phone', '(418) 555-0100'), ('quote_from', 'secret@example.com')")
     r = client.get("/api/public/quotes/config")
     assert r.status_code == 200 and r.json() == {"phone": "(418) 555-0100"}
+
+
+# ---- review findings ---------------------------------------------------------------------------------------------
+
+def test_the_street_address_never_reaches_tasks_events_the_notice_or_the_push(client, owner_engine, outbox, monkeypatch, add_user):
+    add_user("ana", "ana@example.com", role="admin")
+    sql(owner_engine, "INSERT INTO app_settings (key, value) VALUES ('quote_notify_email', 'team@gmail.com')")
+    pushed = []
+    monkeypatch.setattr(arrival.push, "send_to_admins", lambda engine, settings, payload: pushed.append(payload))
+    a = start(client, address="123 rue Saint-Jean, app. 4, G1R 1N8").json()
+    assert submit(client, a["id"], a["token"]).status_code == 200
+    everywhere = " ".join(
+        str(v) for row in sql(owner_engine, "SELECT tasks.title, tasks.description, events.title, events.notes FROM tasks, events") for v in row if v
+    )
+    everywhere += " ".join(f"{m.subject} {m.text} {m.html}" for m in outbox) + str(pushed)
+    for secret in ("Saint-Jean", "G1R", "app. 4", "123"):
+        assert secret not in everywhere
+    assert "Québec" in everywhere  # the city is what they show
+    assert sql(owner_engine, "SELECT details->>'address', details->>'city' FROM quotes")[0] == ("123 rue Saint-Jean, app. 4, G1R 1N8", "Québec")
+
+
+def test_expired_drafts_do_not_count_toward_the_pending_photo_cap(client, owner_engine, monkeypatch):
+    monkeypatch.setattr(limits, "MAX_PENDING_PHOTO_BYTES", 500)
+    old = draft_row(owner_engine, token="old", hours_old=3)
+    sql(owner_engine, "INSERT INTO quote_photos (quote_id, content_type, size, data) VALUES (:q, 'image/png', 400, 'abc')", q=old)
+    a = start(client).json()
+    assert photo(client, a["id"], a["token"]).status_code == 201  # 400 + 104 would be over 500 if the expired draft counted
+
+
+def test_one_ip_cannot_store_more_photo_bytes_than_its_share_of_the_day(client, monkeypatch):
+    monkeypatch.setattr(limits, "MAX_PHOTO_BYTES_PER_IP_DAY", 250)
+    a = start(client).json()
+    assert photo(client, a["id"], a["token"]).status_code == 201
+    assert photo(client, a["id"], a["token"]).status_code == 201
+    third = photo(client, a["id"], a["token"])
+    assert third.status_code == 429 and third.json() == {"error": "rate_limited"}
+    assert submit(client, a["id"], a["token"]).status_code == 200
+    b = start(client).json()  # a sent request still counts against the same address
+    assert photo(client, b["id"], b["token"]).status_code == 429
+    c = start(client, ip="198.51.100.9").json()
+    assert photo(client, c["id"], c["token"]).status_code == 201  # someone else is not affected
+
+
+def test_public_photos_do_not_use_the_documents_upload_slots(client):
+    a = start(client).json()
+    uploads.slots.acquire()
+    uploads.slots.acquire()
+    try:
+        assert photo(client, a["id"], a["token"]).status_code == 201
+    finally:
+        uploads.slots.release()
+        uploads.slots.release()
+
+
+def test_one_upload_at_a_time_per_draft(client):
+    a = start(client).json()
+    intake.uploading.add(a["id"])
+    try:
+        r = photo(client, a["id"], a["token"])
+    finally:
+        intake.uploading.discard(a["id"])
+    assert r.status_code == 503 and r.json() == {"error": "busy"}
+    assert photo(client, a["id"], a["token"]).status_code == 201  # and the slot is free again
+
+
+def test_a_photo_that_never_finishes_arriving_times_out(client, monkeypatch):
+    import asyncio
+
+    async def stalled(request, limit=None, error="file_too_large"):
+        await asyncio.sleep(5)
+
+    monkeypatch.setattr(limits, "PHOTO_READ_SECONDS", 0.05)
+    monkeypatch.setattr(uploads, "read_capped", stalled)
+    a = start(client).json()
+    r = photo(client, a["id"], a["token"])
+    assert r.status_code == 408 and r.json() == {"error": "timeout"}
+    assert intake.uploading == set()
+    monkeypatch.undo()
+    assert photo(client, a["id"], a["token"]).status_code == 201
+
+
+@pytest.mark.parametrize("field", ["message", "name", "city", "address"])
+def test_a_nul_character_is_refused_not_a_server_error(client, owner_engine, field):
+    r = start(client, **{field: "hello\u0000there"}) if field != "message" else start(client, message="hello\u0000there")
+    assert r.status_code == 422 and r.json() == {"error": "invalid"}
+    assert sql(owner_engine, "SELECT count(*) FROM quotes")[0][0] == 0
+
+
+def test_invisible_format_characters_pasted_from_maps_are_dropped_not_refused(client, owner_engine):
+    assert start(client, name="Maria\u200e Silva", address="\u200e123 rue Saint-Jean").status_code == 201
+    assert sql(owner_engine, "SELECT name, details->>'address' FROM quotes")[0] == ("Maria Silva", "123 rue Saint-Jean")
+
+
+def test_the_engine_hides_statement_parameters_so_personal_data_cannot_reach_the_logs():
+    from app.db import make_engine
+
+    assert make_engine("postgresql+psycopg://u:p@localhost/x").hide_parameters is True

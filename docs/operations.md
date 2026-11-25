@@ -160,7 +160,7 @@ The schedule added `python-dateutil` (backend) and `react-router`, `@tanstack/re
 ## Quote requests (the open form at `/devis`)
 
 - **The form** is `frontend/quote.html`, served by Caddy at `https://app.kmk-entretien.ca/devis` (also `/devis/`), in French by default; `?lang=en` and `?lang=pt` preselect a language. Put a link to it on the public site's contact pages (the old web3forms form there is not touched by this app).
-- **Limits:** 10 started requests per hour per IP (IPv6 per /64), at most 10 photos of 8 MiB, at most 2000 words and 20 000 characters. Unfinished drafts are deleted after 2 hours; photos of unfinished drafts are capped at 300 MB in total (`503 busy` over that). Caddy caps the bodies: 256 KB for the first call, 9 MiB for a photo.
+- **Limits:** 10 started requests per hour per IP (IPv6 per /64), at most 10 photos of 8 MiB and 200 MiB of photos per IP in 24 hours, at most 2000 words and 20 000 characters. Unfinished drafts are deleted after 2 hours; photos of unfinished drafts are capped at 300 MB in total (`503 busy` over that). Caddy caps the bodies: 256 KB for the first call, 9 MiB for a photo.
 - **First-time setup (owner steps):**
   1. Generate the push keys: `docker compose exec api python -m app.cli vapid-keys`, put the two lines in `deploy/.env`, then `docker compose up -d` to restart the API.
   2. In Resend, verify the domain of the quote sender (for example `mail.kmk-entretien.com`) and keep `EMAIL_BACKEND=resend`.

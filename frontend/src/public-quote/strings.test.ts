@@ -20,6 +20,11 @@ describe("public form strings", () => {
     expect(initialLocale("", "de")).toBe("fr-CA");
     expect(initialLocale("?lang=zz", "")).toBe("fr-CA");
   });
+  it("asks for a short city as well as the address", () => {
+    expect(translate("en-CA", "pqCity")).toBe("City");
+    expect(translate("fr-CA", "pqCity")).toBe("Ville");
+    expect(translate("pt-BR", "pqCity")).toBe("Cidade");
+  });
   it("fills {{variables}}", () => {
     expect(translate("en-CA", "pqWords", { n: 5, max: 2000 })).toBe("5 / 2000 words");
   });

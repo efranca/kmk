@@ -11,3 +11,6 @@ MAX_WORDS = 2000
 MAX_CHARS = 20_000
 PHOTO_TYPES = frozenset({"image/jpeg", "image/png", "image/webp", "image/heic"})
 DEADLINE = timedelta(hours=24)
+MAX_PHOTO_BYTES_PER_IP_DAY = 200 * 1024 * 1024  # photos one address may store in 24 hours, sent or not
+MAX_PUBLIC_UPLOADS = 4  # photo uploads in flight at once from the open form (the documents have their own pool)
+PHOTO_READ_SECONDS = 60  # a photo that takes longer than this to arrive is dropped

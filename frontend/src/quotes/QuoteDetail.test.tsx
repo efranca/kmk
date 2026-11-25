@@ -26,6 +26,8 @@ describe("QuoteDetailPage", () => {
     expect(screen.getByRole("link", { name: "418-555-0100" })).toHaveAttribute("href", "tel:4185550100");
     expect(screen.getByText("Deux chats, accès par boîte à clé.")).toBeInTheDocument();
     expect(screen.getByText("Apartment")).toBeInTheDocument();
+    expect(screen.getByText("123 rue Saint-Jean, app. 4")).toBeInTheDocument();
+    expect(screen.getByText("Québec")).toBeInTheDocument();
     expect(screen.getByText("Weekly")).toBeInTheDocument();
     expect(screen.getByText("203.0.113.7")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open photo 1" })).toHaveAttribute("href", "/api/quotes/5/photos/3");

@@ -17,11 +17,20 @@ AIRBNB_FREQUENCY = ("once", "per_booking", "weekly", "biweekly", "monthly", "uns
 COMMERCIAL_FREQUENCY = ("once", "weekly", "biweekly", "monthly", "post_construction", "unsure")
 
 
-def _text(v: str, low: int, high: int, what: str) -> str:
-    v = unicodedata.normalize("NFC", v).strip()
-    if not low <= len(v) <= high or any(unicodedata.category(c) in ("Cc", "Cf") for c in v):
-        raise ValueError(f"{what}: {low} to {high} characters, no control characters")
+def _no_controls(v: str, *, allow_whitespace: bool = True) -> str:
+    """Refuses control characters (a NUL cannot be stored and would be a server error). Line breaks and tabs may stay."""
+    for c in v:
+        if unicodedata.category(c) == "Cc" and not (allow_whitespace and c in "\n\r\t"):
+            raise ValueError("invalid characters")
     return v
+
+
+def _text(v: str, low: int, high: int, what: str) -> str:
+    # Invisible format characters (a left-to-right mark pasted from a map) are dropped, not refused.
+    v = "".join(c for c in unicodedata.normalize("NFC", v) if unicodedata.category(c) != "Cf").strip()
+    if not low <= len(v) <= high:
+        raise ValueError(f"{what}: {low} to {high} characters")
+    return _no_controls(v, allow_whitespace=False)
 
 
 class QuoteIn(BaseModel):
@@ -33,6 +42,7 @@ class QuoteIn(BaseModel):
     locale: Literal["fr-CA", "en-CA", "pt-BR"]
     kind: Literal["airbnb", "commercial"]
     city: str
+    address: str
     property: str
     frequency: str
     bedrooms: int | None = Field(default=None, ge=0, le=20)
@@ -49,7 +59,12 @@ class QuoteIn(BaseModel):
     @field_validator("city")
     @classmethod
     def _city(cls, v: str) -> str:
-        return _text(v, 1, 200, "address")
+        return _text(v, 1, 60, "city")  # short on purpose: it is what tasks and notifications say
+
+    @field_validator("address")
+    @classmethod
+    def _address(cls, v: str) -> str:
+        return _text(v, 1, 200, "address")  # only admins ever read it
 
     @field_validator("email")
     @classmethod
@@ -76,7 +91,7 @@ class QuoteIn(BaseModel):
     def _message(cls, v: str | None) -> str | None:
         if v is None:
             return None
-        v = v.replace("\r\n", "\n").strip()
+        v = _no_controls(v.replace("\r\n", "\n").strip())
         if len(v) > limits.MAX_CHARS or len(v.split()) > limits.MAX_WORDS:
             raise ValueError("too_long")
         return v or None
@@ -97,7 +112,7 @@ class QuoteIn(BaseModel):
 
     def details(self) -> dict:
         """The type-specific fields, as stored in `quotes.details`."""
-        out = {"city": self.city, "property": self.property, "frequency": self.frequency}
+        out = {"city": self.city, "address": self.address, "property": self.property, "frequency": self.frequency}
         for key in ("bedrooms", "bathrooms", "area_sqft"):
             if getattr(self, key) is not None:
                 out[key] = getattr(self, key)
@@ -115,6 +130,11 @@ class QuotePatch(BaseModel):
     status: Literal["new", "replied", "customer_replied", "won", "lost"] | None = None
     internal_note: str | None = Field(default=None, max_length=NOTE_MAX)
 
+    @field_validator("internal_note")
+    @classmethod
+    def _note(cls, v: str | None) -> str | None:
+        return None if v is None else _no_controls(v)
+
 
 class MessageIn(BaseModel):
     """`out` is emailed to the customer; `in` is a customer reply pasted from the team's mailbox."""
@@ -129,7 +149,7 @@ class MessageIn(BaseModel):
     @field_validator("body")
     @classmethod
     def _body(cls, v: str) -> str:
-        v = v.replace("\r\n", "\n").strip()
+        v = _no_controls(v.replace("\r\n", "\n").strip())
         if not v:
             raise ValueError("empty")
         return v
@@ -139,7 +159,7 @@ class MessageIn(BaseModel):
         if self.direction == "out":
             if not (self.subject and self.subject.strip()) or self.sent_at is not None:
                 raise ValueError("a reply needs a subject and no date")
-            self.subject = self.subject.strip()
+            self.subject = _no_controls(self.subject.strip(), allow_whitespace=False)  # no line break: it is an email header
         elif self.subject is not None:
             raise ValueError("a pasted reply has no subject")
         return self

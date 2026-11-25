@@ -5,6 +5,12 @@ export type PublicLocale = "fr-CA" | "en-CA" | "pt-BR";
 export const LOCALES: PublicLocale[] = ["fr-CA", "en-CA", "pt-BR"];
 
 const fr: Record<string, string> = {
+  pqCity: "Ville",
+  pqErrBedrooms: "Entrez un nombre entier de 0 à 20.",
+  pqErrBathrooms: "Entrez un nombre de 0 à 20, par demi-unités.",
+  pqErrArea: "Entrez un nombre entier de 1 ou plus.",
+  pqErrBusy: "Le service de photos est occupé : réessayez dans quelques minutes.",
+  pqErrPhotoRefused: "« {{name}} » a été refusée et retirée. Appuyez de nouveau sur Envoyer pour continuer sans elle.",
   pqPageTitle: "Demande de soumission",
   pqTitle: "Demandez votre soumission gratuite",
   pqIntro: "Dites-nous en quelques mots votre espace. Nous répondons en moins de 24 h, sans engagement.",
@@ -76,6 +82,12 @@ const fr: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  pqCity: "City",
+  pqErrBedrooms: "Enter a whole number from 0 to 20.",
+  pqErrBathrooms: "Enter a number from 0 to 20 in steps of 0.5.",
+  pqErrArea: "Enter a whole number of 1 or more.",
+  pqErrBusy: "The photo service is busy: try again in a few minutes.",
+  pqErrPhotoRefused: "“{{name}}” was refused and removed. Press Send again to continue without it.",
   pqPageTitle: "Quote request",
   pqTitle: "Request your free quote",
   pqIntro: "Tell us a few words about your space. We reply within 24 hours, no commitment.",
@@ -147,6 +159,12 @@ const en: Record<string, string> = {
 };
 
 const pt: Record<string, string> = {
+  pqCity: "Cidade",
+  pqErrBedrooms: "Informe um número inteiro de 0 a 20.",
+  pqErrBathrooms: "Informe um número de 0 a 20, em meios.",
+  pqErrArea: "Informe um número inteiro de 1 ou mais.",
+  pqErrBusy: "O serviço de fotos está ocupado: tente de novo em alguns minutos.",
+  pqErrPhotoRefused: "“{{name}}” foi recusada e removida. Aperte Enviar de novo para continuar sem ela.",
   pqPageTitle: "Pedido de orçamento",
   pqTitle: "Peça seu orçamento gratuito",
   pqIntro: "Conte em poucas palavras sobre o seu espaço. Respondemos em até 24 horas, sem compromisso.",

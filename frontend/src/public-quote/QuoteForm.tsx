@@ -17,9 +17,9 @@ const LANGUAGE_NAMES: Record<PublicLocale, string> = { "fr-CA": "Français", "en
 const SITE: Record<PublicLocale, string> = { "fr-CA": "https://kmk-entretien.ca/fr/", "en-CA": "https://kmk-entretien.ca/en/", "pt-BR": "https://kmk-entretien.ca/fr/" };
 
 type Kind = "airbnb" | "commercial";
-type Values = { name: string; email: string; phone: string; city: string; property: string; frequency: string; bedrooms: string; bathrooms: string; area: string; message: string };
+type Values = { name: string; email: string; phone: string; city: string; address: string; property: string; frequency: string; bedrooms: string; bathrooms: string; area: string; message: string };
 type Errors = Partial<Record<keyof Values, string>>;
-const EMPTY: Values = { name: "", email: "", phone: "", city: "", property: "", frequency: "", bedrooms: "", bathrooms: "", area: "", message: "" };
+const EMPTY: Values = { name: "", email: "", phone: "", city: "", address: "", property: "", frequency: "", bedrooms: "", bathrooms: "", area: "", message: "" };
 type Draft = { id: number; token: string; uploaded: number };
 
 function Field({ id, label, required, error, hint, children }: { id: string; label: string; required?: boolean; error?: string; hint?: string; children: ReactNode }) {
@@ -56,17 +56,22 @@ export function QuoteForm() {
     publicConfig().then((c) => setPhone(c.phone)).catch(() => undefined);
   }, []);
 
-  const set = (key: keyof Values) => (e: { target: { value: string } }) => setV((old) => ({ ...old, [key]: e.target.value }));
+  // Any change after a failed try starts a new request: the draft on the server holds the first values, and photos
+  // already sent are counted by position.
+  const touch = () => { draft.current = null; };
+  const set = (key: keyof Values) => (e: { target: { value: string } }) => { touch(); setV((old) => ({ ...old, [key]: e.target.value })); };
   const words = countWords(v.message);
   const over = words > MAX_WORDS;
 
   function chooseKind(next: Kind) {
+    touch();
     setKind(next);
     setV((old) => ({ ...old, property: "", frequency: "" }));
     setErrors({});
   }
 
   function addPhotos(picked: File[]) {
+    touch();
     let next = files;
     let note: string | null = null;
     for (const file of picked) {
@@ -81,10 +86,17 @@ export function QuoteForm() {
   function validate(): Errors {
     const e: Errors = {};
     const required = (key: keyof Values) => { if (!v[key].trim()) e[key] = t("pqErrRequired"); };
-    (["name", "email", "phone", "city", "property", "frequency"] as const).forEach(required);
+    (["name", "email", "phone", "city", "address", "property", "frequency"] as const).forEach(required);
     if (!e.email && !EMAIL.test(v.email.trim())) e.email = t("pqErrEmail");
     if (!e.phone && !PHONE.test(v.phone.trim())) e.phone = t("pqErrPhone");
-    if (kind === "airbnb") (["bedrooms", "bathrooms"] as const).forEach(required);
+    if (kind === "airbnb") {
+      (["bedrooms", "bathrooms"] as const).forEach(required);
+      // The same ranges as the server, so a refusal never comes back as a "try again".
+      if (!e.bedrooms && !(/^\d{1,2}$/.test(v.bedrooms.trim()) && Number(v.bedrooms) <= 20)) e.bedrooms = t("pqErrBedrooms");
+      const baths = Number(v.bathrooms);
+      if (!e.bathrooms && !(v.bathrooms.trim() !== "" && baths >= 0 && baths <= 20 && (baths * 2) % 1 === 0)) e.bathrooms = t("pqErrBathrooms");
+    }
+    if (v.area.trim() !== "" && !(/^\d+$/.test(v.area.trim()) && Number(v.area) >= 1 && Number(v.area) <= 1_000_000)) e.area = t("pqErrArea");
     if (kind === "commercial" && !v.message.trim()) e.message = t("pqErrMessage");
     if (over) e.message = t("pqErrTooLong");
     return e;
@@ -93,7 +105,7 @@ export function QuoteForm() {
   function payload(): QuoteInput {
     const num = (s: string) => (s.trim() === "" ? undefined : Number(s));
     return {
-      name: v.name.trim(), email: v.email.trim(), phone: v.phone.trim(), locale, kind: kind!, city: v.city.trim(), property: v.property, frequency: v.frequency,
+      name: v.name.trim(), email: v.email.trim(), phone: v.phone.trim(), locale, kind: kind!, city: v.city.trim(), address: v.address.trim(), property: v.property, frequency: v.frequency,
       ...(kind === "airbnb" ? { bedrooms: num(v.bedrooms), bathrooms: num(v.bathrooms) } : {}),
       ...(num(v.area) !== undefined ? { area_sqft: num(v.area) } : {}),
       message: v.message.trim() || null, website: trap.current?.value ?? "",
@@ -127,9 +139,17 @@ export function QuoteForm() {
       draft.current = null;
     } catch (error) {
       const code = error instanceof PublicApiError ? error.code : "network";
+      const d = draft.current;
       if (code === "rate_limited") setFailure(t("pqRateLimited", { call: phone ? t("pqRateLimitedCall", { phone }) : "" }));
       else if (code === "too_long") setFailure(t("pqErrTooLong"));
-      else if (code === "not_found") { draft.current = null; setFailure(t("pqErrNetwork")); } // the draft expired: start again next time
+      else if (code === "invalid") setFailure(t("pqErrFields"));
+      else if (code === "busy") setFailure(t("pqErrBusy"));
+      else if (d && ["unsupported_type", "file_too_large", "too_many_photos"].includes(code)) {
+        // The server refused this photo: say which one and drop it. The photos already sent stay (it is the next in line).
+        const refused = files[d.uploaded];
+        setFiles((old) => old.filter((_, n) => n !== d.uploaded));
+        setFailure(t("pqErrPhotoRefused", { name: refused?.name ?? "" }));
+      } else if (code === "not_found") { draft.current = null; setFailure(t("pqErrNetwork")); } // the draft expired: start again next time
       else setFailure(t("pqErrNetwork"));
     } finally {
       setBusy(null);
@@ -193,7 +213,10 @@ export function QuoteForm() {
             {kind && (
               <>
                 <h2 className="pq-h2">{t("pqSpace")}</h2>
-                <Field id="pq-city" label={t("pqAddress")} required error={errors.city}><input id="pq-city" autoComplete="street-address" value={v.city} onChange={set("city")} disabled={sending} /></Field>
+                <div className="f2">
+                  <Field id="pq-city" label={t("pqCity")} required error={errors.city}><input id="pq-city" autoComplete="address-level2" maxLength={60} value={v.city} onChange={set("city")} disabled={sending} /></Field>
+                  <Field id="pq-address" label={t("pqAddress")} required error={errors.address}><input id="pq-address" autoComplete="street-address" maxLength={200} value={v.address} onChange={set("address")} disabled={sending} /></Field>
+                </div>
                 <div className="f2">
                   <Field id="pq-property" label={t("pqProperty")} required error={errors.property}>
                     <select id="pq-property" value={v.property} onChange={set("property")} disabled={sending}>
@@ -214,7 +237,7 @@ export function QuoteForm() {
                     <Field id="pq-bathrooms" label={t("pqBathrooms")} required error={errors.bathrooms}><input id="pq-bathrooms" type="number" inputMode="decimal" min={0} max={20} step={0.5} value={v.bathrooms} onChange={set("bathrooms")} disabled={sending} /></Field>
                   </div>
                 )}
-                <Field id="pq-area" label={t("pqArea")}><input id="pq-area" type="number" inputMode="numeric" min={1} max={1000000} value={v.area} onChange={set("area")} disabled={sending} /></Field>
+                <Field id="pq-area" label={t("pqArea")} error={errors.area}><input id="pq-area" type="number" inputMode="numeric" min={1} max={1000000} value={v.area} onChange={set("area")} disabled={sending} /></Field>
               </>
             )}
 
@@ -230,7 +253,7 @@ export function QuoteForm() {
               <span className="pq-label">{t("pqPhotos")}</span>
               <p className="pq-hint">{t("pqPhotosHint")}</p>
               <PhotoPicker
-                files={files} onAdd={addPhotos} onRemove={(i) => setFiles((old) => old.filter((_, n) => n !== i))}
+                files={files} onAdd={addPhotos} onRemove={(i) => { touch(); setFiles((old) => old.filter((_, n) => n !== i)); }}
                 label={t("pqAddPhotos")} removeLabel={(name) => t("pqRemovePhoto", { name })} disabled={sending}
               />
               {photoNote && <p className="pq-err" role="alert">{photoNote}</p>}

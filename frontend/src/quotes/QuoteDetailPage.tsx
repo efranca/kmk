@@ -34,7 +34,8 @@ function Request({ quote }: { quote: QuoteDetail }) {
         <Row label={t("quoteEmail")}><a href={`mailto:${quote.email}`}>{quote.email}</a></Row>
         <Row label={t("quotePhone")}><a href={`tel:${quote.phone.replace(/[^\d+]/g, "")}`}>{quote.phone}</a></Row>
         <Row label={t("quoteType")}>{t(KIND_KEYS[quote.kind])}</Row>
-        <Row label={t("quoteAddress")}>{d.city}</Row>
+        <Row label={t("quoteCity")}>{d.city}</Row>
+        <Row label={t("quoteAddress")}>{d.address ?? d.city}</Row>
         {d.property && <Row label={t("quoteProperty")}>{t(PROPERTY_KEYS[d.property] ?? "quotePropOther")}</Row>}
         {d.bedrooms !== undefined && <Row label={t("quoteBedrooms")}>{d.bedrooms}</Row>}
         {d.bathrooms !== undefined && <Row label={t("quoteBathrooms")}>{d.bathrooms}</Row>}

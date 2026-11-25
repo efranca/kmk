@@ -10,11 +10,16 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.auth import audit, ratelimit
+from app.documents import uploads
 from app.auth.errors import ApiError
 from app.documents.files import detect_document
 from app.models import Quote, QuotePhoto
 from app.quotes import arrival, limits
 from app.quotes.schemas import QuoteIn
+
+
+uploading: set[int] = set()  # drafts with a photo arriving right now (one at a time per draft)
+slots = uploads.Slots(limits.MAX_PUBLIC_UPLOADS)  # the open form's own pool, apart from the documents' one
 
 
 def _hash(token: str) -> str:
@@ -70,8 +75,17 @@ def add_photo(db: Session, quote_id: int, token: str, data: bytes) -> QuotePhoto
         raise ApiError(422, "unsupported_type")
     if db.scalar(select(func.count()).select_from(QuotePhoto).where(QuotePhoto.quote_id == quote.id)) >= limits.MAX_PHOTOS:
         raise ApiError(422, "too_many_photos")
-    pending = db.scalar(
-        select(func.coalesce(func.sum(QuotePhoto.size), 0)).select_from(QuotePhoto).join(Quote, Quote.id == QuotePhoto.quote_id).where(Quote.status == "draft")
+    now = _now()
+    ratelimit.serialize(db, quote.ip, "", kind="quote")  # the sums below are only right if two photos take turns
+    stored = db.scalar(  # what this address stored in the last day, in requests sent or not
+        select(func.coalesce(func.sum(QuotePhoto.size), 0)).select_from(QuotePhoto).join(Quote, Quote.id == QuotePhoto.quote_id)
+        .where(Quote.ip_key == quote.ip_key, Quote.created_at >= now - timedelta(hours=24))
+    )
+    if stored + len(data) > limits.MAX_PHOTO_BYTES_PER_IP_DAY:
+        raise ApiError(429, "rate_limited")
+    pending = db.scalar(  # photos of drafts nobody has sent yet (an expired draft is about to be deleted: it does not count)
+        select(func.coalesce(func.sum(QuotePhoto.size), 0)).select_from(QuotePhoto).join(Quote, Quote.id == QuotePhoto.quote_id)
+        .where(Quote.status == "draft", Quote.created_at >= now - limits.DRAFT_TTL)
     )
     if pending + len(data) > limits.MAX_PENDING_PHOTO_BYTES:
         raise ApiError(503, "busy")

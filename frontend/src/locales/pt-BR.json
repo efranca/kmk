@@ -548,5 +548,6 @@
   "pushTest": "Enviar um teste",
   "pushTestSent": "Teste enviado",
   "pushTestNone": "Nada foi enviado a este aparelho.",
-  "pushIosHint": "No iPhone, adicione primeiro o app à Tela de Início (Compartilhar, depois Adicionar à Tela de Início) e abra-o por lá."
+  "pushIosHint": "No iPhone, adicione primeiro o app à Tela de Início (Compartilhar, depois Adicionar à Tela de Início) e abra-o por lá.",
+  "quoteCity": "Cidade"
 }

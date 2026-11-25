@@ -12,11 +12,12 @@ from app.documents import limits
 class Slots:
     """At most N uploads in flight (each holds up to a few copies of the file in memory). Single event loop: no lock needed."""
 
-    def __init__(self) -> None:
+    def __init__(self, maximum: int | None = None) -> None:
         self.active = 0
+        self.maximum = maximum  # None = the documents' limit
 
     def acquire(self) -> None:
-        if self.active >= limits.MAX_CONCURRENT_UPLOADS:
+        if self.active >= (self.maximum if self.maximum is not None else limits.MAX_CONCURRENT_UPLOADS):
             raise ApiError(503, "busy")
         self.active += 1
 

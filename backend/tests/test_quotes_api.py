@@ -65,6 +65,7 @@ def test_admin_lists_and_reads(ana):
     assert row["email"] == "maria@example.com" and row["phone"] == "418-555-0100"  # the list is searched by them
     detail = c.get(f"/api/quotes/{a['id']}").json()["quote"]
     assert detail["email"] == "maria@example.com" and detail["phone"] == "418-555-0100" and detail["message"] == "Plusieurs détails"
+    assert detail["details"]["address"] == "123 rue Saint-Jean, app. 4" and detail["details"]["city"] == "Québec"
     assert detail["details"]["bedrooms"] == 2 and detail["conversation"] == [] and detail["photos"] == []
     assert detail["default_subject"] == f"Re: Votre soumission de nettoyage D-{a['id']:04d}"
     assert detail["ip"] == "203.0.113.7" and detail["locale"] == "fr-CA"
@@ -248,3 +249,21 @@ def test_the_internal_note_is_saved_and_limited(ana):
     assert c.patch(f"/api/quotes/{qid}", json={"internal_note": "Rappeler jeudi"}, headers=h).json()["quote"]["internal_note"] == "Rappeler jeudi"
     assert c.patch(f"/api/quotes/{qid}", json={"internal_note": "x" * 5001}, headers=h).status_code == 422
     assert c.patch(f"/api/quotes/{qid}", json={"status": "draft"}, headers=h).status_code == 422
+
+
+@pytest.mark.parametrize("bad", [
+    {"direction": "in", "body": "hello\u0000there"},
+    {"direction": "out", "subject": "Hi\r\nBcc: x@y.zz", "body": "x"},
+    {"direction": "out", "subject": "Hi\u0000", "body": "x"},
+])
+def test_control_characters_are_refused_in_messages(ana, configured, bad):
+    c, h = ana
+    qid = new_quote(c)["id"]
+    assert c.post(f"/api/quotes/{qid}/messages", json=bad, headers=h).status_code == 422
+
+
+def test_control_characters_are_refused_in_the_internal_note(ana):
+    c, h = ana
+    qid = new_quote(c)["id"]
+    assert c.patch(f"/api/quotes/{qid}", json={"internal_note": "a\u0000b"}, headers=h).status_code == 422
+    assert c.patch(f"/api/quotes/{qid}", json={"internal_note": "line one\nline two\ttab"}, headers=h).status_code == 200

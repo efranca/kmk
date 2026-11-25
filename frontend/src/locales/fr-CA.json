@@ -548,5 +548,6 @@
   "pushTest": "Envoyer un essai",
   "pushTestSent": "Essai envoyé",
   "pushTestNone": "Rien n’a été envoyé à cet appareil.",
-  "pushIosHint": "Sur iPhone, ajoutez d’abord l’app à l’écran d’accueil (Partager, puis Sur l’écran d’accueil), puis ouvrez-la à partir de là."
+  "pushIosHint": "Sur iPhone, ajoutez d’abord l’app à l’écran d’accueil (Partager, puis Sur l’écran d’accueil), puis ouvrez-la à partir de là.",
+  "quoteCity": "Ville"
 }

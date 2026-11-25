@@ -1,5 +1,7 @@
 """The open quote form's API: no sign-in. Protected by the hourly limit per IP, a one-time token per draft, and caps."""
 
+import asyncio
+
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -52,12 +54,19 @@ async def start_quote(request: Request, db: Session = Depends(get_db), settings:
 async def upload_photo(quote_id: int, request: Request, db: Session = Depends(get_db)):
     token = _token(request)
     intake.check_draft(db, quote_id, token)  # 404 before reading anything
+    if quote_id in intake.uploading:  # one photo at a time per draft
+        raise ApiError(503, "busy")
     db.rollback()  # do not hold a database connection while the photo streams in
-    uploads.slots.acquire()
+    intake.slots.acquire()
+    intake.uploading.add(quote_id)
     try:
-        data = await uploads.read_capped(request, limits.MAX_PHOTO_BYTES)
+        async with asyncio.timeout(limits.PHOTO_READ_SECONDS):  # a trickle that never ends must not hold the slot
+            data = await uploads.read_capped(request, limits.MAX_PHOTO_BYTES)
+    except TimeoutError:
+        raise ApiError(408, "timeout")
     finally:
-        uploads.slots.release()
+        intake.uploading.discard(quote_id)
+        intake.slots.release()
     photo = intake.add_photo(db, quote_id, token, data)
     payload = {"id": photo.id, "size": photo.size, "content_type": photo.content_type}
     db.commit()

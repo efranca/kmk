@@ -30,7 +30,7 @@ export type QuoteMessage = {
 
 export type QuoteDetail = QuoteSummary & {
   locale: "fr-CA" | "en-CA" | "pt-BR";
-  details: { property?: string; frequency?: string; bedrooms?: number; bathrooms?: number; area_sqft?: number; city?: string };
+  details: { property?: string; frequency?: string; bedrooms?: number; bathrooms?: number; area_sqft?: number; city?: string; address?: string };
   message: string | null;
   internal_note: string | null;
   ip: string;
