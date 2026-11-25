@@ -13,6 +13,8 @@ from app.quotes import limits
 PHONE_RE = re.compile(r"^[0-9 +().\-]{7,30}$")
 AIRBNB_PROPERTY = ("house", "apartment", "condo", "other")
 COMMERCIAL_PROPERTY = ("office", "clinic", "shop", "restaurant", "industrial", "other")
+POST_CONSTRUCTION_PROPERTY = ("house", "apartment", "condo", "office", "shop", "industrial", "other")
+POST_CONSTRUCTION_FREQUENCY = ("once",)  # a one-time clean by definition
 AIRBNB_FREQUENCY = ("once", "per_booking", "weekly", "biweekly", "monthly", "unsure")
 COMMERCIAL_FREQUENCY = ("once", "weekly", "biweekly", "monthly", "post_construction", "unsure")
 
@@ -40,7 +42,7 @@ class QuoteIn(BaseModel):
     email: str
     phone: str
     locale: Literal["fr-CA", "en-CA", "pt-BR"]
-    kind: Literal["airbnb", "commercial"]
+    kind: Literal["airbnb", "commercial", "post_construction"]
     city: str
     address: str
     property: str
@@ -101,6 +103,11 @@ class QuoteIn(BaseModel):
         if self.kind == "airbnb":
             if self.property not in AIRBNB_PROPERTY or self.frequency not in AIRBNB_FREQUENCY:
                 raise ValueError("property or frequency")
+        elif self.kind == "post_construction":
+            if self.property not in POST_CONSTRUCTION_PROPERTY or self.frequency not in POST_CONSTRUCTION_FREQUENCY:
+                raise ValueError("property or frequency")
+            if self.bedrooms is not None or self.bathrooms is not None:
+                raise ValueError("bedrooms and bathrooms are for Airbnb")
         else:
             if self.property not in COMMERCIAL_PROPERTY or self.frequency not in COMMERCIAL_FREQUENCY:
                 raise ValueError("property or frequency")

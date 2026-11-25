@@ -11,7 +11,7 @@ _SUBJECT = {
     "pt-BR": "Re: Seu orçamento de limpeza {ref}",
 }
 _REF_LABEL = {"fr-CA": "Réf.", "en-CA": "Ref.", "pt-BR": "Ref."}
-KIND_LABEL = {"airbnb": "Airbnb", "commercial": "Commercial"}
+KIND_LABEL = {"airbnb": "Airbnb", "commercial": "Commercial", "post_construction": "Après-construction"}
 SIGNATURE = "KMK Entretien Ménager"
 
 
