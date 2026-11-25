@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { changePassword } from "./api";
+import { PasswordInput } from "./ui/PasswordInput";
 
 export default function ChangePassword({ csrfToken }: { csrfToken: string }) {
   const { t } = useTranslation();
@@ -33,11 +34,11 @@ export default function ChangePassword({ csrfToken }: { csrfToken: string }) {
         <p className="status">{t("passwordRules")}</p>
         <label>
           {t("currentPassword")}
-          <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required maxLength={1024} />
+          <PasswordInput label={t("currentPassword")} value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required maxLength={1024} />
         </label>
         <label>
           {t("newPassword")}
-          <input type="password" value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" required maxLength={1024} />
+          <PasswordInput label={t("newPassword")} value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" required maxLength={1024} />
         </label>
         {message && <p className={message.ok ? "status" : "error"} role={message.ok ? "status" : "alert"}>{t(message.key)}</p>}
         <button type="submit" disabled={busy}>{t("changePassword")}</button>

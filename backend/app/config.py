@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     mfa_encryption_key: str | None = None  # Fernet key; without it the MFA endpoints answer 503
     mfa_required_roles: str = ""  # comma-separated roles forced to use TOTP; empty = nobody is forced
     mfa_issuer: str = "KMK Entretien"
+    vapid_public_key: str | None = None  # Web Push (python -m app.cli vapid-keys); without them nothing is pushed
+    vapid_private_key: str | None = None
+    vapid_subject: str = "mailto:admin@kmk-entretien.ca"
     api_host: str = "127.0.0.1"
     api_port: int = 8001
 

@@ -83,3 +83,37 @@ def test_only_the_document_upload_route_may_carry_a_large_body():
     preview = text[text.index("@docpreview {"):text.index("handle /api/*")]
     assert "path_regexp ^/api/documents/[0-9]+/preview$" in preview and "max_size 128KB" in preview
     assert text.count("max_size 128KB") == 1 and MAX_PREVIEW_BYTES <= 128 * 1000
+
+
+def test_quote_routes_have_their_own_body_caps():
+    text = CADDYFILE.read_text()
+    start = text[text.index("@quotestart {"):text.index("handle /api/*")]
+    assert "method POST" in start and "path /api/public/quotes" in start and "max_size 256KB" in start
+    photo = text[text.index("@quotephoto {"):text.index("handle /api/*")]
+    assert "method PUT" in photo and "path_regexp ^/api/public/quotes/[0-9]+/photos$" in photo and "max_size 9MiB" in photo
+    from app.quotes.limits import MAX_PHOTO_BYTES
+
+    assert MAX_PHOTO_BYTES < 9 * 1024 * 1024
+    # the other caps are untouched
+    assert text.count("max_size 64KB") == 1 and text.count("max_size 51MiB") == 1 and text.count("max_size 128KB") == 1
+
+
+def test_devis_serves_the_quote_page():
+    text = CADDYFILE.read_text()
+    block = text[text.index("@devis path"):text.index("handle /assets/*")]
+    assert "/devis /devis/" in block and "rewrite * /quote.html" in block and "file_server" in block
+
+
+def test_csp_allows_the_manifest_and_service_worker_but_nothing_else_new():
+    text = CADDYFILE.read_text()
+    csp = next(line for line in text.splitlines() if "Content-Security-Policy" in line)
+    assert "manifest-src 'self'" in csp and "worker-src 'self'" in csp
+    # still closed: scripts, styles, fonts, images and connections only from the app itself (images also as data: URLs)
+    for part in ("default-src 'none'", "script-src 'self'", "style-src 'self'", "img-src 'self' data:", "font-src 'self'", "connect-src 'self'", "frame-ancestors 'none'"):
+        assert part in csp
+
+
+def test_the_service_worker_and_manifest_are_real_files_in_the_build():
+    public = Path(__file__).resolve().parents[2] / "frontend" / "public"
+    for name in ("sw.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"):
+        assert (public / name).is_file(), name

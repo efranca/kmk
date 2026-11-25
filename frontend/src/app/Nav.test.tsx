@@ -71,3 +71,22 @@ describe("the navigation on a phone", () => {
     expect(container.querySelector("nav")).not.toHaveClass("appnav--icons");
   });
 });
+
+
+describe("the Quotes entry", () => {
+  beforeEach(() => phone(900));
+  it("is for admins and the super admin, with the number to handle", () => {
+    render(nav({ isAdmin: true, isSuperAdmin: false, badges: { quotes: 3 } }));
+    const link = screen.getByRole("link", { name: /Quotes/ });
+    expect(link).toHaveAttribute("href", "/quotes");
+    expect(within(link).getByText("3")).toBeInTheDocument();
+  });
+  it("is not shown to a regular user", () => {
+    render(nav({ isAdmin: false, isSuperAdmin: false }));
+    expect(screen.queryByRole("link", { name: /Quotes/ })).toBeNull();
+  });
+  it("shows no badge when nothing is waiting", () => {
+    render(nav({ badges: { quotes: 0 } }));
+    expect(within(screen.getByRole("link", { name: /Quotes/ })).queryByText("0")).toBeNull();
+  });
+});

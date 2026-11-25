@@ -177,3 +177,32 @@ def test_invite_names_the_site_as_a_https_link():
 
 def test_reset_link_text():
     assert ">Choisir un nouveau mot de passe</a>" in render("reset", "fr-CA", LONG_LINK, "a@b.c").html
+
+
+def _captured(msg, **kw):
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"id": "x"})
+
+    assert send_email(msg, resend_settings(email_from="KMK <no-reply@mail.example>"), transport=httpx.MockTransport(handler)) is True
+    return seen["body"]
+
+
+def test_resend_payload_uses_the_message_sender_and_reply_to():
+    msg = EmailMessage(to="c@example.com", subject="S", text="t", html="<p>t</p>", sender="KMK Devis <devis@mail.example>", reply_to="kmk@gmail.com")
+    body = _captured(msg)
+    assert body["from"] == "KMK Devis <devis@mail.example>" and body["reply_to"] == ["kmk@gmail.com"]
+
+
+def test_resend_payload_without_sender_or_reply_to_keeps_the_default_and_omits_reply_to():
+    body = _captured(message())
+    assert body["from"] == "KMK <no-reply@mail.example>" and "reply_to" not in body
+
+
+def test_log_backend_prints_sender_and_reply_to(caplog):
+    msg = EmailMessage(to="c@example.com", subject="S", text="t", html="<p>t</p>", sender="KMK Devis <devis@mail.example>", reply_to="kmk@gmail.com")
+    with caplog.at_level(logging.INFO, logger="kmk.email"):
+        send_email(msg, make_settings(email_backend="log"))
+    assert "devis@mail.example" in caplog.text and "kmk@gmail.com" in caplog.text

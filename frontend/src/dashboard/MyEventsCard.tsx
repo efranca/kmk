@@ -35,7 +35,7 @@ export function MyEventsCard({
     <EventRow key={`${item.event_id}-${item.original_date}`} item={item} people={people} onOpen={onOpen} dayLabel={withDay ? dayLabelFor(item.date, today, locale, t("dashToday")) : undefined} />
   );
   return (
-    <DashCard title={t("dashMyEvents")} onOpen={onOpenSchedule} state={state} empty={mine.length === 0}>
+    <DashCard title={t("dashMyEvents")} onOpen={onOpenSchedule} state={state} empty={mine.length === 0} art="events" emptyHint={t("dashEmptyFun")}>
       {now.length > 0 && (
         <>
           <h3 className="dash__heading">{t("dashToday")}</h3>

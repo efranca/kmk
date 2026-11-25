@@ -120,9 +120,9 @@ class Event(Base):
     recurrence: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
     ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     max_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_by: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
+    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)  # NULL = made by the website
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_by: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
+    updated_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -196,9 +196,9 @@ class Task(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
     show_on_dashboard: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_by: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
+    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)  # NULL = made by the website
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_by: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
+    updated_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -271,3 +271,90 @@ class DocumentPreview(Base):
     document_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True)
     data: Mapped[bytes] = mapped_column(LargeBinary)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Quote(Base):
+    """A quote request from the public form. `draft` until the customer presses Send."""
+
+    __tablename__ = "quotes"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    status: Mapped[str] = mapped_column(Text, default="draft")
+    kind: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text)
+    email: Mapped[str] = mapped_column(Text)
+    phone: Mapped[str] = mapped_column(Text)
+    locale: Mapped[str] = mapped_column(Text)
+    details: Mapped[dict] = mapped_column(JSONB, default=dict)
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    internal_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ip: Mapped[str] = mapped_column(Text)
+    ip_key: Mapped[str] = mapped_column(Text)
+    geo_country: Mapped[str | None] = mapped_column(Text, nullable=True)
+    geo_city: Mapped[str | None] = mapped_column(Text, nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    token_hash: Mapped[str] = mapped_column(Text)
+    deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    first_reply_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    task_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True)
+    event_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("events.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    @property
+    def reference(self) -> str:
+        return f"D-{self.id:04d}"
+
+
+class QuotePhoto(Base):
+    __tablename__ = "quote_photos"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    quote_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("quotes.id", ondelete="CASCADE"), index=True)
+    content_type: Mapped[str] = mapped_column(Text)
+    size: Mapped[int] = mapped_column(Integer)
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class QuoteMessage(Base):
+    """One message of the conversation: `out` is emailed from the app, `in` is a customer reply pasted by an admin."""
+
+    __tablename__ = "quote_messages"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    quote_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("quotes.id", ondelete="CASCADE"), index=True)
+    direction: Mapped[str] = mapped_column(Text)
+    subject: Mapped[str | None] = mapped_column(Text, nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    author_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    delivery: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AppSetting(Base):
+    """Company-wide settings edited by the super admin (quote sender, Reply-To, notification email, phone)."""
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    value: Mapped[str] = mapped_column(Text)
+    updated_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PushSubscription(Base):
+    """One device of one admin that turned notifications on."""
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    endpoint: Mapped[str] = mapped_column(Text, unique=True)
+    p256dh: Mapped[str] = mapped_column(Text)
+    auth: Mapped[str] = mapped_column(Text)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

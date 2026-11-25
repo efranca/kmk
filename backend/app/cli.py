@@ -108,6 +108,25 @@ def reset_mfa(username: str) -> int:
     return 0
 
 
+def vapid_keys() -> int:
+    """Prints a new pair of Web Push (VAPID) keys, for deploy/.env. Writes nothing and touches no database."""
+    import base64
+
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    key = ec.generate_private_key(ec.SECP256R1())
+    private = key.private_numbers().private_value.to_bytes(32, "big")
+    public = key.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+
+    def b64(raw: bytes) -> str:
+        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+    print(f"VAPID_PUBLIC_KEY={b64(public)}")
+    print(f"VAPID_PRIVATE_KEY={b64(private)}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -121,7 +140,10 @@ def main(argv: list[str] | None = None) -> int:
     n.add_argument("--name", required=True)
     r = sub.add_parser("reset-mfa", help="remove a user's two-step verification (lost phone)")
     r.add_argument("--username", required=True)
+    sub.add_parser("vapid-keys", help="print a new pair of Web Push keys for deploy/.env")
     args = parser.parse_args(argv)
+    if args.command == "vapid-keys":
+        return vapid_keys()
     if args.command == "reset-mfa":
         return reset_mfa(args.username)
     if args.command == "set-name":

@@ -79,8 +79,8 @@ export function TaskDialog({ task, onClose, defaultPeople }: TaskDialogProps) {
       </form>
       {task && (
         <p className="task-meta">
-          {t("taskCreatedBy", { name: task.created_by.name, when: when(task.created_at) })}
-          {task.updated_at !== task.created_at && <><br />{t("taskUpdatedBy", { name: task.updated_by.name, when: when(task.updated_at) })}</>}
+          {t("taskCreatedBy", { name: task.created_by?.name ?? t("createdByWebsite"), when: when(task.created_at) })}
+          {task.updated_at !== task.created_at && <><br />{t("taskUpdatedBy", { name: task.updated_by?.name ?? t("createdByWebsite"), when: when(task.updated_at) })}</>}
         </p>
       )}
       {failure && <ErrorNotice error={failure} />}

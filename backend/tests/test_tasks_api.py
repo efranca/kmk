@@ -239,3 +239,17 @@ def test_start_is_audited(alice, owner_engine):
     t = create(c, h)
     c.post(f"/api/tasks/{t['id']}/start", headers=h)
     assert sql(owner_engine, "SELECT count(*) FROM audit_log WHERE action = 'task_started'")[0][0] == 1
+
+
+def test_task_made_by_the_website_reads_and_is_changed_by_its_people(make_client, add_user, owner_engine):
+    c, h = session(make_client, add_user, "alice")
+    sql(owner_engine, "INSERT INTO tasks (title) VALUES ('Quote D-0001')")
+    tid = sql(owner_engine, "SELECT id FROM tasks")[0][0]
+    sql(owner_engine, "INSERT INTO task_people (task_id, user_id) VALUES (:t, :u)", t=tid, u=uid(owner_engine, "alice"))
+    task = c.get(f"/api/tasks/{tid}").json()["task"]
+    assert task["created_by"] is None and task["updated_by"] is None
+    done = c.post(f"/api/tasks/{tid}/complete", headers=h)
+    assert done.status_code == 200, done.text
+    assert done.json()["task"]["updated_by"]["name"] == "alice"
+    bob, bh = session(make_client, add_user, "bob")
+    assert bob.patch(f"/api/tasks/{tid}", json=body(), headers=bh).status_code == 403

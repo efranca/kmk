@@ -35,7 +35,7 @@ export interface Occurrence {
   repeating: boolean;
   modified: boolean;
   people: number[];
-  created_by: number;
+  created_by: number | null;
 }
 
 /** "This occurrence only" change of a repeating event (cancelled, or title, notes, date, time and length overridden). */
@@ -66,7 +66,7 @@ export interface EventDetail {
   people: number[];
   reminders: ReminderIn[];
   exceptions: EventException[];
-  created_by: number;
+  created_by: number | null;
   updated_by: number;
 }
 

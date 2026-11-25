@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { login, type Session } from "./api";
+import { PasswordInput } from "./ui/PasswordInput";
 
 export default function LoginForm({ onSignedIn, onForgot }: { onSignedIn: (s: Session) => void; onForgot: () => void }) {
   const { t } = useTranslation();
@@ -34,7 +35,7 @@ export default function LoginForm({ onSignedIn, onForgot }: { onSignedIn: (s: Se
         </label>
         <label>
           {t("password")}
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required maxLength={1024} />
+          <PasswordInput label={t("password")} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required maxLength={1024} />
         </label>
         {error && <p className="error" role="alert">{t(error)}</p>}
         <button type="submit" disabled={busy}>{t("signIn")}</button>

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { setPassword } from "./api";
 import { consumeToken, forgetToken, linkLanguage } from "./route";
+import { PasswordInput } from "./ui/PasswordInput";
 
 export default function SetPassword({ onBack }: { onBack: () => void }) {
   const { t, i18n } = useTranslation();
@@ -64,11 +65,11 @@ export default function SetPassword({ onBack }: { onBack: () => void }) {
           <p className="status">{t("passwordRules")}</p>
           <label>
             {t("newPassword")}
-            <input type="password" value={password} onChange={(e) => setPasswordValue(e.target.value)} autoComplete="new-password" required maxLength={1024} />
+            <PasswordInput label={t("newPassword")} value={password} onChange={(e) => setPasswordValue(e.target.value)} autoComplete="new-password" required maxLength={1024} />
           </label>
           <label>
             {t("confirmPassword")}
-            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required maxLength={1024} />
+            <PasswordInput label={t("confirmPassword")} value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required maxLength={1024} />
           </label>
           {error && <p className="error" role="alert">{t(error)}</p>}
           <button type="submit" disabled={busy}>{t("savePassword")}</button>

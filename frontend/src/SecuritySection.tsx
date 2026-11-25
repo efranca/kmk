@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { mfaDisable, mfaRegenerate } from "./api";
 import RecoveryCodes from "./RecoveryCodes";
+import { PasswordInput } from "./ui/PasswordInput";
 
 type Mode = null | "regenerate" | "disable";
 
@@ -70,7 +71,7 @@ export default function SecuritySection({
         <form onSubmit={submit} className="form">
           <label>
             {t("password")}
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required maxLength={1024} />
+            <PasswordInput label={t("password")} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required maxLength={1024} />
           </label>
           <label>
             {t("mfaCode")}

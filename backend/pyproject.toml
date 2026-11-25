@@ -1,6 +1,6 @@
 [project]
 name = "kmk-api"
-version = "0.2.0"
+version = "0.3.0"
 requires-python = ">=3.13"
 dependencies = [
   "fastapi>=0.115",
@@ -14,6 +14,7 @@ dependencies = [
   "pyotp>=2.9",
   "cryptography>=43",
   "python-dateutil>=2.9",
+  "pywebpush>=2.0",
 ]
 
 [project.optional-dependencies]

@@ -15,8 +15,12 @@ from app.auth.routes import router as auth_router
 from app.db import make_engine
 from app.documents.routes import router as documents_router
 from app.preferences import router as preferences_router
+from app.push.routes import router as push_router
+from app.quotes.routes import router as quotes_router
+from app.quotes.public_routes import router as quotes_public_router
 from app.schedule.routes import router as schedule_router
 from app.tasks.routes import router as tasks_router
+from app.system_settings import router as system_settings_router
 from app.version import router as version_router
 
 log = logging.getLogger("kmk")
@@ -53,6 +57,10 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
     app.include_router(preferences_router)
     app.include_router(version_router)
     app.include_router(documents_router)
+    app.include_router(system_settings_router)
+    app.include_router(quotes_public_router)
+    app.include_router(push_router)
+    app.include_router(quotes_router)
 
     @app.exception_handler(ApiError)
     async def api_error(request, exc: ApiError):
@@ -69,7 +77,7 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
                 response = await call_next(request)
         else:
             response = await call_next(request)
-        if path.startswith(("/api/auth", "/api/admin", "/api/schedule", "/api/tasks", "/api/documents", "/api/document-categories")):
+        if path.startswith(("/api/auth", "/api/admin", "/api/schedule", "/api/tasks", "/api/documents", "/api/document-categories", "/api/settings", "/api/public/quotes", "/api/push", "/api/quotes")):
             response.headers.setdefault("Cache-Control", "no-store")  # a route may be stricter, as the document files are
         return response
 

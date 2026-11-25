@@ -10,6 +10,8 @@ import "./tasks/tasks.css";
 import "./users/users.css";
 import "./devices/devices.css";
 import "./documents/documents.css";
+import "./quotes/quotes.css";
+import "./settings/settings.css";
 import "./ds.css";
 import "./i18n";
 import { initTheme } from "./theme";

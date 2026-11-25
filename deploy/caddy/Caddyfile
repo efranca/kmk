@@ -27,7 +27,7 @@ http://app.kmk-entretien.ca:8081 {
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "same-origin"
-		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'; worker-src 'self'"
 		-Server
 	}
 
@@ -55,12 +55,44 @@ http://app.kmk-entretien.ca:8081 {
 		import api_proxy
 	}
 
+	# The quote form's first call carries up to 20 000 characters of text (accents and emoji take several bytes each).
+	@quotestart {
+		method POST
+		path /api/public/quotes
+	}
+	handle @quotestart {
+		request_body {
+			max_size 256KB
+		}
+		import api_proxy
+	}
+
+	# One photo of a quote request goes up as the raw body (the API accepts at most 8 MiB).
+	@quotephoto {
+		method PUT
+		path_regexp ^/api/public/quotes/[0-9]+/photos$
+	}
+	handle @quotephoto {
+		request_body {
+			max_size 9MiB
+		}
+		import api_proxy
+	}
+
 	handle /api/* {
 		# Every other API request body is tiny JSON: refuse anything bigger before it reaches the application.
 		request_body {
 			max_size 64KB
 		}
 		import api_proxy
+	}
+
+	# The public quote form is its own page (frontend/quote.html), not the signed-in app.
+	@devis path /devis /devis/
+	handle @devis {
+		rewrite * /quote.html
+		root * /srv/site
+		file_server
 	}
 
 	# Missing assets must 404, not fall back to index.html

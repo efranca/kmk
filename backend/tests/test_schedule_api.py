@@ -399,3 +399,13 @@ def test_schedule_responses_are_not_cached(alice):
     c, _ = alice
     r = c.get("/api/schedule/events", params={"from": "2026-11-01", "to": "2026-11-30"})
     assert r.headers["cache-control"] == "no-store"
+
+
+def test_event_made_by_the_website_is_listed_with_no_creator(make_client, add_user, owner_engine):
+    c, h = session(make_client, add_user, "alice")
+    sql(owner_engine, "INSERT INTO events (title, start_date, start_time, duration_minutes) VALUES ('Quote deadline', '2026-11-05', '09:00', 30)")
+    occurrence = [o for o in listing(c) if o["title"] == "Quote deadline"][0]
+    assert occurrence["created_by"] is None
+    eid = occurrence["event_id"]
+    event = c.get(f"/api/schedule/events/{eid}").json()["event"]
+    assert event["created_by"] is None and event["updated_by"] is None

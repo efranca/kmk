@@ -7,6 +7,10 @@ PUBLIC = {
     ("POST", "/api/auth/login"),
     ("POST", "/api/auth/forgot-password"),
     ("POST", "/api/auth/set-password"),
+    ("GET", "/api/public/quotes/config"),
+    ("POST", "/api/public/quotes"),
+    ("PUT", "/api/public/quotes/{quote_id}/photos"),
+    ("POST", "/api/public/quotes/{quote_id}/submit"),
 }
 # What a session in the "verify" state may still call.
 VERIFY_ALLOWED = {("GET", "/api/auth/me"), ("POST", "/api/auth/logout"), ("POST", "/api/auth/mfa/verify")}

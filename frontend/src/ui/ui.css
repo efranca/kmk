@@ -192,3 +192,38 @@
 .about dt { color: var(--text-muted, var(--slate)); }
 .about dd { margin: 0; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
 .about__title { font-size: 0.85rem; margin: 12px 0 0; color: var(--text-muted, var(--slate)); }
+
+/* A password field with an eye button inside its right edge. */
+.pw { position: relative; display: block; }
+.pw input { width: 100%; padding-right: 48px; }
+.pw .pw__eye {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 44px; min-height: 0; margin: 0; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; border-radius: 0 10px 10px 0; color: var(--text-muted, var(--slate)); cursor: pointer;
+}
+.pw .pw__eye:hover:not(:disabled) { background: transparent; color: var(--text, var(--ink)); }
+
+/* Empty screens and cards: a friendly picture, the message and a fun line. */
+.empty-art { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 28px 12px; color: var(--text); }
+.empty-art--compact { padding: 10px 8px 6px; }
+.empty-art > svg { width: 150px; height: auto; margin-bottom: 4px; }
+.empty-art--compact > svg { width: 104px; }
+.empty-art__title { margin: 0; font-weight: 700; font-size: 1.05rem; }
+.empty-art--compact .empty-art__title { font-size: 0.95rem; }
+.empty-art__hint { margin: 0; max-width: 34ch; color: var(--text-muted); }
+.empty-art .btn { margin-top: 10px; }
+.ea-shadow { fill: var(--surface-2); }
+.ea-back { fill: var(--accent); opacity: 0.45; }
+.ea-front { fill: var(--accent); }
+.ea-paper { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+.ea-line { fill: none; stroke: var(--text-muted); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.75; }
+.ea-face { fill: #fff; }
+.ea-smile { fill: none; stroke: #fff; stroke-width: 2.5; stroke-linecap: round; }
+.ea-spark { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; }
+.ea-dot { fill: var(--accent); }
+.ea-clip { fill: var(--text-muted); }
+.ea-box { fill: none; stroke: var(--accent); stroke-width: 2; }
+.ea-check { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.ea-ring { fill: none; stroke: var(--text-muted); stroke-width: 4; stroke-linecap: round; }
+.ea-sun { fill: #f5b95c; }
+.ea-rays { fill: none; stroke: #f5b95c; stroke-width: 2.5; stroke-linecap: round; }

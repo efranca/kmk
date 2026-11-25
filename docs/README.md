@@ -39,6 +39,7 @@ browser --HTTPS--> Cloudflare --tunnel (outbound from this machine)--> cloudflar
 | 5 Frontend | app shell, welcome page (placeholder, since replaced by the Dashboard), per-user language switching, polish | done | [spec](superpowers/specs/2026-11-17-phase5-frontend-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase5-frontend.md) |
 | 7 Schedule and Dashboard | shared calendar (Day, Week, Month, Year, repeating events, reminders, drag to move) and the Dashboard home page with the "My events" and "All events" widgets, in a FamillAI-style layout | done | [spec](superpowers/specs/2026-11-24-schedule-dashboard-design.md) | [plan](superpowers/plans/2026-11-24-schedule-dashboard.md) |
 | 8 Tasks | the team's to-do list: tasks for people or the whole team with a due date, categories with icons, status tabs (To do, In progress, Done), a List/Board view menu (the board moves cards by drag and drop or a "Move to" control), people filter, search, "Clear completed"; a "My tasks" Dashboard card; an optional "Show tasks" switch on the Schedule. No repeating tasks, rewards or AI | done | [spec](superpowers/specs/2026-11-24-tasks-design.md) | [plan](superpowers/plans/2026-11-24-tasks.md) |
+| 9 Quotes | the open quote form at `/devis` (public site's look, fr-CA/en-CA/pt-BR, photos, 10 requests per hour per IP), the admins' Quotes area (request as sent, conversation kept by hand for customer replies, status), a shared task due in 24 h and an Agenda deadline for every admin, a notification email and Web Push, company-wide System settings, an installable app | done; owner steps remain (VAPID keys, Resend sender domain, settings, link from the public site) | [spec](superpowers/specs/2026-11-25-quotes-design.md) | [plan](superpowers/plans/2026-11-25-quotes.md) |
 | 6 Hardening | encrypted verified backups, container limits and health checks, dependency scan, independent security review, go-live runbook | built; go-live waits for the owner's steps (key, Resend, two-step, pilot) | [spec](superpowers/specs/2026-11-17-phase6-hardening-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase6-hardening.md) |
 
 ## Data model (as built)
@@ -62,6 +63,11 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 | `tasks` | one task, to do or completed | `title`, `description`, `icon`, `category_id` (set null when the category is deleted), `status` (`pending`/`in_progress`/`completed`), `due_date` (a date in the company time zone, optional), `completed_at` and `completed_by` (set exactly when completed), `show_on_dashboard`, `created_by`, `updated_by` |
 | `task_people` | who a task is for (no rows = the whole team) | `task_id`, `user_id` |
 | `user_avatars` | a person's profile picture, at most 50 KB (JPEG, PNG or WebP); `users.avatar_updated_at` says whether there is one | `user_id`, `content_type`, `data`, `updated_at` |
+| `quotes` | one quote request (a `draft` until the customer presses Send, then `new`, `replied`, `customer_replied`, `won`, `lost`) | `reference` (`D-` + id, computed), `kind` (`airbnb`/`commercial`), `name`, `email`, `phone`, `locale`, `details` (JSON: address, property, frequency, bedrooms, bathrooms, area), `message` (up to 2000 words), `internal_note`, `ip`, `ip_key` (IPv6 per /64, counted for the hourly limit), `geo_*`, `user_agent`, `token_hash` (the draft's one-time token), `deadline_at` (24 h), `first_reply_at`, `task_id`, `event_id` |
+| `quote_photos` | up to 10 photos of 8 MiB (JPEG, PNG, WebP, HEIC) | `quote_id`, `content_type`, `size`, `data` |
+| `quote_messages` | the conversation: `out` is emailed from the app, `in` is a customer reply pasted by an admin | `direction`, `subject`, `body`, `author_id`, `sent_at`, `delivery` (`sent`/`failed`, out only) |
+| `app_settings` | company-wide settings (`quote_notify_email`, `quote_from`, `quote_reply_to`, `public_phone`) | `key`, `value`, `updated_by` |
+| `push_subscriptions` | one device of an admin that turned notifications on | `user_id`, `endpoint`, `p256dh`, `auth` |
 | `alembic_version` | migration state | |
 
 Deletion is soft (`status = 'deleted'`, `deleted_at` set): the row stays, so the audit log keeps its references and the username and email stay reserved. An admin can restore a deleted account (it comes back `disabled`).
@@ -118,6 +124,16 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `POST /api/tasks` | verified | create a task for yourself, anyone, or the whole team |
 | `GET` / `PATCH` / `DELETE /api/tasks/{id}` | read: verified; change or delete: the creator, a person on it, an admin | `PATCH` takes the whole form |
 | `POST /api/tasks/{id}/complete`, `/start` (in progress), `/reopen` (back to to do) | whoever may edit it; anyone for a task for the whole team | idempotent: a task that already has that status is returned unchanged |
+| `GET /api/public/quotes/config` | anyone | the public phone number |
+| `POST /api/public/quotes` | anyone, 10 started requests per hour per IP | starts a draft; answers `{id, token}` (`429 rate_limited` over the limit; `422 too_long` over 2000 words) |
+| `PUT /api/public/quotes/{id}/photos` | the draft's token (`X-Quote-Token`) | one photo as the raw body |
+| `POST /api/public/quotes/{id}/submit` | the draft's token | makes it a request: creates the task and the Agenda item, then emails and pushes; answers `{reference}`; sending twice changes nothing |
+| `GET /api/quotes?status`, `GET /api/quotes/{id}`, `GET /api/quotes/{id}/photos/{photo_id}` | admins and the super admin | list (with the counts for the navigation badge), one request, one photo |
+| `PATCH /api/quotes/{id}` | admins and the super admin | status and internal note |
+| `POST /api/quotes/{id}/messages`, `POST /api/quotes/{id}/messages/{mid}/retry` | admins and the super admin | send a reply by email (`409 sender_not_configured` without a sender) or paste a customer reply; retry a failed send |
+| `DELETE /api/quotes/{id}` | super admin | delete the request, its photos and its conversation |
+| `GET` / `PATCH /api/settings/system` | super admin | the company-wide settings |
+| `GET /api/push/key`, `POST` / `DELETE /api/push/subscriptions`, `POST /api/push/test` | admins and the super admin | Web Push for this device |
 | `DELETE /api/tasks/completed` | verified | deletes the completed tasks the caller may delete; answers `{"deleted": n}` |
 | `GET /api/tasks/categories`, `POST /api/tasks/categories` | verified | list (by name) and add a category |
 | `PATCH` / `DELETE /api/tasks/categories/{id}` | admins and the super admin | rename, change the icon, or delete (its tasks are kept without a category) |

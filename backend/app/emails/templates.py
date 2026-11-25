@@ -10,6 +10,8 @@ class EmailMessage:
     subject: str
     text: str
     html: str
+    sender: str | None = None  # the From; None = the application's EMAIL_FROM
+    reply_to: str | None = None
 
 
 # Greeting per locale: with a name, and without one.

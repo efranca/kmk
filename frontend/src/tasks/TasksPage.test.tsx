@@ -97,6 +97,18 @@ describe("TasksPage", () => {
     page();
     expect(await screen.findByRole("button", { name: "Add the first task" })).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: "Done" })).not.toBeInTheDocument();
+    expect(document.querySelector("svg[data-art='tasks']")).toBeInTheDocument();
+    expect(screen.getByText("Add one and give the team something to cross off!")).toBeInTheDocument();
+  });
+
+  it("has a picture and a friendly line when a tab of the list is empty", async () => {
+    api([task({ title: "Open" })]);
+    page();
+    await screen.findByText("Open");
+    fireEvent.click(screen.getByRole("radio", { name: "Done" }));
+    expect(await screen.findByText("Nothing is done yet.")).toBeInTheDocument();
+    expect(screen.getByText("The first check mark feels great, go get it!")).toBeInTheDocument();
+    expect(document.querySelector("svg[data-art='tasks']")).toBeInTheDocument();
   });
 
   it("the clear dialog only counts the completed tasks the person may delete", async () => {

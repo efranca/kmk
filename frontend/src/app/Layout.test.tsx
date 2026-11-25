@@ -29,6 +29,16 @@ describe("Layout", () => {
     expect(container.querySelector("nav.appnav [data-account-menu]")).not.toBeNull();
   });
 
+  it("opens the account menu with the pages only: the person's name is not repeated at the top of the panel", () => {
+    const { container } = setup();
+    openAccountMenu();
+    const panel = container.querySelector<HTMLElement>(".accountmenu__panel")!;
+    expect(panel).not.toBeNull();
+    expect(panel.querySelector(".accountmenu__who")).toBeNull();
+    expect(panel).not.toHaveTextContent(testUser.name!);
+    expect(panel.querySelectorAll(".accountmenu__item")).toHaveLength(4); // account, settings, about, sign out
+  });
+
   it("collapses and expands the sidebar and remembers it", () => {
     const { container } = setup();
     expect(container.querySelector(".app--collapsed")).toBeNull();

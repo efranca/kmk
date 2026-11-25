@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 
+import { EmptyArt, type ArtName } from "../ui/EmptyArt";
 import { EmptyState } from "../ui/Feedback";
 
 /** "Today" for today, otherwise the weekday and day number ("Wed 25"). */
@@ -18,6 +19,8 @@ export function DashCard({
   state,
   empty,
   emptyText,
+  art,
+  emptyHint,
   children,
 }: {
   title: string;
@@ -27,6 +30,9 @@ export function DashCard({
   state: ReactNode | null;
   empty: boolean;
   emptyText?: string;
+  /** A picture and a friendly line for the empty card. */
+  art?: ArtName;
+  emptyHint?: string;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -46,7 +52,7 @@ export function DashCard({
           </a>
         </h2>
       </header>
-      {state ?? (empty ? <EmptyState>{emptyText ?? t("dashEmpty")}</EmptyState> : children)}
+      {state ?? (empty ? (art ? <EmptyArt compact art={art} title={emptyText ?? t("dashEmpty")} hint={emptyHint} /> : <EmptyState>{emptyText ?? t("dashEmpty")}</EmptyState>) : children)}
     </section>
   );
 }
