@@ -55,6 +55,30 @@ http://app.kmk-entretien.ca:8081 {
 		import api_proxy
 	}
 
+	# The quote form's first call carries up to 20 000 characters of text (accents and emoji take several bytes each).
+	@quotestart {
+		method POST
+		path /api/public/quotes
+	}
+	handle @quotestart {
+		request_body {
+			max_size 256KB
+		}
+		import api_proxy
+	}
+
+	# One photo of a quote request goes up as the raw body (the API accepts at most 8 MiB).
+	@quotephoto {
+		method PUT
+		path_regexp ^/api/public/quotes/[0-9]+/photos$
+	}
+	handle @quotephoto {
+		request_body {
+			max_size 9MiB
+		}
+		import api_proxy
+	}
+
 	handle /api/* {
 		# Every other API request body is tiny JSON: refuse anything bigger before it reaches the application.
 		request_body {

@@ -83,3 +83,16 @@ def test_only_the_document_upload_route_may_carry_a_large_body():
     preview = text[text.index("@docpreview {"):text.index("handle /api/*")]
     assert "path_regexp ^/api/documents/[0-9]+/preview$" in preview and "max_size 128KB" in preview
     assert text.count("max_size 128KB") == 1 and MAX_PREVIEW_BYTES <= 128 * 1000
+
+
+def test_quote_routes_have_their_own_body_caps():
+    text = CADDYFILE.read_text()
+    start = text[text.index("@quotestart {"):text.index("handle /api/*")]
+    assert "method POST" in start and "path /api/public/quotes" in start and "max_size 256KB" in start
+    photo = text[text.index("@quotephoto {"):text.index("handle /api/*")]
+    assert "method PUT" in photo and "path_regexp ^/api/public/quotes/[0-9]+/photos$" in photo and "max_size 9MiB" in photo
+    from app.quotes.limits import MAX_PHOTO_BYTES
+
+    assert MAX_PHOTO_BYTES < 9 * 1024 * 1024
+    # the other caps are untouched
+    assert text.count("max_size 64KB") == 1 and text.count("max_size 51MiB") == 1 and text.count("max_size 128KB") == 1
