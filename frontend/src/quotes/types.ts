@@ -1,6 +1,6 @@
 export type QuoteStatus = "new" | "replied" | "customer_replied" | "won" | "lost";
 export type QuoteFilter = QuoteStatus | "all";
-export type QuoteKind = "airbnb" | "commercial";
+export type QuoteKind = "airbnb" | "commercial" | "post_construction";
 
 export type QuoteSummary = {
   id: number;
@@ -45,6 +45,6 @@ export type QuoteDetail = QuoteSummary & {
   default_subject: string;
 };
 
-export type QuoteCounts = { new: number; customer_replied: number };
+export type QuoteCounts = { new: number; customer_replied: number; replied: number };
 export type QuotePatch = { status?: QuoteStatus; internal_note?: string };
 export type MessageInput = { direction: "out"; subject: string; body: string } | { direction: "in"; body: string; sent_at?: string };

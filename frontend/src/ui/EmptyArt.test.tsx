@@ -18,8 +18,8 @@ describe("EmptyArt", () => {
     expect(screen.getByRole("button", { name: "Add the first document" })).toBeInTheDocument();
   });
 
-  it("has a picture for documents, tasks and events, and a smaller version for cards", () => {
-    for (const art of ["documents", "tasks", "events"] as const) {
+  it("has a picture for documents, tasks, events and quotes, and a smaller version for cards", () => {
+    for (const art of ["documents", "tasks", "events", "quotes"] as const) {
       const { container, unmount } = render(<EmptyArt art={art} title="x" compact />);
       expect(container.querySelector(`svg[data-art='${art}']`)).toBeInTheDocument();
       expect(container.querySelector(".empty-art--compact")).toBeInTheDocument();

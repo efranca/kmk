@@ -101,6 +101,14 @@ def test_commercial_needs_a_message_and_airbnb_does_not(client):
     assert start(client, message=None).status_code == 201
 
 
+def test_post_construction_is_a_one_time_job_with_an_optional_message(client):
+    base = dict(kind="post_construction", property="condo", frequency="once", message=None, bedrooms=None, bathrooms=None)
+    assert start(client, **base).status_code == 201
+    assert start(client, **{**base, "frequency": "weekly"}).status_code == 422
+    assert start(client, **{**base, "property": "clinic"}).status_code == 422
+    assert start(client, **{**base, "bedrooms": 2}).status_code == 422
+
+
 def test_airbnb_fields_are_refused_on_commercial(client):
     r = start(client, kind="commercial", property="office", frequency="weekly", message="x", bedrooms=3)
     assert r.status_code == 422

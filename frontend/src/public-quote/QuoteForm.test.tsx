@@ -94,6 +94,19 @@ describe("QuoteForm", () => {
     expect(calls.some((c) => c.method === "POST")).toBe(false);
   });
 
+  it("sends post-construction as a one-time job without asking for a frequency", async () => {
+    const user = userEvent.setup();
+    render(<QuoteForm />);
+    await user.click(screen.getByRole("radio", { name: /Post-construction/ }));
+    expect(screen.queryByLabelText(/^Frequency you want/)).not.toBeInTheDocument();
+    await fillContact(user);
+    await user.selectOptions(screen.getByLabelText(/^Type of property/), "condo");
+    await user.click(screen.getByRole("button", { name: "Send my request" }));
+    expect(await screen.findByText("D-0007")).toBeInTheDocument();
+    const start = calls.find((c) => c.method === "POST" && c.url === "/api/public/quotes")!.body as Record<string, unknown>;
+    expect(start).toMatchObject({ kind: "post_construction", property: "condo", frequency: "once", message: null });
+  });
+
   it("stops at 2000 words: red counter and Send disabled", async () => {
     render(<QuoteForm />);
     fireEvent.change(screen.getByLabelText(/Tell us about your space/), { target: { value: "w ".repeat(2000) } });

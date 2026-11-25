@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type ArtName = "documents" | "tasks" | "events";
+export type ArtName = "documents" | "tasks" | "events" | "quotes";
 
 /** Small friendly pictures for empty screens. Drawn with the theme's colours, so they follow light, dark and KMK. */
 function Art({ name }: { name: ArtName }) {
@@ -39,6 +39,21 @@ function Art({ name }: { name: ArtName }) {
         <path className="ea-spark" d="M26 36v10M21 41h10M132 60v8M128 64h8" />
         <circle className="ea-dot" cx="126" cy="30" r="3" />
         <circle className="ea-dot" cx="34" cy="78" r="2.5" />
+      </svg>
+    );
+  }
+  if (name === "quotes") {
+    return (
+      <svg {...common}>
+        <ellipse className="ea-shadow" cx="80" cy="108" rx="44" ry="6" />
+        <rect className="ea-front" x="58" y="74" width="8" height="32" rx="2" />
+        <path className="ea-front" d="M36 74V54a22 22 0 0 1 22-22h44a22 22 0 0 1 22 22v20z" />
+        <path className="ea-paper" d="M52 74V56a10 10 0 0 1 10-10h36a10 10 0 0 1 10 10v18z" />
+        <path className="ea-line" d="M64 62h32" />
+        <rect className="ea-paper" x="96" y="14" width="34" height="24" rx="4" transform="rotate(10 113 26)" />
+        <path className="ea-line" d="M99 20l14 11 14-9" transform="rotate(10 113 26)" />
+        <path className="ea-spark" d="M30 30v10M25 35h10M138 70v8M134 74h8" />
+        <circle className="ea-dot" cx="22" cy="64" r="2.5" />
       </svg>
     );
   }

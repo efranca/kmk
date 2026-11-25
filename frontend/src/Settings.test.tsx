@@ -6,7 +6,7 @@ import i18n from "./i18n";
 import { forgetToken } from "./route";
 import { DEFAULT_PREFERENCES } from "./preferences";
 import SettingsPage from "./SettingsPage";
-import { Providers } from "./testUtils";
+import { Providers, testUser } from "./testUtils";
 import frCA from "./locales/fr-CA.json";
 
 const res = (status: number, body: unknown = {}) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
@@ -62,6 +62,24 @@ describe("Settings page", () => {
     await waitFor(() => expect(patch()).toBeDefined());
     const init = patch()![1];
     expect(JSON.parse(String(init.body))).toEqual({ dashboard_widgets: { my_tasks: false } });
+  });
+
+  it("offers the quote card switches to admins only, and saves a change", async () => {
+    const fetchMock = vi.fn(async () => res(200, { preferences: {} }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Providers session={{ user: { ...testUser, role: "admin" } }}><SettingsPage onLanguageChanged={vi.fn()} /></Providers>);
+    expect(screen.getByRole("switch", { name: frCA.settingsWidgetQuotesSummary })).toBeChecked();
+    fireEvent.click(screen.getByRole("switch", { name: frCA.settingsWidgetQuotesLatest }));
+    const patch = () => (fetchMock.mock.calls as unknown as [string, RequestInit][]).find(([url]) => url === "/api/me/preferences");
+    await waitFor(() => expect(patch()).toBeDefined());
+    expect(JSON.parse(String(patch()![1].body))).toEqual({ dashboard_widgets: { quotes_latest: false } });
+  });
+
+  it("does not show the quote card switches to a regular user", () => {
+    vi.stubGlobal("fetch", vi.fn(async () => res(200, {})));
+    render(<Providers><SettingsPage onLanguageChanged={vi.fn()} /></Providers>);
+    expect(screen.queryByRole("switch", { name: frCA.settingsWidgetQuotesSummary })).toBeNull();
+    expect(screen.queryByRole("switch", { name: frCA.settingsWidgetQuotesLatest })).toBeNull();
   });
 
   it("lets a person keep just the icons in the phone's bottom bar, and saves it to the account", async () => {

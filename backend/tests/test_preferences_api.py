@@ -11,7 +11,7 @@ DEFAULTS = {
     "show_document_categories": False,
     "show_menu_labels": True,
     "documents_view": "list",
-    "dashboard_widgets": {"my_events": True, "all_events": True, "my_tasks": True},
+    "dashboard_widgets": {"my_events": True, "all_events": True, "my_tasks": True, "quotes_summary": True, "quotes_latest": True},
 }
 
 
@@ -36,7 +36,7 @@ def test_patch_persists_and_merges(make_client, add_user):
     r = c.patch("/api/me/preferences", json={"tasks_view": "board", "dashboard_widgets": {"my_tasks": False}}, headers=h)
     prefs = r.json()["preferences"]
     assert prefs["theme"] == "dark" and prefs["tasks_view"] == "board"
-    assert prefs["dashboard_widgets"] == {"my_events": True, "all_events": True, "my_tasks": False}
+    assert prefs["dashboard_widgets"] == {"my_events": True, "all_events": True, "my_tasks": False, "quotes_summary": True, "quotes_latest": True}
     assert c.get("/api/auth/me").json()["preferences"] == prefs
 
 
@@ -119,3 +119,11 @@ def test_documents_view_is_list_until_changed_and_follows_the_account(make_clien
     for bad in ("grid", "", 1):
         assert c.patch("/api/me/preferences", json={"documents_view": bad}, headers=h).status_code == 422
     assert c.get("/api/auth/me").json()["preferences"]["documents_view"] == "tiles"  # a refused value changed nothing
+
+
+def test_quote_widgets_can_be_switched_off_one_by_one(make_client, add_user):
+    c, h, _ = session(make_client, add_user)
+    r = c.patch("/api/me/preferences", json={"dashboard_widgets": {"quotes_latest": False}}, headers=h)
+    widgets = r.json()["preferences"]["dashboard_widgets"]
+    assert widgets["quotes_latest"] is False and widgets["quotes_summary"] is True and widgets["my_tasks"] is True
+    assert c.patch("/api/me/preferences", json={"dashboard_widgets": {"nope": True}}, headers=h).status_code == 422

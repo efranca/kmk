@@ -16,12 +16,14 @@ const WIDGETS = [
   { key: "my_events", label: "settingsWidgetMyEvents" },
   { key: "all_events", label: "settingsWidgetAllEvents" },
   { key: "my_tasks", label: "settingsWidgetMyTasks" },
-] as const satisfies readonly { key: keyof Preferences["dashboard_widgets"]; label: string }[];
+  { key: "quotes_summary", label: "settingsWidgetQuotesSummary", adminOnly: true },
+  { key: "quotes_latest", label: "settingsWidgetQuotesLatest", adminOnly: true },
+] as const satisfies readonly { key: keyof Preferences["dashboard_widgets"]; label: string; adminOnly?: boolean }[];
 
 /** Per-person preferences. They belong to the account, so they follow the person to every device. */
 export default function SettingsPage({ onLanguageChanged }: { onLanguageChanged: (user: User) => void }) {
   const { t } = useTranslation();
-  const { csrfToken } = useSession();
+  const { csrfToken, user } = useSession();
   const { prefs, update } = usePreferences();
   return (
     <>
@@ -51,7 +53,7 @@ export default function SettingsPage({ onLanguageChanged }: { onLanguageChanged:
         <h2>{t("settingsDashboard")}</h2>
         <p className="status">{t("settingsDashboardHint")}</p>
         <div className="settings-toggles">
-          {WIDGETS.map(({ key, label }) => (
+          {WIDGETS.filter((w) => !("adminOnly" in w) || user.role !== "user").map(({ key, label }) => (
             <Toggle key={key} label={t(label)} checked={prefs.dashboard_widgets[key]} onChange={(e) => update({ dashboard_widgets: { [key]: e.target.checked } })} />
           ))}
         </div>

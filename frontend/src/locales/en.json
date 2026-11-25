@@ -461,6 +461,7 @@
   "quoteMessageCount_other": "{{count}} messages",
   "quoteKindAirbnb": "Airbnb",
   "quoteKindCommercial": "Commercial",
+  "quoteKindPostConstruction": "Post-construction",
   "quoteBack": "All quotes",
   "quoteRequest": "Request",
   "quoteEmail": "Email",
@@ -558,5 +559,18 @@
   "taskEmptyInProgressFun": "The team is catching its breath.",
   "taskEmptyCompletedFun": "The first check mark feels great, go get it!",
   "dashEmptyFun": "A calm day ahead. Enjoy the quiet!",
-  "taskDashEmptyFun": "Nothing on your plate. Lucky you!"
+  "taskDashEmptyFun": "Nothing on your plate. Lucky you!",
+  "settingsWidgetQuotesSummary": "Quotes summary",
+  "settingsWidgetQuotesLatest": "Latest quotes",
+  "quoteEmptyTitle": "No quote requests yet.",
+  "quoteEmptyFun": "The mailbox is quiet. Enjoy the calm!",
+  "dashQuotesSummary": "Quotes",
+  "dashQuotesNeedReply": "Needs reply",
+  "dashQuotesWaiting": "Waiting on customer",
+  "dashQuotesOverdue": "Overdue",
+  "dashQuotesInboxZero": "Inbox zero!",
+  "dashQuotesInboxZeroFun": "Nobody is waiting on you. Go grab a coffee.",
+  "dashQuotesLatest": "Latest quotes",
+  "dashQuotesLatestEmpty": "No quote requests yet.",
+  "dashQuotesLatestFun": "The next customer is on the way."
 }
