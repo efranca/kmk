@@ -60,9 +60,17 @@ describe("QuotesPage", () => {
 
   it("shows a picture and a fun line when there are no requests at all", async () => {
     mockApi({ "GET /api/quotes": { quotes: [], counts: { new: 0, customer_replied: 0, replied: 0 } } });
-    const { container } = renderWithProviders(<QuotesPage />);
+    const { container } = renderWithProviders(<QuotesPage />, { route: "/quotes?tab=all" });
     expect(await screen.findByText("No quote requests yet.")).toBeInTheDocument();
     expect(screen.getByText("The mailbox is quiet. Enjoy the calm!")).toBeInTheDocument();
+    expect(container.querySelector("svg[data-art='quotes']")).toBeInTheDocument();
+  });
+
+  it("says all is caught up, not 'no requests yet', when only the New tab is empty", async () => {
+    mockApi({ "GET /api/quotes": { quotes: [], counts: { new: 0, customer_replied: 0, replied: 3 } } });
+    const { container } = renderWithProviders(<QuotesPage />);
+    expect(await screen.findByText("Nothing new. You're all caught up!")).toBeInTheDocument();
+    expect(screen.queryByText("No quote requests yet.")).toBeNull();
     expect(container.querySelector("svg[data-art='quotes']")).toBeInTheDocument();
   });
 

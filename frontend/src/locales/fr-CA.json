@@ -572,5 +572,6 @@
   "dashQuotesInboxZeroFun": "Personne n'attend après vous. Allez prendre un café.",
   "dashQuotesLatest": "Dernières soumissions",
   "dashQuotesLatestEmpty": "Aucune demande de soumission pour l'instant.",
-  "dashQuotesLatestFun": "Le prochain client est en route."
+  "dashQuotesLatestFun": "Le prochain client est en route.",
+  "quoteEmptyNewTitle": "Rien de nouveau. Vous êtes à jour!"
 }
