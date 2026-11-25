@@ -22,10 +22,12 @@ A new API setting has to be added to `api.environment` in the compose file, or t
 - Generate them once. The command prints a new pair and reads neither `.env` file, so it can run from the backend virtual environment:
 
   ```bash
-  cd backend && .venv/bin/python -m app.cli vapid-keys >> ../deploy/.env
+  cd backend
+  [ -n "$(tail -c1 ../deploy/.env)" ] && echo >> ../deploy/.env   # the file must end with a newline, or the first new line is glued onto the last one
+  .venv/bin/python -m app.cli vapid-keys >> ../deploy/.env
   ```
 
-  This appends `VAPID_PUBLIC_KEY=...` and `VAPID_PRIVATE_KEY=...` without showing them on screen. Check with `grep -c '^VAPID' ../deploy/.env` (expect `2`).
+  This appends `VAPID_PUBLIC_KEY=...` and `VAPID_PRIVATE_KEY=...` without showing them on screen. Check with `grep -c '^VAPID' ../deploy/.env` (expect `2`), and that no other line was changed (for example `RESEND_API_KEY` must still be a single short value).
 - Running it again appends a second pair. Delete the extra pair. Changing the pair after devices have subscribed turns every device's notifications off.
 - Back up the private key, as you do the `MFA_ENCRYPTION_KEY`.
 - Optional: set `VAPID_SUBJECT=mailto:you@example.com` (default `mailto:admin@kmk-entretien.ca`).
