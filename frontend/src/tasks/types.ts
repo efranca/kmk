@@ -14,8 +14,9 @@ export type Task = {
   due_date: string | null;
   completed_at: string | null;
   show_on_dashboard: boolean;
-  created_by: UserRef;
-  updated_by: UserRef;
+  /** null = made by the website (a quote request). */
+  created_by: UserRef | null;
+  updated_by: UserRef | null;
   created_at: string;
   updated_at: string;
 };

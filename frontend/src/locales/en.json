@@ -316,6 +316,7 @@
   "taskNoCategory": "No category",
   "taskFieldDescription": "Description",
   "taskShowOnDashboard": "Show on the Dashboard",
+  "createdByWebsite": "Website",
   "taskCreatedBy": "Added by {{name}} on {{when}}",
   "taskUpdatedBy": "Changed by {{name}} on {{when}}",
   "taskDeleteQuestion": "Delete this task?",

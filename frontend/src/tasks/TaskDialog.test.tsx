@@ -115,6 +115,13 @@ describe("TaskDialog", () => {
     expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Title")).toBeDisabled();
   });
+
+  it("says a task made by the website was added by the Website", async () => {
+    api();
+    const fromWebsite: Task = { ...existing, created_by: null, updated_by: null, updated_at: existing.created_at };
+    renderWithProviders(<TaskDialog task={fromWebsite} defaultPeople={[]} onClose={vi.fn()} />);
+    expect(await screen.findByText(/Added by Website on/)).toBeInTheDocument();
+  });
 });
 
 function reply204() {

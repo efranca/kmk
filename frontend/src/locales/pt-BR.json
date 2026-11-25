@@ -316,6 +316,7 @@
   "taskNoCategory": "Sem categoria",
   "taskFieldDescription": "Descrição",
   "taskShowOnDashboard": "Mostrar no painel",
+  "createdByWebsite": "Site",
   "taskCreatedBy": "Adicionada por {{name}} em {{when}}",
   "taskUpdatedBy": "Alterada por {{name}} em {{when}}",
   "taskDeleteQuestion": "Excluir esta tarefa?",

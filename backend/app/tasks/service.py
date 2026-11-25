@@ -93,11 +93,12 @@ def task_payloads(db: Session, tasks: list[Task]) -> list[dict]:
     if ids:
         for task_id, user_id in db.execute(select(TaskPerson.task_id, TaskPerson.user_id).where(TaskPerson.task_id.in_(ids))):
             people[task_id].append(user_id)
-    user_ids = {t.created_by for t in tasks} | {t.updated_by for t in tasks}
+    user_ids = {i for t in tasks for i in (t.created_by, t.updated_by) if i is not None}
     users = {u.id: u for u in db.scalars(select(User).where(User.id.in_(user_ids)))} if user_ids else {}
 
-    def ref(user_id: int) -> dict:
-        return {"id": user_id, "name": display_name(users[user_id])}
+    def ref(user_id: int | None) -> dict | None:
+        """None = made by the website (no person)."""
+        return None if user_id is None else {"id": user_id, "name": display_name(users[user_id])}
 
     return [
         {
