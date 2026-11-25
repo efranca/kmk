@@ -59,6 +59,26 @@ describe("Devices page", () => {
     expect(within(bob).getByText("Safari · iOS")).toBeInTheDocument();
   });
 
+  it("sums up people, sessions and who is active right now", async () => {
+    mockApi();
+    renderWithProviders(<DevicesPage />);
+    await screen.findByRole("region", { name: /Alice Roy/ });
+    const stat = (label: string) => screen.getByText(label, { selector: ".devices-stat__label" }).parentElement!;
+    expect(stat(en.deviceStatPeople)).toHaveTextContent("2");
+    expect(stat(en.deviceStatSessions)).toHaveTextContent("3");
+    expect(stat(en.deviceActiveNow)).toHaveTextContent("3"); // all three were seen just now
+  });
+
+  it("marks a device that was seen in the last minutes as active now, and not an older one", async () => {
+    const old = new Date(Date.now() - 3 * 3600_000).toISOString();
+    mockApi(() => res(200, { users: [{ user: data.users[1].user, sessions: [{ ...data.users[1].sessions[0], last_seen_at: old }, data.users[1].sessions[1]] }] }));
+    renderWithProviders(<DevicesPage />);
+    const bob = await screen.findByRole("region", { name: /Bob Tremblay/ });
+    const [first, second] = within(bob).getAllByRole("listitem");
+    expect(within(first).queryByText(en.deviceActiveNow)).toBeNull();
+    expect(within(second).getByText(en.deviceActiveNow)).toBeInTheDocument();
+  });
+
   it("shows the place with a flag, or says local network or unknown", async () => {
     mockApi();
     renderWithProviders(<DevicesPage />);

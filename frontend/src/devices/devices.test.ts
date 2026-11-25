@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { flagEmoji, isPrivateAddress, parseUserAgent, relativeTime } from "./devices";
+import { flagEmoji, isPrivateAddress, parseUserAgent, relativeTime, deviceKind, isActiveNow } from "./devices";
 
 const UA = {
   chromeWin: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
@@ -61,5 +61,22 @@ describe("relativeTime", () => {
   it("says now for the last minute (and for a clock slightly ahead)", () => {
     expect(relativeTime("2026-11-24T11:59:40Z", now, "en")).toBe("now");
     expect(relativeTime("2026-11-24T12:00:30Z", now, "en")).toBe("now");
+  });
+});
+
+describe("deviceKind", () => {
+  it("is a phone for Android and iOS, a computer for anything else (and when unknown)", () => {
+    expect(deviceKind("Android")).toBe("phone");
+    expect(deviceKind("iOS")).toBe("phone");
+    for (const os of ["Windows", "macOS", "Linux", "ChromeOS", null]) expect(deviceKind(os)).toBe("computer");
+  });
+});
+
+describe("isActiveNow", () => {
+  const now = new Date("2026-11-24T12:00:00Z");
+  it("is true for a session seen in the last five minutes, false after", () => {
+    expect(isActiveNow("2026-11-24T11:56:00Z", now)).toBe(true);
+    expect(isActiveNow("2026-11-24T12:00:30Z", now)).toBe(true); // a clock slightly ahead
+    expect(isActiveNow("2026-11-24T11:54:00Z", now)).toBe(false);
   });
 });
