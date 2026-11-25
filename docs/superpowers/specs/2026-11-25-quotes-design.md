@@ -23,7 +23,7 @@ an email and a push notification.
   Montserrat fonts, radii, shadows, buttons and form fields (`.form`, `.field`, `.f2`, `.btn-primary`), plus a simple
   header (logo linking to `https://kmk-entretien.ca/fr/`) and footer in the public site's style. It uses nothing from
   the internal app's design system.
-- **Languages:** fr-CA (default), en-CA and pt-BR, with a switcher. `?lang=en` / `?lang=pt` preselect a language so the
+- **Languages:** fr-CA (default) and en-CA, with a switcher (Portuguese was removed from the form and from the sign-in page at the owner's request; people still get Portuguese inside the app). `?lang=fr` / `?lang=en` preselect a language so the
   public site's English page can link straight to the English form.
 - **Fields:**
   - Contact (all required): name (1-100), email (valid address), phone (7-30 characters, digits, spaces, `+ ( ) - .`).
@@ -197,7 +197,7 @@ sender is set.
   file, its own small i18n. It shares the build, vitest and the deploy, and carries no internal app code. Trade-off: the
   header, footer and tokens are a copy that can drift from kmk-public.
 - B. Plain HTML and JS served by Caddy, copied from kmk-public's `layout.html` and `kmk.css`: closest look, but no
-  tests, and validation, uploads and three languages written by hand.
+  tests, and validation, uploads and the languages written by hand.
 - C. A form on kmk-public (Cloudflare) posting cross-origin to the API: ruled out, since the owner wants it hosted here.
 
 **Push**
