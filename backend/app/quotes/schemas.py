@@ -1,6 +1,7 @@
 """The body of the public form."""
 
 import re
+from datetime import datetime
 import unicodedata
 from typing import Literal
 
@@ -101,3 +102,44 @@ class QuoteIn(BaseModel):
             if getattr(self, key) is not None:
                 out[key] = getattr(self, key)
         return out
+
+
+STATUSES = ("new", "replied", "customer_replied", "won", "lost")
+NOTE_MAX = 5000
+BODY_MAX = 20_000
+
+
+class QuotePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["new", "replied", "customer_replied", "won", "lost"] | None = None
+    internal_note: str | None = Field(default=None, max_length=NOTE_MAX)
+
+
+class MessageIn(BaseModel):
+    """`out` is emailed to the customer; `in` is a customer reply pasted from the team's mailbox."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    direction: Literal["out", "in"]
+    subject: str | None = Field(default=None, max_length=200)
+    body: str = Field(min_length=1, max_length=BODY_MAX)
+    sent_at: datetime | None = None
+
+    @field_validator("body")
+    @classmethod
+    def _body(cls, v: str) -> str:
+        v = v.replace("\r\n", "\n").strip()
+        if not v:
+            raise ValueError("empty")
+        return v
+
+    @model_validator(mode="after")
+    def _per_direction(self) -> "MessageIn":
+        if self.direction == "out":
+            if not (self.subject and self.subject.strip()) or self.sent_at is not None:
+                raise ValueError("a reply needs a subject and no date")
+            self.subject = self.subject.strip()
+        elif self.subject is not None:
+            raise ValueError("a pasted reply has no subject")
+        return self

@@ -130,3 +130,19 @@ def check_task(actor: User, creator_id: int | None, person_ids: frozenset[int]) 
 def check_task_status(actor: User, creator_id: int | None, person_ids: frozenset[int]) -> None:
     if not can_set_task_status(actor, creator_id, person_ids):
         raise ApiError(403, "forbidden")
+
+
+def can_manage_quotes(actor: User) -> bool:
+    """Who reads quote requests, replies to customers and changes a quote's status: admins and the super admin."""
+    return actor.role in PRIVILEGED
+
+
+def check_quotes(actor: User) -> None:
+    if not can_manage_quotes(actor):
+        raise ApiError(403, "forbidden")
+
+
+def check_quote_delete(actor: User) -> None:
+    """Deleting a customer's request (and its photos and conversation) is for the super admin only."""
+    if actor.role != "superadmin":
+        raise ApiError(403, "forbidden")
