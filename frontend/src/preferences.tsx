@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { request } from "./schedule/api";
-import { applyTheme, type Theme } from "./theme";
+import { applyTheme, DEFAULT_THEME, type Theme } from "./theme";
 
 /** What a person has chosen about how the app looks and behaves; it follows the account to every device. */
 export type Preferences = {
@@ -19,7 +19,7 @@ export type Preferences = {
 export type PreferencesPatch = Partial<Omit<Preferences, "dashboard_widgets">> & { dashboard_widgets?: Partial<Preferences["dashboard_widgets"]> };
 
 export const DEFAULT_PREFERENCES: Preferences = {
-  theme: "kmk",
+  theme: DEFAULT_THEME,
   sidebar_collapsed: false,
   tasks_view: "list",
   show_tasks_on_schedule: false,

@@ -41,6 +41,11 @@ describe("Settings page", () => {
     expect(screen.getByRole("radio", { name: frCA.themeDark })).toBeInTheDocument();
   });
 
+  it("explains what the theme changes", () => {
+    render(<Providers><SettingsPage onLanguageChanged={vi.fn()} /></Providers>);
+    expect(screen.getByRole("radiogroup", { name: frCA.settingsTheme })).toHaveAccessibleDescription(frCA.settingsThemeHint);
+  });
+
   it("applies and remembers the chosen theme", () => {
     render(<Providers><SettingsPage onLanguageChanged={vi.fn()} /></Providers>);
     fireEvent.click(screen.getByRole("radio", { name: frCA.themeDark }));

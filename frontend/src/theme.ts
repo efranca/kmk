@@ -1,15 +1,16 @@
 export type Theme = "kmk" | "light" | "dark";
 export const THEMES: Theme[] = ["kmk", "light", "dark"];
 
+export const DEFAULT_THEME: Theme = "light";
 const KEY = "kmk.theme";
 
-/** The saved theme for this device; anything unknown (or unreadable storage) means the KMK look. */
+/** The saved theme for this device; anything unknown (or unreadable storage) means the default look. */
 export function getTheme(): Theme {
   try {
     const value = localStorage.getItem(KEY);
-    return THEMES.includes(value as Theme) ? (value as Theme) : "kmk";
+    return THEMES.includes(value as Theme) ? (value as Theme) : DEFAULT_THEME;
   } catch {
-    return "kmk";
+    return DEFAULT_THEME;
   }
 }
 

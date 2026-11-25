@@ -3,7 +3,7 @@ import pytest
 from helpers import ORIGIN, login, sql
 
 DEFAULTS = {
-    "theme": "kmk",
+    "theme": "light",
     "sidebar_collapsed": False,
     "tasks_view": "list",
     "show_tasks_on_schedule": False,
@@ -74,7 +74,7 @@ def test_garbage_in_the_column_falls_back_to_defaults(make_client, add_user, own
     c, h, _ = session(make_client, add_user)
     sql(owner_engine, "UPDATE users SET preferences = '{\"theme\": \"purple\", \"tasks_view\": \"board\", \"junk\": 1}'")
     prefs = c.get("/api/auth/me").json()["preferences"]
-    assert prefs["theme"] == "kmk" and prefs["tasks_view"] == "board"
+    assert prefs["theme"] == "light" and prefs["tasks_view"] == "board"
 
 
 def test_admin_user_list_has_no_preferences(make_client, add_user):

@@ -43,7 +43,7 @@ describe("preferences", () => {
     vi.stubGlobal("fetch", vi.fn(async () => reply(200, { preferences: DEFAULT_PREFERENCES })));
     show();
     fireEvent.click(screen.getByText("hide"));
-    expect(screen.getByTestId("out")).toHaveTextContent("kmk|list|false|true");
+    expect(screen.getByTestId("out")).toHaveTextContent("light|list|false|true");
   });
 
   it("rolls back when the server refuses", async () => {
@@ -54,8 +54,8 @@ describe("preferences", () => {
     fireEvent.click(screen.getByText("dark"));
     expect(screen.getByTestId("out")).toHaveTextContent("dark|list");
     await act(async () => { refuse(); });
-    await waitFor(() => expect(screen.getByTestId("out")).toHaveTextContent("kmk|list"));
-    expect(document.documentElement.dataset.theme).toBe("kmk");
+    await waitFor(() => expect(screen.getByTestId("out")).toHaveTextContent("light|list"));
+    expect(document.documentElement.dataset.theme).toBe("light");
   });
 
   it("fills defaults for missing keys of what the server sent", () => {
@@ -78,7 +78,7 @@ describe("preferences", () => {
         <>
           <p data-testid="t">{prefs.theme}</p>
           <p data-testid="w">{`${prefs.dashboard_widgets.my_events}|${prefs.dashboard_widgets.all_events}`}</p>
-          <button onClick={() => { update({ theme: "dark" }); update({ theme: "light" }); }}>themes</button>
+          <button onClick={() => { update({ theme: "dark" }); update({ theme: "kmk" }); }}>themes</button>
           <button onClick={() => { update({ dashboard_widgets: { my_events: false } }); update({ dashboard_widgets: { all_events: false } }); }}>widgets</button>
         </>
       );
@@ -87,7 +87,7 @@ describe("preferences", () => {
     fireEvent.click(screen.getByText("themes"));
     await act(async () => { failFirst(); });
     await waitFor(() => expect(calls).toBe(2));
-    expect(screen.getByTestId("t")).toHaveTextContent("light"); // the older failure must not bring back "kmk"
+    expect(screen.getByTestId("t")).toHaveTextContent("kmk"); // the older failure must not bring back the default
 
     // the same for two toggles of the widgets object: only the failed one comes back
     calls = 0;

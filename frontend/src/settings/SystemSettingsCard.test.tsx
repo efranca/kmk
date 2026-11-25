@@ -18,6 +18,12 @@ describe("SystemSettingsCard", () => {
     expect(calls).toHaveLength(0);
   });
 
+  it("says it is for the super administrator only", async () => {
+    mockApi({ "GET /api/settings/system": { settings: VALUES } });
+    renderWithProviders(<SystemSettingsCard />, { session: { user: boss } });
+    expect(await screen.findByText("Super administrator only")).toBeInTheDocument();
+  });
+
   it("shows the four settings and saves them", async () => {
     const { calls } = mockApi({ "GET /api/settings/system": { settings: VALUES }, "PATCH /api/settings/system": { settings: { ...VALUES, public_phone: "(418) 555-0199" } } });
     renderWithProviders(<SystemSettingsCard />, { session: { user: boss } });
@@ -25,7 +31,7 @@ describe("SystemSettingsCard", () => {
     expect(screen.getByLabelText("Quote sender (From)")).toHaveValue("KMK <devis@mail.example>");
     expect(screen.getByLabelText("Reply-To address")).toHaveValue("kmk@gmail.com");
     fireEvent.change(screen.getByLabelText("Public phone number"), { target: { value: "(418) 555-0199" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ ...VALUES, public_phone: "(418) 555-0199" }));
     expect(await screen.findByText("Settings saved")).toBeInTheDocument();
   });
@@ -37,7 +43,7 @@ describe("SystemSettingsCard", () => {
     });
     renderWithProviders(<SystemSettingsCard />, { session: { user: boss } });
     fireEvent.change(await screen.findByLabelText("Reply-To address"), { target: { value: "nope" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(await screen.findByText(/not valid/)).toBeInTheDocument();
   });
 });

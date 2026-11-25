@@ -12,7 +12,7 @@ from app.auth.guard import guard
 from app.models import User, UserSession
 
 DEFAULTS: dict = {
-    "theme": "kmk",
+    "theme": "light",
     "sidebar_collapsed": False,
     "tasks_view": "list",
     "show_tasks_on_schedule": False,

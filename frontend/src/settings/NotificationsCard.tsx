@@ -53,7 +53,7 @@ export function NotificationsCard() {
   return (
     <section className="section settings-card">
       <h2>{t("pushTitle")}</h2>
-      <p className="status">{t("pushIntro")}</p>
+      <p className="settings-hint">{t("pushIntro")}</p>
       <p className={state === "on" ? "status ok" : "status"} role="status">{message[state]}</p>
       {state !== "unsupported" && needsHomeScreen() && <p className="notice">{t("pushIosHint")}</p>}
       {failure !== null && <ErrorNotice error={failure} />}
