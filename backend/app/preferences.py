@@ -20,7 +20,7 @@ DEFAULTS: dict = {
     "show_document_categories": False,
     "show_menu_labels": True,
     "documents_view": "list",
-    "dashboard_widgets": {"my_events": True, "all_events": True, "my_tasks": True},
+    "dashboard_widgets": {"my_events": True, "all_events": True, "my_tasks": True, "quotes_summary": True, "quotes_latest": True},
 }
 
 
@@ -30,6 +30,8 @@ class WidgetsIn(BaseModel):
     my_events: bool | None = None
     all_events: bool | None = None
     my_tasks: bool | None = None
+    quotes_summary: bool | None = None
+    quotes_latest: bool | None = None
 
 
 class PreferencesIn(BaseModel):

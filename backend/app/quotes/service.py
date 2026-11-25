@@ -48,10 +48,10 @@ def list_quotes(db: Session, status: str) -> dict:
     if status != "all":
         query = query.where(Quote.status == status)
     rows = db.execute(query.order_by(Quote.submitted_at.desc(), Quote.id.desc())).all()
-    counts = dict(db.execute(select(Quote.status, func.count()).where(Quote.status.in_(("new", "customer_replied"))).group_by(Quote.status)).all())
+    counts = dict(db.execute(select(Quote.status, func.count()).where(Quote.status.in_(("new", "customer_replied", "replied"))).group_by(Quote.status)).all())
     return {
         "quotes": [_summary(q, n) for q, n in rows],
-        "counts": {"new": counts.get("new", 0), "customer_replied": counts.get("customer_replied", 0)},
+        "counts": {"new": counts.get("new", 0), "customer_replied": counts.get("customer_replied", 0), "replied": counts.get("replied", 0)},
     }
 
 

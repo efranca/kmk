@@ -58,7 +58,7 @@ def test_admin_lists_and_reads(ana):
     a = new_quote(c, message="Plusieurs détails")
     assert photo(c, a["id"], a["token"]).status_code == 404  # already sent: only drafts take photos
     listing = c.get("/api/quotes").json()
-    assert listing["counts"] == {"new": 1, "customer_replied": 0}
+    assert listing["counts"] == {"new": 1, "customer_replied": 0, "replied": 0}
     (row,) = listing["quotes"]
     assert row["reference"] == f"D-{a['id']:04d}" and row["status"] == "new" and row["name"] == "Maria Silva"
     assert row["kind"] == "airbnb" and row["city"] == "Québec" and row["messages"] == 0 and row["overdue"] is False
@@ -112,6 +112,7 @@ def test_first_reply_emails_completes_the_task_and_removes_the_event(ana, owner_
     assert status == "completed" and done_at is not None and done_by == ana_id
     assert sql(owner_engine, "SELECT count(*) FROM events")[0][0] == 0
     assert sql(owner_engine, "SELECT event_id, first_reply_at IS NOT NULL FROM quotes")[0] == (None, True)
+    assert c.get("/api/quotes").json()["counts"] == {"new": 0, "customer_replied": 0, "replied": 1}
 
 
 def test_pasted_reply_then_our_reply_flow(ana, owner_engine, configured, outbox):
@@ -119,7 +120,7 @@ def test_pasted_reply_then_our_reply_flow(ana, owner_engine, configured, outbox)
     qid = new_quote(c)["id"]
     reply(c, h, qid)
     assert paste(c, h, qid).json()["quote"]["status"] == "customer_replied"
-    assert c.get("/api/quotes").json()["counts"] == {"new": 0, "customer_replied": 1}
+    assert c.get("/api/quotes").json()["counts"] == {"new": 0, "customer_replied": 1, "replied": 0}
     assert reply(c, h, qid, body="Parfait, on confirme.").json()["quote"]["status"] == "replied"
     assert sql(owner_engine, "SELECT count(*) FROM tasks WHERE status = 'completed'")[0][0] == 1  # nothing new was created
     conversation = c.get(f"/api/quotes/{qid}").json()["quote"]["conversation"]
