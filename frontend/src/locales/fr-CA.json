@@ -558,5 +558,7 @@
   "taskEmptyInProgressFun": "L’équipe reprend son souffle.",
   "taskEmptyCompletedFun": "La première coche fait tellement plaisir, allez-y !",
   "dashEmptyFun": "Une journée tranquille s’annonce. Profitez du calme !",
-  "taskDashEmptyFun": "Rien dans votre assiette. Quelle chance !"
+  "taskDashEmptyFun": "Rien dans votre assiette. Quelle chance !",
+  "settingsWidgetQuotesSummary": "Résumé des soumissions",
+  "settingsWidgetQuotesLatest": "Dernières soumissions"
 }

@@ -558,5 +558,7 @@
   "taskEmptyInProgressFun": "A equipe está recuperando o fôlego.",
   "taskEmptyCompletedFun": "O primeiro check é uma delícia, vá em frente!",
   "dashEmptyFun": "Um dia tranquilo pela frente. Aproveite a calma!",
-  "taskDashEmptyFun": "Nada no seu prato. Que sorte!"
+  "taskDashEmptyFun": "Nada no seu prato. Que sorte!",
+  "settingsWidgetQuotesSummary": "Resumo dos orçamentos",
+  "settingsWidgetQuotesLatest": "Últimos orçamentos"
 }
