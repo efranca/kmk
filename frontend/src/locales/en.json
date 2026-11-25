@@ -560,5 +560,7 @@
   "dashEmptyFun": "A calm day ahead. Enjoy the quiet!",
   "taskDashEmptyFun": "Nothing on your plate. Lucky you!",
   "settingsWidgetQuotesSummary": "Quotes summary",
-  "settingsWidgetQuotesLatest": "Latest quotes"
+  "settingsWidgetQuotesLatest": "Latest quotes",
+  "quoteEmptyTitle": "No quote requests yet.",
+  "quoteEmptyFun": "The mailbox is quiet. Enjoy the calm!"
 }

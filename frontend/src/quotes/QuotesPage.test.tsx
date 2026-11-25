@@ -58,9 +58,27 @@ describe("QuotesPage", () => {
     expect(await screen.findByText("No quote matches your search.")).toBeInTheDocument();
   });
 
-  it("says so when there is nothing in the tab", async () => {
-    mockApi({ "GET /api/quotes": { quotes: [], counts: { new: 0, customer_replied: 0 } } });
-    renderWithProviders(<QuotesPage />);
+  it("shows a picture and a fun line when there are no requests at all", async () => {
+    mockApi({ "GET /api/quotes": { quotes: [], counts: { new: 0, customer_replied: 0, replied: 0 } } });
+    const { container } = renderWithProviders(<QuotesPage />);
+    expect(await screen.findByText("No quote requests yet.")).toBeInTheDocument();
+    expect(screen.getByText("The mailbox is quiet. Enjoy the calm!")).toBeInTheDocument();
+    expect(container.querySelector("svg[data-art='quotes']")).toBeInTheDocument();
+  });
+
+  it("says so plainly, without a picture, when another tab is empty", async () => {
+    mockApi({ "GET /api/quotes": { quotes: [], counts: { new: 0, customer_replied: 0, replied: 0 } } });
+    const { container } = renderWithProviders(<QuotesPage />, { route: "/quotes?tab=replied" });
     expect(await screen.findByText("No quotes here yet.")).toBeInTheDocument();
+    expect(container.querySelector("svg[data-art='quotes']")).toBeNull();
+  });
+
+  it("opens on the tab named in the address, and on New when it is unknown", async () => {
+    api();
+    const first = renderWithProviders(<QuotesPage />, { route: "/quotes?tab=replied" });
+    expect(await screen.findByRole("radio", { name: "Replied" })).toBeChecked();
+    first.unmount();
+    renderWithProviders(<QuotesPage />, { route: "/quotes?tab=bogus" });
+    expect(await screen.findByRole("radio", { name: "New" })).toBeChecked();
   });
 });

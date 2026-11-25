@@ -560,5 +560,7 @@
   "dashEmptyFun": "Une journée tranquille s’annonce. Profitez du calme !",
   "taskDashEmptyFun": "Rien dans votre assiette. Quelle chance !",
   "settingsWidgetQuotesSummary": "Résumé des soumissions",
-  "settingsWidgetQuotesLatest": "Dernières soumissions"
+  "settingsWidgetQuotesLatest": "Dernières soumissions",
+  "quoteEmptyTitle": "Aucune demande de soumission pour l'instant.",
+  "quoteEmptyFun": "La boîte aux lettres est calme. Profitez-en!"
 }

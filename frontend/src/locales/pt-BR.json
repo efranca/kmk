@@ -560,5 +560,7 @@
   "dashEmptyFun": "Um dia tranquilo pela frente. Aproveite a calma!",
   "taskDashEmptyFun": "Nada no seu prato. Que sorte!",
   "settingsWidgetQuotesSummary": "Resumo dos orçamentos",
-  "settingsWidgetQuotesLatest": "Últimos orçamentos"
+  "settingsWidgetQuotesLatest": "Últimos orçamentos",
+  "quoteEmptyTitle": "Nenhum pedido de orçamento ainda.",
+  "quoteEmptyFun": "A caixa de correio está quieta. Aproveite a calma!"
 }
