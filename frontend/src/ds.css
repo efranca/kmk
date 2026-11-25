@@ -73,7 +73,7 @@ button { min-height: var(--touch-target); }
 @media (min-width: 640px) {
   .app { grid-template-columns: var(--nav-rail) minmax(0, 1fr); }
   .appnav { min-height: 0; }
-  .app__main { padding: var(--space-5); max-width: var(--content-max); }
+  .app__main { padding: var(--space-5); }
 }
 @media (min-width: 1024px) { .app:not(.app--collapsed) { grid-template-columns: var(--nav-width) minmax(0, 1fr); } }
 @media (max-width: 639px) { .app__main { padding-bottom: calc(var(--bar-height) + 24px + env(safe-area-inset-bottom)); } .reminders { bottom: calc(var(--bar-height) + 12px + env(safe-area-inset-bottom)); } }
