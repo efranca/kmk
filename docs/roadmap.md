@@ -96,3 +96,5 @@ F17 safe-name check for scratch databases; F18 failed weekly copy handling; F24 
 
 AI features and customer records: AI tool calls run as the signed-in user, with a read-only database role and a separate schema for customer data; prompts and tool calls go to the audit log;
 know where LiteLLM sends data. None of this is built, and each needs its own design.
+
+Admins also have two Dashboard cards for the quote requests (a summary of what needs a reply, waits on the customer or is overdue, and the five latest requests), and the Quotes screen has a friendly empty state; see the [design](superpowers/specs/2026-11-25-quotes-widgets-design.md).
