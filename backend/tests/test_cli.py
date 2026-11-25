@@ -122,3 +122,14 @@ def test_set_name_unknown_user_and_invalid_name(owner_engine, add_user, capsys):
     assert cli.main(["set-name", "--username", "alice", "--name", "<script>"]) == 1
     assert rows(owner_engine, "SELECT name FROM users")[0][0] is None
     assert rows(owner_engine, "SELECT count(*) FROM audit_log")[0][0] == 0
+
+
+def test_vapid_keys_prints_two_lines_and_nothing_else(capsys):
+    assert cli.main(["vapid-keys"]) == 0
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert [l.split("=")[0] for l in lines] == ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY"]
+    import base64
+
+    public = base64.urlsafe_b64decode(lines[0].split("=", 1)[1] + "==")
+    private = base64.urlsafe_b64decode(lines[1].split("=", 1)[1] + "==")
+    assert len(public) == 65 and public[0] == 4 and len(private) == 32

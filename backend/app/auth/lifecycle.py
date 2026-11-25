@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.errors import ApiError
-from app.models import User, UserAvatar
+from app.models import PushSubscription, User, UserAvatar
 
 ROLES = ("user", "admin")
 
@@ -22,6 +22,11 @@ def _now() -> datetime:
 
 def revoke_sessions(db: Session, user_id: int) -> None:
     db.execute(text("UPDATE sessions SET revoked_at = now() WHERE user_id = :u AND revoked_at IS NULL"), {"u": user_id})
+
+
+def drop_push(db: Session, user_id: int) -> None:
+    """A disabled, deleted or demoted person stops getting notifications on their devices."""
+    db.execute(sql_delete(PushSubscription).where(PushSubscription.user_id == user_id))
 
 
 def void_tokens(db: Session, user_id: int) -> None:
@@ -49,6 +54,7 @@ def disable(db: Session, target: User) -> None:
     target.status = "disabled"
     target.updated_at = _now()
     revoke_sessions(db, target.id)
+    drop_push(db, target.id)
 
 
 def enable(db: Session, target: User) -> None:
@@ -67,6 +73,7 @@ def delete(db: Session, target: User) -> None:
     target.updated_at = _now()
     revoke_sessions(db, target.id)
     void_tokens(db, target.id)
+    drop_push(db, target.id)
     # A deleted person's picture goes with the account (nobody can see it or take it down afterwards).
     db.execute(sql_delete(UserAvatar).where(UserAvatar.user_id == target.id))
     target.avatar_updated_at = None
@@ -88,6 +95,8 @@ def change_role(db: Session, target: User, new_role: str) -> None:
     target.role = new_role
     target.updated_at = _now()
     revoke_sessions(db, target.id)
+    if new_role == "user":
+        drop_push(db, target.id)
 
 
 def update(db: Session, target: User, locale: str | None, email: str | None, name: str | None = None) -> list[str]:

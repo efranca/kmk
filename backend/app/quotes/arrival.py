@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app import system_settings
 from app.config import Settings, get_settings
 from app.emails import sender
+from app.push import service as push
 from app.models import Event, EventPerson, EventReminder, Quote, Task, TaskCategory, TaskPerson, User
 from app.quotes import emails
 from app.schedule.service import COMPANY_TZ
@@ -62,11 +63,4 @@ def notify(engine: Engine, settings: Settings, quote_id: int) -> None:
 
 
 def _push(engine: Engine, settings: Settings, payload: dict) -> None:
-    try:
-        from app.push import service as push  # added by the Web Push task
-    except ImportError:
-        return
-    try:
-        push.send_to_admins(engine, settings, payload)
-    except Exception:
-        log.exception("quote push failed")
+    push.send_to_admins(engine, settings, payload)  # never raises

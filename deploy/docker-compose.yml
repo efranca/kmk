@@ -50,6 +50,9 @@ services:
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://app.kmk-entretien.ca}
       MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:-}
       MFA_REQUIRED_ROLES: ${MFA_REQUIRED_ROLES:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@kmk-entretien.ca}
     mem_limit: 1536m       # Argon2 uses 64 MiB per call (at most 4 at once); a 50 MB document upload holds a few copies (at most 2 at once)
     pids_limit: 256
     cap_drop: [ALL]
