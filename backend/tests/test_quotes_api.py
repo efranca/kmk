@@ -62,6 +62,7 @@ def test_admin_lists_and_reads(ana):
     (row,) = listing["quotes"]
     assert row["reference"] == f"D-{a['id']:04d}" and row["status"] == "new" and row["name"] == "Maria Silva"
     assert row["kind"] == "airbnb" and row["city"] == "Québec" and row["messages"] == 0 and row["overdue"] is False
+    assert row["email"] == "maria@example.com" and row["phone"] == "418-555-0100"  # the list is searched by them
     detail = c.get(f"/api/quotes/{a['id']}").json()["quote"]
     assert detail["email"] == "maria@example.com" and detail["phone"] == "418-555-0100" and detail["message"] == "Plusieurs détails"
     assert detail["details"]["bedrooms"] == 2 and detail["conversation"] == [] and detail["photos"] == []

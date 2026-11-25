@@ -23,12 +23,14 @@ import { SessionProvider } from "./session";
 import { ToastProvider } from "./ui/Toast";
 import SettingsPage from "./SettingsPage";
 import SetPassword from "./SetPassword";
+import { QuoteDetailPage } from "./quotes/QuoteDetailPage";
+import { QuotesPage } from "./quotes/QuotesPage";
 import { DocumentsPage } from "./documents/DocumentsPage";
 import DevicesPage from "./devices/DevicesPage";
 import Shell, { type ShellPage } from "./Shell";
 
 type State = { kind: "checking" } | { kind: "anon" } | { kind: "auth"; session: Session };
-type Page = "checking" | "signin" | "forgot" | "setpw" | "verify" | "setup" | "welcome" | "schedule" | "tasks" | "documents" | "account" | "settings" | "admin" | "devices" | "notfound";
+type Page = "checking" | "signin" | "forgot" | "setpw" | "verify" | "setup" | "welcome" | "schedule" | "tasks" | "documents" | "quotes" | "quoteDetail" | "account" | "settings" | "admin" | "devices" | "notfound";
 
 const BRAND = "KMK Entretien Ménager";
 const TITLE_KEYS: Record<Page, string | null> = {
@@ -42,6 +44,8 @@ const TITLE_KEYS: Record<Page, string | null> = {
   schedule: "schTitle",
   tasks: "taskTitle",
   documents: "docTitle",
+  quotes: "quoteTitle",
+  quoteDetail: "quoteTitle",
   account: "navAccount",
   settings: "settingsTitle",
   admin: "adminTitle",
@@ -53,13 +57,18 @@ function pageFor(path: string, state: State): Page {
   if (path === "/set-password") return "setpw";
   if (path === "/forgot-password") return "forgot";
   if (state.kind === "checking") return "checking";
-  if (state.kind === "anon") return ["/", "/schedule", "/tasks", "/documents", "/account", "/settings", "/admin", "/devices"].includes(path) ? "signin" : "notfound";
+  if (state.kind === "anon") {
+    if (/^\/quotes\/\d+$/.test(path)) return "signin";
+  }
+  if (state.kind === "anon") return ["/", "/schedule", "/tasks", "/documents", "/quotes", "/account", "/settings", "/admin", "/devices"].includes(path) ? "signin" : "notfound";
   if (state.session.mfa === "verify") return "verify";
   if (state.session.mfa === "setup") return "setup";
   if (path === "/") return "welcome";
   if (path === "/schedule") return "schedule";
   if (path === "/tasks") return "tasks";
   if (path === "/documents") return "documents";
+  if (path === "/quotes") return state.session.user.role !== "user" ? "quotes" : "welcome"; // admins and the super admin only
+  if (/^\/quotes\/\d+$/.test(path)) return state.session.user.role !== "user" ? "quoteDetail" : "welcome";
   if (path === "/account") return "account";
   if (path === "/settings") return "settings";
   if (path === "/admin") return state.session.user.role !== "user" ? "admin" : "welcome"; // plain users just see the welcome page
@@ -189,7 +198,7 @@ function AppContent() {
 
   if (state.kind !== "auth") return null;
   const { session } = state;
-  const shellPage: ShellPage = page === "welcome" || page === "schedule" || page === "tasks" || page === "documents" || page === "account" || page === "settings" || page === "admin" || page === "devices" ? page : "notfound";
+  const shellPage: ShellPage = page === "welcome" || page === "schedule" || page === "tasks" || page === "documents" || page === "account" || page === "settings" || page === "admin" || page === "devices" ? page : page === "quotes" || page === "quoteDetail" ? "quotes" : "notfound";
 
   return (
     <SessionProvider value={{ user: session.user, csrfToken: session.csrfToken }}>
@@ -200,7 +209,7 @@ function AppContent() {
       active={shellPage}
       onNavigate={navigate}
       onSignOut={signOut}
-      bare={page === "schedule" || page === "welcome" || page === "tasks" || page === "documents" || page === "admin" || page === "devices" || page === "settings"}
+      bare={page === "schedule" || page === "welcome" || page === "tasks" || page === "documents" || page === "quotes" || page === "quoteDetail" || page === "admin" || page === "devices" || page === "settings"}
     >
       {page === "welcome" && <DashboardPage user={session.user} mfaEnabled={session.mfaEnabled} recoveryCodesLeft={recoveryCodesLeft} />}
       {page === "account" && (
@@ -219,6 +228,8 @@ function AppContent() {
       {page === "schedule" && <SchedulePage />}
       {page === "tasks" && <TasksPage />}
       {page === "documents" && <DocumentsPage />}
+      {page === "quotes" && <QuotesPage />}
+      {page === "quoteDetail" && <QuoteDetailPage id={Number(path.split("/")[2])} />}
       {page === "notfound" && <NotFound onHome={() => navigate("/")} />}
     </Shell>
     </ToastProvider>

@@ -38,7 +38,7 @@ def get_quote(db: Session, quote_id: int, *, lock: bool = False) -> Quote:
 def _summary(quote: Quote, messages: int) -> dict:
     return {
         "id": quote.id, "reference": quote.reference, "status": quote.status, "kind": quote.kind, "name": quote.name,
-        "city": (quote.details or {}).get("city", ""), "submitted_at": _iso(quote.submitted_at), "deadline_at": _iso(quote.deadline_at),
+        "email": quote.email, "phone": quote.phone, "city": (quote.details or {}).get("city", ""), "submitted_at": _iso(quote.submitted_at), "deadline_at": _iso(quote.deadline_at),
         "overdue": quote.status == "new" and quote.deadline_at is not None and quote.deadline_at < _now(), "messages": messages,
     }
 
@@ -70,7 +70,7 @@ def quote_payload(db: Session, quote: Quote) -> dict:
     photos = db.execute(select(QuotePhoto.id, QuotePhoto.content_type, QuotePhoto.size).where(QuotePhoto.quote_id == quote.id).order_by(QuotePhoto.id)).all()
     return {
         **_summary(quote, len(messages)),
-        "email": quote.email, "phone": quote.phone, "locale": quote.locale, "details": quote.details, "message": quote.message,
+        "locale": quote.locale, "details": quote.details, "message": quote.message,
         "internal_note": quote.internal_note, "ip": quote.ip, "geo_country": quote.geo_country, "geo_city": quote.geo_city,
         "user_agent": quote.user_agent, "task_id": quote.task_id, "event_id": quote.event_id, "first_reply_at": _iso(quote.first_reply_at),
         "photos": [{"id": i, "content_type": t, "size": s} for i, t, s in photos],

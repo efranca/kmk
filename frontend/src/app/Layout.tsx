@@ -7,6 +7,7 @@ import AccountMenu from "./AccountMenu";
 import { useSidebarCollapsed } from "./useSidebarCollapsed";
 import { usePreferences } from "../preferences";
 import Nav, { type NavId } from "./Nav";
+import { useQuoteCounts } from "../quotes/hooks";
 
 export type LayoutPage = NavId | "account" | "settings" | "other";
 
@@ -30,10 +31,11 @@ export default function Layout({
   const { t } = useTranslation();
   const [collapsed, toggle] = useSidebarCollapsed();
   const { prefs } = usePreferences();
+  const waiting = useQuoteCounts(user.role !== "user").data;
   return (
     <div className={collapsed ? "app app--collapsed" : "app"}>
       <a className="skip" href="#main">{t("skipToContent")}</a>
-      <Nav active={active === "account" || active === "settings" || active === "other" ? null : active} isAdmin={user.role !== "user"} isSuperAdmin={user.role === "superadmin"} collapsed={collapsed} showLabels={prefs.show_menu_labels}
+      <Nav active={active === "account" || active === "settings" || active === "other" ? null : active} isAdmin={user.role !== "user"} isSuperAdmin={user.role === "superadmin"} collapsed={collapsed} badges={{ quotes: (waiting?.new ?? 0) + (waiting?.customer_replied ?? 0) }} showLabels={prefs.show_menu_labels}
         onToggle={toggle}
         onNavigate={onNavigate}
         footer={

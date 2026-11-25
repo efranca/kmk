@@ -92,3 +92,10 @@ body:has(.app) { display: block; place-items: normal; padding: 0; min-height: 10
 .more-sheet__link { display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 12px; color: var(--text); text-decoration: none; font-weight: 600; }
 .more-sheet__link:hover { background: var(--surface-2); }
 .more-sheet__link[aria-current="page"] { background: var(--surface-2); color: var(--accent); }
+
+/* A small number on a navigation entry (what is waiting for the person). A <b>, not a <span>: the rail hides spans. */
+.appnav > a:not(.appnav__brand) { position: relative; }
+.appnav__badge { position: absolute; top: 2px; right: 6px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 0.8125rem; font-style: normal; font-weight: 700; line-height: 20px; text-align: center; }
+@media (min-width: 1024px) {
+  .app:not(.app--collapsed) .appnav > a:not(.appnav__brand) .appnav__badge { position: static; margin-left: auto; }
+}

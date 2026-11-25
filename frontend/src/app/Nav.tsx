@@ -5,7 +5,7 @@ import { Icon, type IconName } from "../ui/Icon";
 import MoreSheet from "./MoreSheet";
 import { fitTabs, MIN_TAB_PX } from "./navFit";
 
-export type NavId = "dashboard" | "schedule" | "tasks" | "documents" | "admin" | "devices";
+export type NavId = "dashboard" | "schedule" | "tasks" | "documents" | "quotes" | "admin" | "devices";
 type NavItem = { id: NavId; to: string; labelKey: string; icon: IconName; adminOnly?: boolean; superAdminOnly?: boolean };
 
 const ITEMS: NavItem[] = [
@@ -13,6 +13,7 @@ const ITEMS: NavItem[] = [
   { id: "schedule", to: "/schedule", labelKey: "schTitle", icon: "calendar" },
   { id: "tasks", to: "/tasks", labelKey: "taskTitle", icon: "tasks" },
   { id: "documents", to: "/documents", labelKey: "navDocuments", icon: "document" },
+  { id: "quotes", to: "/quotes", labelKey: "quoteTitle", icon: "quote", adminOnly: true },
   { id: "admin", to: "/admin", labelKey: "navUsers", icon: "users", adminOnly: true },
   { id: "devices", to: "/devices", labelKey: "navDevices", icon: "devices", superAdminOnly: true },
 ];
@@ -50,6 +51,7 @@ export default function Nav({
   isAdmin,
   isSuperAdmin,
   collapsed,
+  badges,
   showLabels = true,
   onToggle,
   footer,
@@ -59,6 +61,8 @@ export default function Nav({
   isAdmin: boolean;
   isSuperAdmin: boolean;
   collapsed: boolean;
+  /** A small number on a page's entry: what is waiting for the person (0 or missing shows nothing). */
+  badges?: Partial<Record<NavId, number>>;
   /** Page names in the phone's bottom bar (the person can turn them off in Settings; the icons stay). */
   showLabels?: boolean;
   onToggle: () => void;
@@ -108,6 +112,7 @@ export default function Nav({
         >
           <Icon name={item.icon} size={22} />
           <span>{t(item.labelKey)}</span>
+          {(badges?.[item.id] ?? 0) > 0 && <b className="appnav__badge" aria-label={t("navBadge", { count: badges?.[item.id] })}>{badges?.[item.id]}</b>}
         </a>
       ))}
       {more.length > 0 && (
