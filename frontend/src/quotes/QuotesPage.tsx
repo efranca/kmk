@@ -41,7 +41,7 @@ export function QuotesPage() {
       </div>
       {result.isPending ? <Loading /> : result.isError ? <ErrorNotice error={result.error} onRetry={() => void result.refetch()} /> : rows.length === 0 ? (
         searching ? <EmptyState>{t("quoteNoResults")}</EmptyState>
-        : tab === "new" || tab === "all" ? <EmptyArt art="quotes" title={t("quoteEmptyTitle")} hint={t("quoteEmptyFun")} />
+        : tab === "new" || tab === "all" ? <EmptyArt art="quotes" title={t(tab === "new" ? "quoteEmptyNewTitle" : "quoteEmptyTitle")} hint={t("quoteEmptyFun")} />
         : <EmptyState>{t("quoteEmpty")}</EmptyState>
       ) : (
         <ul className="quote-list">

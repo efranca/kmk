@@ -572,5 +572,6 @@
   "dashQuotesInboxZeroFun": "Ninguém está esperando por você. Vá tomar um café.",
   "dashQuotesLatest": "Últimos orçamentos",
   "dashQuotesLatestEmpty": "Nenhum pedido de orçamento ainda.",
-  "dashQuotesLatestFun": "O próximo cliente está a caminho."
+  "dashQuotesLatestFun": "O próximo cliente está a caminho.",
+  "quoteEmptyNewTitle": "Nada de novo. Está tudo em dia!"
 }

@@ -572,5 +572,6 @@
   "dashQuotesInboxZeroFun": "Nobody is waiting on you. Go grab a coffee.",
   "dashQuotesLatest": "Latest quotes",
   "dashQuotesLatestEmpty": "No quote requests yet.",
-  "dashQuotesLatestFun": "The next customer is on the way."
+  "dashQuotesLatestFun": "The next customer is on the way.",
+  "quoteEmptyNewTitle": "Nothing new. You're all caught up!"
 }
