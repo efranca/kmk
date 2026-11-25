@@ -11,7 +11,7 @@ The product plan is `scope.md`; what is actually built is described in `docs/`.
 
 - `backend/app/` application code. `auth/` holds routes, the guard, services, rate limiting, audit, tokens, MFA. `emails/` is the mail layer. `mfa.py` and `security.py` are pure helpers. `cli.py` is the server-side admin tool.
 - `backend/app/schedule/` the shared calendar: `recurrence.py` (repeat rule, `rrule`), `occurrences.py` (expansion with one-off changes), `service.py`, `routes.py`.
-- `backend/alembic/versions/` migrations (`0001` to `0013`). `backend/tests/` is the test suite.
+- `backend/alembic/versions/` migrations (`0001` to `0014`). `backend/tests/` is the test suite.
 - `backend/app/quotes/` quote requests: `public_routes.py` + `intake.py` (the open form's API), `arrival.py` (task, Agenda item, notice, push), `service.py` + `routes.py` (the admins' area), `emails.py`. `backend/app/push/` Web Push. `backend/app/system_settings.py` the company-wide settings (super admin).
 - `backend/app/tasks/` the task list and its categories: `schemas.py`, `service.py`, `routes.py`.
 - `backend/app/documents/` the company library: `visibility.py` (who sees what, applied in SQL), `limits.py`, `files.py` (type by bytes), `uploads.py` (capped read, upload slots), `service.py`, `routes.py`. `backend/app/auth/devices.py` and `geo.py` are connected devices.
