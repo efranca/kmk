@@ -96,3 +96,9 @@ def test_quote_routes_have_their_own_body_caps():
     assert MAX_PHOTO_BYTES < 9 * 1024 * 1024
     # the other caps are untouched
     assert text.count("max_size 64KB") == 1 and text.count("max_size 51MiB") == 1 and text.count("max_size 128KB") == 1
+
+
+def test_devis_serves_the_quote_page():
+    text = CADDYFILE.read_text()
+    block = text[text.index("@devis path"):text.index("handle /assets/*")]
+    assert "/devis /devis/" in block and "rewrite * /quote.html" in block and "file_server" in block

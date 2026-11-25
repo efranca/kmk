@@ -87,6 +87,14 @@ http://app.kmk-entretien.ca:8081 {
 		import api_proxy
 	}
 
+	# The public quote form is its own page (frontend/quote.html), not the signed-in app.
+	@devis path /devis /devis/
+	handle @devis {
+		rewrite * /quote.html
+		root * /srv/site
+		file_server
+	}
+
 	# Missing assets must 404, not fall back to index.html
 	handle /assets/* {
 		root * /srv/site
