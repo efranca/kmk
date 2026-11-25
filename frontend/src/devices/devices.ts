@@ -54,3 +54,13 @@ export function relativeTime(iso: string, now: Date, locale: string): string {
   if (abs < 86400) return rtf.format(Math.round(seconds / 3600), "hour");
   return rtf.format(Math.round(seconds / 86400), "day");
 }
+
+/** A phone (Android, iOS) or a computer (everything else, and when the system is unknown): picks the device's icon. */
+export function deviceKind(os: string | null): "phone" | "computer" {
+  return os === "Android" || os === "iOS" ? "phone" : "computer";
+}
+
+/** Seen in the last five minutes (the app pings while it is open, so this means someone is using it now). */
+export function isActiveNow(lastSeenIso: string, now: Date): boolean {
+  return now.getTime() - new Date(lastSeenIso).getTime() < 5 * 60_000;
+}
