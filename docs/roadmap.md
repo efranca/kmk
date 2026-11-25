@@ -2,6 +2,13 @@
 
 Where the project stands and what to pick up next. Status of the phases is also in the table in [README.md](README.md).
 
+## Done recently: phase 9, Quote requests
+
+The open quote form (`/devis`), the admins' Quotes area, the task and Agenda deadline per request, the notification email, Web Push, the company-wide System settings and an installable app are built; see the [design](superpowers/specs/2026-11-25-quotes-design.md).
+**Owner steps before it is useful:** VAPID keys in `deploy/.env`, the Resend sender domain, the System settings, notifications on each admin's device, and a link to `/devis` on the public site (which still uses web3forms on its contact pages).
+**Not built, by choice:** inbound email (customer replies are pasted by hand), an automatic confirmation email to the customer, prices or PDF quotes, a captcha, attachments on replies, the public form on the public site's own hosting.
+**Follow-ups:** a review of the new French and Portuguese strings; check the form on real phones (photo picking, HEIC); the app icon is the full logo on a pale tile (swap in a house-only icon if preferred); push on iPhone needs the app added to the Home Screen.
+
 ## Done recently: phase 8, Tasks
 
 The team's task list is built: tasks for people or the whole team with a due date, categories with icons, a "My tasks" Dashboard card and an optional "Show tasks" switch on the Schedule, ported from FamillAI without children, XP or rewards; see the [design](superpowers/specs/2026-11-24-tasks-design.md).

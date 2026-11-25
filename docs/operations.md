@@ -48,6 +48,8 @@ cd deploy && docker compose down             # stop and remove the containers (t
 | `PUBLIC_BASE_URL` | `https://app.kmk-entretien.ca` | no | base of the links in emails |
 | `MFA_ENCRYPTION_KEY` | none | **yes, back it up** | Fernet key that encrypts TOTP secrets. Without it the two-step endpoints answer 503 (login for users without TOTP still works) |
 | `MFA_REQUIRED_ROLES` | empty | no | comma-separated roles forced to use TOTP (for example `admin,superadmin`); empty = nobody forced |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | empty | **private key: yes** | Web Push keys (see "Quote requests" below). Empty = no push is sent. Changing the pair turns every device's notifications off |
+| `VAPID_SUBJECT` | `mailto:admin@kmk-entretien.ca` | no | contact the push services may use |
 
 Further settings exist in `backend/app/config.py` with safe defaults (rate limits `rl_ip_max`=10, `rl_identifier_max`=5, `rl_window_minutes`=15,
 `session_days`=5, `invite_hours`=48, `reset_minutes`=30, `allowed_origins`, `trusted_proxy_ips`, `mfa_issuer`); set them as upper-case environment variables if needed.
@@ -75,6 +77,8 @@ docker compose exec api python -m app.cli --help
 docker compose exec api python -m app.cli create-superadmin --username NAME --email ADDRESS --name "Full Name" [--locale fr-CA|en|pt-BR]
 # set or change anyone's display name (for example the first name of the super admin; the super admin can also do it on the admin page)
 docker compose exec api python -m app.cli set-name --username NAME --name "Full Name"
+# new Web Push keys (prints two lines for deploy/.env; touches no database)
+docker compose exec api python -m app.cli vapid-keys
 # lost phone: remove someone's two-step verification, recovery codes and sessions
 docker compose exec api python -m app.cli reset-mfa --username NAME
 ```
@@ -152,6 +156,18 @@ Document files are stored in the database, so the database and **every daily and
 The schedule added `python-dateutil` (backend) and `react-router`, `@tanstack/react-query` (frontend); nothing in `deploy/.env` changes for it. Migration `0006_schedule` creates the five schedule tables and runs with the other migrations at stack start (`docker compose run --rm migrate`).
 
 `scripts/audit-deps.sh` scans the installed Python packages (`pip-audit`) and the production JavaScript packages (`npm audit`, high or worse). It needs network access, exits non-zero on findings, and should be run before every deploy.
+
+## Quote requests (the open form at `/devis`)
+
+- **The form** is `frontend/quote.html`, served by Caddy at `https://app.kmk-entretien.ca/devis` (also `/devis/`), in French by default; `?lang=en` and `?lang=pt` preselect a language. Put a link to it on the public site's contact pages (the old web3forms form there is not touched by this app).
+- **Limits:** 10 started requests per hour per IP (IPv6 per /64), at most 10 photos of 8 MiB, at most 2000 words and 20 000 characters. Unfinished drafts are deleted after 2 hours; photos of unfinished drafts are capped at 300 MB in total (`503 busy` over that). Caddy caps the bodies: 256 KB for the first call, 9 MiB for a photo.
+- **First-time setup (owner steps):**
+  1. Generate the push keys: `docker compose exec api python -m app.cli vapid-keys`, put the two lines in `deploy/.env`, then `docker compose up -d` to restart the API.
+  2. In Resend, verify the domain of the quote sender (for example `mail.kmk-entretien.com`) and keep `EMAIL_BACKEND=resend`.
+  3. As super admin, open Settings > Company settings and fill: the notification email, the quote sender (`KMK Entretien <devis@mail.kmk-entretien.com>`), the Reply-To (the Gmail the team reads) and the public phone number. Replies to customers are refused (`sender_not_configured`) until the sender is set.
+  4. Each admin turns on Settings > Notifications on their devices. On iPhone, the app must be added to the Home Screen first (the app is installable: manifest and icons).
+- **Customer replies** arrive in the team's Gmail (through the Reply-To), not in the app: paste them with "Add customer reply" on the quote so the history stays complete. There is no inbound email.
+- **Troubleshooting:** no push after turning it on → check `VAPID_*` are in the API's environment (`docker compose exec api env | grep VAPID`) and that the browser allowed notifications; a reply marked "Not sent" → the sender's domain is not verified in Resend, or the provider is down (use "Try again").
 
 ## Email: switching from `log` to Resend
 

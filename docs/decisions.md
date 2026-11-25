@@ -107,6 +107,18 @@ All entries below were decided on 2026-11-17 during the build (phase noted).
 - **Rejected:** tasks as a kind of calendar event (different status, categories and no repeats), and including the AI now (it needs its own design: data flow, audit, a read-only role, where LiteLLM sends data).
 - **Revisit when:** recurring chores become common (add repeats), or the AI project starts.
 
+## Quote requests
+
+### D20. The open form is hosted by this app, with no sign-in, limited by IP only
+- **Decision:** a public page at `/devis` (its own Vite entry, the public site's look copied locally, three languages), 10 started requests per hour per IP, a honeypot, and no global limit (so one visitor cannot lock everyone else out, and the owner chose no global cap).
+- **Rejected:** hosting the form on the public site (Cloudflare) posting across origins (the owner wants it here); a captcha service (a third party and friction; revisit if spam appears).
+- **Revisit when:** spam gets through, or the public site should embed the form.
+
+### D21. Customer replies are pasted by hand; the website is the creator of its tasks
+- **Decision:** the app sends replies by email (From the quote sender, Reply-To the team's mailbox), and an admin pastes the customer's answer into the history ("Add customer reply"). Tasks and Agenda items made by a request have no creator (`created_by` is NULL, shown as "Website") and carry no customer data, because everyone can read every task and event.
+- **Rejected:** inbound email by webhook (more setup for a team that reads Gmail anyway); a fake system user (it would need an account that can never sign in); private-to-listed-people tasks (a large change to tasks and the schedule for one feature).
+- **Revisit when:** the volume of replies makes pasting a chore.
+
 ## People
 
 ### D17. Every person has one display name; admins and the super admin fix it, people cannot change their own (user name feature)
