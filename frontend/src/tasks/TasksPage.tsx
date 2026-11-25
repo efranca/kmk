@@ -10,6 +10,7 @@ import { Avatar } from "../ui/Avatar";
 import { AvatarFilter } from "../ui/AvatarFilter";
 import { Button, IconButton } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
+import { EmptyArt } from "../ui/EmptyArt";
 import { EmptyState, ErrorNotice, Loading } from "../ui/Feedback";
 import { PageHeader } from "../ui/PageHeader";
 import { Segmented } from "../ui/Segmented";
@@ -32,6 +33,7 @@ import { useTaskPeople } from "./useTaskPeople";
 const STATUSES: TaskStatus[] = ["pending", "in_progress", "completed"];
 const STATUS_KEYS = { pending: "taskStatusPending", in_progress: "taskStatusInProgress", completed: "taskStatusCompleted" } as const;
 const EMPTY_KEYS = { pending: "taskEmptyPending", in_progress: "taskEmptyInProgress", completed: "taskEmptyCompleted" } as const;
+const EMPTY_FUN_KEYS = { pending: "taskEmptyPendingFun", in_progress: "taskEmptyInProgressFun", completed: "taskEmptyCompletedFun" } as const;
 const GROUP_KEYS = { overdue: "taskGroupOverdue", today: "taskGroupToday", week: "taskGroupWeek", later: "taskGroupLater", none: "taskGroupNone" } as const;
 
 /** The team's to-do list: whose tasks, the status, then the tasks grouped by when they are due. */
@@ -117,10 +119,9 @@ export function TasksPage() {
         }
       />
       {managing ? <CategoryManager onClose={() => setManaging(false)} /> : noTasksAtAll ? (
-        <div className="tasks-empty">
-          <EmptyState>{t("taskEmpty")}</EmptyState>
+        <EmptyArt art="tasks" title={t("taskEmpty")} hint={t("taskEmptyFun")}>
           <Button variant="primary" icon="plus" onClick={() => setEditing("new")}>{t("taskAddFirst")}</Button>
-        </div>
+        </EmptyArt>
       ) : (
         <>
           <div className="tasks-toolbar">
@@ -152,7 +153,7 @@ export function TasksPage() {
           {shown.isPending ? <Loading />
             : shown.isError ? <ErrorNotice error={shown.error} onRetry={() => void shown.refetch()} />
             : visible.length === 0 && searching ? <EmptyState>{t("taskSearchNoResults", { q: text.trim() })}</EmptyState>
-            : visible.length === 0 && view === "list" ? <EmptyState>{t(EMPTY_KEYS[status])}</EmptyState>
+            : visible.length === 0 && view === "list" ? <EmptyArt compact art="tasks" title={t(EMPTY_KEYS[status])} hint={t(EMPTY_FUN_KEYS[status])} />
             : (
               view === "board" ? (
                 <TaskBoard tasks={visible} people={byId} categoryById={categoryById} today={today}

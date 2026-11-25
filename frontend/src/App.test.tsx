@@ -45,6 +45,23 @@ describe("App", () => {
     expect(screen.getByLabelText(frCA.password)).toHaveAttribute("type", "password");
   });
 
+  it("offers French and English on the sign-in page, not Portuguese", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.getByRole("button", { name: "FR" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "EN" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "PT" })).toBeNull();
+  });
+
+  it("lets the person see what they type in the password field", async () => {
+    render(<App />);
+    const password = await screen.findByLabelText(frCA.password);
+    fireEvent.click(screen.getByRole("button", { name: frCA.showPassword }));
+    expect(password).toHaveAttribute("type", "text");
+    fireEvent.click(screen.getByRole("button", { name: frCA.hidePassword }));
+    expect(password).toHaveAttribute("type", "password");
+  });
+
   it("signs in and switches to the user's language", async () => {
     mockApi({ login: () => json(200, { user: { ...alice, locale: "en" }, csrf_token: "tok" }) });
     render(<App />);

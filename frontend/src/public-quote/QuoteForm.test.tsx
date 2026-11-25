@@ -129,6 +129,13 @@ describe("QuoteForm", () => {
     expect(calls.some((c) => c.method === "PUT")).toBe(false);
   });
 
+  it("offers French and English in the header, not Portuguese", () => {
+    render(<QuoteForm />);
+    expect(screen.getByRole("button", { name: "Français" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "English" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Português" })).toBeNull();
+  });
+
   it("switches language from the header", async () => {
     const user = userEvent.setup();
     render(<QuoteForm />);

@@ -315,6 +315,8 @@ describe("Documents page", () => {
     renderWithProviders(<DocumentsPage />, admin);
     expect(await screen.findByText(en.docEmpty)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: en.docAddFirst })).toBeInTheDocument();
+    expect(document.querySelector("svg[data-art='documents']")).toBeInTheDocument(); // a picture and a fun line, not only a sentence
+    expect(screen.getByText(en.docEmptyFun)).toBeInTheDocument();
   });
 
   it("shows an error with a retry when the list cannot be loaded", async () => {

@@ -549,5 +549,14 @@
   "pushTestSent": "Essai envoyé",
   "pushTestNone": "Rien n’a été envoyé à cet appareil.",
   "pushIosHint": "Sur iPhone, ajoutez d’abord l’app à l’écran d’accueil (Partager, puis Sur l’écran d’accueil), puis ouvrez-la à partir de là.",
-  "quoteCity": "Ville"
+  "quoteCity": "Ville",
+  "showPassword": "Afficher le mot de passe",
+  "hidePassword": "Masquer le mot de passe",
+  "docEmptyFun": "Votre bibliothèque attend sa première page !",
+  "taskEmptyFun": "Ajoutez-en une et donnez à l’équipe quelque chose à cocher !",
+  "taskEmptyPendingFun": "C’est l’heure d’une pause-café !",
+  "taskEmptyInProgressFun": "L’équipe reprend son souffle.",
+  "taskEmptyCompletedFun": "La première coche fait tellement plaisir, allez-y !",
+  "dashEmptyFun": "Une journée tranquille s’annonce. Profitez du calme !",
+  "taskDashEmptyFun": "Rien dans votre assiette. Quelle chance !"
 }

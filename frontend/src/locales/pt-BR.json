@@ -549,5 +549,14 @@
   "pushTestSent": "Teste enviado",
   "pushTestNone": "Nada foi enviado a este aparelho.",
   "pushIosHint": "No iPhone, adicione primeiro o app à Tela de Início (Compartilhar, depois Adicionar à Tela de Início) e abra-o por lá.",
-  "quoteCity": "Cidade"
+  "quoteCity": "Cidade",
+  "showPassword": "Mostrar senha",
+  "hidePassword": "Ocultar senha",
+  "docEmptyFun": "Sua biblioteca está esperando a primeira página!",
+  "taskEmptyFun": "Adicione uma e dê à equipe algo para riscar da lista!",
+  "taskEmptyPendingFun": "Hora de uma pausa para o café!",
+  "taskEmptyInProgressFun": "A equipe está recuperando o fôlego.",
+  "taskEmptyCompletedFun": "O primeiro check é uma delícia, vá em frente!",
+  "dashEmptyFun": "Um dia tranquilo pela frente. Aproveite a calma!",
+  "taskDashEmptyFun": "Nada no seu prato. Que sorte!"
 }

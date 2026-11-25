@@ -1,8 +1,8 @@
 // The public quote form has its own small set of strings (it shares nothing with the signed-in app). Every key
-// exists in all three languages; strings.test.ts checks it. `{{name}}` marks a value filled in at run time.
+// exists in both languages (French and English); strings.test.ts checks it. `{{name}}` marks a value filled in at run time.
 
-export type PublicLocale = "fr-CA" | "en-CA" | "pt-BR";
-export const LOCALES: PublicLocale[] = ["fr-CA", "en-CA", "pt-BR"];
+export type PublicLocale = "fr-CA" | "en-CA";
+export const LOCALES: PublicLocale[] = ["fr-CA", "en-CA"];
 
 const fr: Record<string, string> = {
   pqCity: "Ville",
@@ -158,93 +158,16 @@ const en: Record<string, string> = {
   pqFreq_unsure: "Not sure yet",
 };
 
-const pt: Record<string, string> = {
-  pqCity: "Cidade",
-  pqErrBedrooms: "Informe um número inteiro de 0 a 20.",
-  pqErrBathrooms: "Informe um número de 0 a 20, em meios.",
-  pqErrArea: "Informe um número inteiro de 1 ou mais.",
-  pqErrBusy: "O serviço de fotos está ocupado: tente de novo em alguns minutos.",
-  pqErrPhotoRefused: "“{{name}}” foi recusada e removida. Aperte Enviar de novo para continuar sem ela.",
-  pqPageTitle: "Pedido de orçamento",
-  pqTitle: "Peça seu orçamento gratuito",
-  pqIntro: "Conte em poucas palavras sobre o seu espaço. Respondemos em até 24 horas, sem compromisso.",
-  pqHome: "Voltar ao site",
-  pqLanguage: "Idioma",
-  pqContact: "Seus dados de contato",
-  pqName: "Nome",
-  pqEmail: "Email",
-  pqPhone: "Telefone",
-  pqSpace: "Seu espaço",
-  pqKind: "Tipo de serviço",
-  pqKindAirbnb: "Airbnb / aluguel por temporada",
-  pqKindAirbnbHint: "Casa, apartamento ou condomínio",
-  pqKindCommercial: "Comercial",
-  pqKindCommercialHint: "Escritório, clínica, loja etc.",
-  pqAddress: "Endereço ou bairro",
-  pqProperty: "Tipo de imóvel",
-  pqBedrooms: "Quartos",
-  pqBathrooms: "Banheiros",
-  pqArea: "Área aproximada (pés²)",
-  pqFrequency: "Frequência desejada",
-  pqMessage: "Fale sobre o seu espaço",
-  pqMessageHintAirbnb: "Opcional: acesso, animais, detalhes especiais, calendário de reservas…",
-  pqMessageHintCommercial: "Passe todas as informações úteis: área, número de salas, horários, acesso, exigências especiais…",
-  pqWords: "{{n}} / {{max}} palavras",
-  pqPhotos: "Fotos",
-  pqPhotosHint: "Opcional. Até 10 fotos de 8 MB cada (JPEG, PNG, WebP ou HEIC).",
-  pqAddPhotos: "Adicionar fotos",
-  pqRemovePhoto: "Remover a foto {{name}}",
-  pqSend: "Enviar meu pedido",
-  pqSending: "Enviando…",
-  pqSendingPhoto: "Enviando a foto {{n}} de {{total}}…",
-  pqNote: "Respondemos em até 24 horas. Sem compromisso.",
-  pqPrivacy: "Usamos estas informações apenas para preparar o seu orçamento.",
-  pqErrRequired: "Este campo é obrigatório.",
-  pqErrEmail: "Informe um email válido.",
-  pqErrPhone: "Informe um telefone válido.",
-  pqErrMessage: "Por favor, descreva o seu espaço.",
-  pqErrTooLong: "O texto passa de 2000 palavras.",
-  pqErrFields: "Corrija os campos em vermelho.",
-  pqErrPhotoCount: "Você pode anexar no máximo 10 fotos.",
-  pqErrPhotoSize: "“{{name}}” passa de 8 MB.",
-  pqErrPhotoType: "“{{name}}” não é aceita: somente JPEG, PNG, WebP ou HEIC.",
-  pqErrNetwork: "Não foi possível enviar agora. Suas respostas foram mantidas: tente de novo.",
-  pqRateLimited: "Você enviou vários pedidos em pouco tempo. Tente novamente mais tarde{{call}}.",
-  pqRateLimitedCall: " ou ligue para {{phone}}",
-  pqDoneTitle: "Pedido recebido, obrigado!",
-  pqDoneBody: "Responderemos em até 24 horas.",
-  pqDoneRef: "O número do seu pedido",
-  pqAnother: "Enviar outro pedido",
-  pqFooterArea: "Québec, Lévis e a Margem Sul",
-  pqFooterCall: "Ligue para nós",
-  pqProp_house: "Casa",
-  pqProp_apartment: "Apartamento",
-  pqProp_condo: "Condomínio",
-  pqProp_other: "Outro",
-  pqProp_office: "Escritório",
-  pqProp_clinic: "Clínica",
-  pqProp_shop: "Loja",
-  pqProp_restaurant: "Restaurante",
-  pqProp_industrial: "Industrial",
-  pqFreq_once: "Uma única vez",
-  pqFreq_per_booking: "A cada reserva",
-  pqFreq_weekly: "Semanal",
-  pqFreq_biweekly: "A cada duas semanas",
-  pqFreq_monthly: "Mensal",
-  pqFreq_post_construction: "Pós-obra (limpeza pesada pontual)",
-  pqFreq_unsure: "Ainda não sei",
-};
-
-export const STRINGS: Record<PublicLocale, Record<string, string>> = { "fr-CA": fr, "en-CA": en, "pt-BR": pt };
+export const STRINGS: Record<PublicLocale, Record<string, string>> = { "fr-CA": fr, "en-CA": en };
 
 export function translate(locale: PublicLocale, key: string, vars: Record<string, string | number> = {}): string {
   const text = STRINGS[locale][key] ?? STRINGS["fr-CA"][key] ?? key;
   return text.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(vars[name] ?? ""));
 }
 
-/** ?lang=fr|en|pt wins (the public site's pages link with it), then the browser's language, then French. */
+/** ?lang=fr|en wins (the public site's pages link with it), then the browser's language, then French. */
 export function initialLocale(search: string, navigatorLanguage: string): PublicLocale {
   const asked = new URLSearchParams(search).get("lang")?.toLowerCase();
-  const pick = (code: string): PublicLocale | null => (code.startsWith("en") ? "en-CA" : code.startsWith("pt") ? "pt-BR" : code.startsWith("fr") ? "fr-CA" : null);
+  const pick = (code: string): PublicLocale | null => (code.startsWith("en") ? "en-CA" : code.startsWith("fr") ? "fr-CA" : null);
   return (asked ? pick(asked) : null) ?? pick(navigatorLanguage.toLowerCase()) ?? "fr-CA";
 }

@@ -67,7 +67,6 @@ export default function AccountMenu({
       </button>
       {open && (
         <div className="accountmenu__panel" id={panelId}>
-          <p className="accountmenu__who">{name}</p>
           <a
             href="/account"
             aria-current={active ? "page" : undefined}

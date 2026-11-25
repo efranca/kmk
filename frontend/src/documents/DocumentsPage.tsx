@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { usePreferences } from "../preferences";
 import { useSession } from "../session";
 import { Button, IconButton } from "../ui/Button";
+import { EmptyArt } from "../ui/EmptyArt";
 import { EmptyState, ErrorNotice, Loading } from "../ui/Feedback";
 import { PageHeader } from "../ui/PageHeader";
 import { CategoryChips, FALLBACK_CATEGORY_ICON } from "../tasks/CategoryChips";
@@ -78,10 +79,9 @@ export function DocumentsPage() {
           {isPending ? <Loading />
             : isError ? <ErrorNotice error={error} onRetry={() => void refetch()} />
             : documents.length === 0 ? (
-              <div className="tasks-empty">
-                <EmptyState>{t("docEmpty")}</EmptyState>
+              <EmptyArt art="documents" title={t("docEmpty")} hint={t("docEmptyFun")}>
                 {canManage && <Button variant="primary" icon="plus" onClick={() => setEditing("new")}>{t("docAddFirst")}</Button>}
-              </div>
+              </EmptyArt>
             )
             : visible.length === 0 ? <EmptyState>{searching ? t("docSearchNoResults", { q: text.trim() }) : t("docEmptyCategory")}</EmptyState>
             : view === "tiles" ? (

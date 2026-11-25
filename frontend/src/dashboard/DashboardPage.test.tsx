@@ -118,6 +118,18 @@ describe("DashboardPage", () => {
     setup([]);
     expect(await within(await screen.findByRole("region", { name: "My events" })).findByText("Nothing planned.")).toBeInTheDocument();
     expect(within(card("All events")).getByText("Nothing planned.")).toBeInTheDocument();
+    for (const name of ["My events", "All events"]) {
+      expect(card(name).querySelector("svg[data-art='events']")).toBeInTheDocument();
+      expect(within(card(name)).getByText("A calm day ahead. Enjoy the quiet!")).toBeInTheDocument();
+    }
+  });
+
+  it("has a picture and a friendly line in My tasks when nothing waits for the person", async () => {
+    setup([]);
+    const mine = await screen.findByRole("region", { name: "My tasks" });
+    expect(await within(mine).findByText("Nothing waiting for you.")).toBeInTheDocument();
+    expect(mine.querySelector("svg[data-art='tasks']")).toBeInTheDocument();
+    expect(within(mine).getByText("Nothing on your plate. Lucky you!")).toBeInTheDocument();
   });
 
   it("clicking a row opens that day in the schedule, and a card title opens the schedule", async () => {

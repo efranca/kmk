@@ -13,8 +13,8 @@ const FREQUENCIES = {
   airbnb: ["once", "per_booking", "weekly", "biweekly", "monthly", "unsure"],
   commercial: ["once", "weekly", "biweekly", "monthly", "post_construction", "unsure"],
 } as const;
-const LANGUAGE_NAMES: Record<PublicLocale, string> = { "fr-CA": "Français", "en-CA": "English", "pt-BR": "Português" };
-const SITE: Record<PublicLocale, string> = { "fr-CA": "https://kmk-entretien.ca/fr/", "en-CA": "https://kmk-entretien.ca/en/", "pt-BR": "https://kmk-entretien.ca/fr/" };
+const LANGUAGE_NAMES: Record<PublicLocale, string> = { "fr-CA": "Français", "en-CA": "English" };
+const SITE: Record<PublicLocale, string> = { "fr-CA": "https://kmk-entretien.ca/fr/", "en-CA": "https://kmk-entretien.ca/en/" };
 
 type Kind = "airbnb" | "commercial";
 type Values = { name: string; email: string; phone: string; city: string; address: string; property: string; frequency: string; bedrooms: string; bathrooms: string; area: string; message: string };

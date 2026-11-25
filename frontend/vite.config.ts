@@ -18,6 +18,7 @@ export default defineConfig({
   plugins: [react()],
   // Two pages: the signed-in app and the public quote form (served at /devis).
   build: { rollupOptions: { input: { main: fileURLToPath(new URL("./index.html", import.meta.url)), quote: fileURLToPath(new URL("./quote.html", import.meta.url)) } } },
-  server: { proxy: { "/api": "http://127.0.0.1:8001" } },
+  // API_PROXY points the dev server at another API (for example a local one on the test database).
+  server: { proxy: { "/api": process.env.API_PROXY ?? "http://127.0.0.1:8001" } },
   test: { environment: "jsdom", setupFiles: ["./src/setup.ts"], globals: true },
 });

@@ -62,7 +62,7 @@ export function TasksCard({ userId, people, today, onOpenTasks }: { userId: numb
 
   const state = query.isPending ? <Loading /> : query.isError ? <ErrorNotice error={query.error} onRetry={() => void query.refetch()} /> : null;
   return (
-    <DashCard title={t("dashMyTasks")} href="/tasks" onOpen={onOpenTasks} state={state} empty={empty} emptyText={t("taskDashEmpty")}>
+    <DashCard title={t("dashMyTasks")} href="/tasks" onOpen={onOpenTasks} state={state} empty={empty} emptyText={t("taskDashEmpty")} art="tasks" emptyHint={t("taskDashEmptyFun")}>
       {section(t("taskGroupOverdue"), overdue)}
       {section(t("taskGroupToday"), [...open, ...done])}
       {section(t("taskGroupNone"), noDate.shown[0]!)}

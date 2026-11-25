@@ -549,5 +549,14 @@
   "pushTestSent": "Test sent",
   "pushTestNone": "Nothing was sent to this device.",
   "pushIosHint": "On iPhone, add the app to the Home Screen first (Share, then Add to Home Screen), then open it from there.",
-  "quoteCity": "City"
+  "quoteCity": "City",
+  "showPassword": "Show password",
+  "hidePassword": "Hide password",
+  "docEmptyFun": "Your library is waiting for its first page!",
+  "taskEmptyFun": "Add one and give the team something to cross off!",
+  "taskEmptyPendingFun": "Time for a coffee break!",
+  "taskEmptyInProgressFun": "The team is catching its breath.",
+  "taskEmptyCompletedFun": "The first check mark feels great, go get it!",
+  "dashEmptyFun": "A calm day ahead. Enjoy the quiet!",
+  "taskDashEmptyFun": "Nothing on your plate. Lucky you!"
 }

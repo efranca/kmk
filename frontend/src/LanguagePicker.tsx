@@ -7,7 +7,7 @@ export default function LanguagePicker() {
   const { t, i18n } = useTranslation();
   return (
     <div className="lang-picker" role="group" aria-label={t("language")}>
-      {LANGS.map((l) => (
+      {LANGS.filter((l) => l.code !== "pt-BR").map((l) => ( // Portuguese is not offered before signing in (people still get it in Settings)
         <button
           key={l.code}
           type="button"
