@@ -7,6 +7,8 @@ import { usePreferences, type Preferences } from "./preferences";
 import { PageHeader } from "./ui/PageHeader";
 import { Segmented } from "./ui/Segmented";
 import { Toggle } from "./ui/Toggle";
+import { NotificationsCard } from "./settings/NotificationsCard";
+import { SystemSettingsCard } from "./settings/SystemSettingsCard";
 import type { Theme } from "./theme";
 
 const THEME_LABELS = { kmk: "themeKmk", light: "themeLight", dark: "themeDark" } as const;
@@ -54,6 +56,8 @@ export default function SettingsPage({ onLanguageChanged }: { onLanguageChanged:
           ))}
         </div>
       </section>
+      <NotificationsCard />
+      <SystemSettingsCard />
       </div>
     </>
   );
