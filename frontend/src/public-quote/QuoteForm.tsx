@@ -8,15 +8,17 @@ import { countWords } from "./words";
 const MAX_WORDS = 2000;
 const PHONE = /^[0-9 +().-]{7,30}$/;
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-const PROPERTIES = { airbnb: ["house", "apartment", "condo", "other"], commercial: ["office", "clinic", "shop", "restaurant", "industrial", "other"] } as const;
+const PROPERTIES = { airbnb: ["house", "apartment", "condo", "other"], commercial: ["office", "clinic", "shop", "restaurant", "industrial", "other"], post_construction: ["house", "apartment", "condo", "office", "shop", "industrial", "other"] } as const;
 const FREQUENCIES = {
   airbnb: ["once", "per_booking", "weekly", "biweekly", "monthly", "unsure"],
   commercial: ["once", "weekly", "biweekly", "monthly", "post_construction", "unsure"],
+  post_construction: ["once"],
 } as const;
 const LANGUAGE_NAMES: Record<PublicLocale, string> = { "fr-CA": "Français", "en-CA": "English" };
 const SITE: Record<PublicLocale, string> = { "fr-CA": "https://kmk-entretien.ca/fr/", "en-CA": "https://kmk-entretien.ca/en/" };
 
-type Kind = "airbnb" | "commercial";
+type Kind = "airbnb" | "commercial" | "post_construction";
+const KIND_STRINGS = { airbnb: ["pqKindAirbnb", "pqKindAirbnbHint"], commercial: ["pqKindCommercial", "pqKindCommercialHint"], post_construction: ["pqKindPost", "pqKindPostHint"] } as const;
 type Values = { name: string; email: string; phone: string; city: string; address: string; property: string; frequency: string; bedrooms: string; bathrooms: string; area: string; message: string };
 type Errors = Partial<Record<keyof Values, string>>;
 const EMPTY: Values = { name: "", email: "", phone: "", city: "", address: "", property: "", frequency: "", bedrooms: "", bathrooms: "", area: "", message: "" };
@@ -66,7 +68,7 @@ export function QuoteForm() {
   function chooseKind(next: Kind) {
     touch();
     setKind(next);
-    setV((old) => ({ ...old, property: "", frequency: "" }));
+    setV((old) => ({ ...old, property: "", frequency: next === "post_construction" ? "once" : "" }));
     setErrors({});
   }
 
@@ -193,11 +195,11 @@ export function QuoteForm() {
             <fieldset className="pq-fieldset">
               <legend>{t("pqKind")}</legend>
               <div className="pq-kinds" role="radiogroup" aria-label={t("pqKind")}>
-                {(["airbnb", "commercial"] as const).map((k) => (
+                {(["airbnb", "commercial", "post_construction"] as const).map((k) => (
                   <label key={k} className={`pq-kind${kind === k ? " on" : ""}`}>
                     <input type="radio" name="kind" value={k} checked={kind === k} onChange={() => chooseKind(k)} disabled={sending} />
-                    <b>{t(k === "airbnb" ? "pqKindAirbnb" : "pqKindCommercial")}</b>
-                    <small>{t(k === "airbnb" ? "pqKindAirbnbHint" : "pqKindCommercialHint")}</small>
+                    <b>{t(KIND_STRINGS[k][0])}</b>
+                    <small>{t(KIND_STRINGS[k][1])}</small>
                   </label>
                 ))}
               </div>
@@ -224,12 +226,14 @@ export function QuoteForm() {
                       {PROPERTIES[kind].map((p) => <option key={p} value={p}>{t(`pqProp_${p}`)}</option>)}
                     </select>
                   </Field>
+                  {kind !== "post_construction" && (
                   <Field id="pq-frequency" label={t("pqFrequency")} required error={errors.frequency}>
                     <select id="pq-frequency" value={v.frequency} onChange={set("frequency")} disabled={sending}>
                       <option value="" />
                       {FREQUENCIES[kind].map((f) => <option key={f} value={f}>{t(`pqFreq_${f}`)}</option>)}
                     </select>
                   </Field>
+                  )}
                 </div>
                 {kind === "airbnb" && (
                   <div className="f2">
@@ -243,7 +247,7 @@ export function QuoteForm() {
 
             <Field
               id="pq-message" label={t("pqMessage")} required={kind === "commercial"} error={errors.message}
-              hint={t(kind === "commercial" ? "pqMessageHintCommercial" : "pqMessageHintAirbnb")}
+              hint={t(kind === "commercial" ? "pqMessageHintCommercial" : kind === "post_construction" ? "pqMessageHintPost" : "pqMessageHintAirbnb")}
             >
               <textarea id="pq-message" rows={6} value={v.message} onChange={set("message")} disabled={sending} />
               <p className={`pq-count${over ? " over" : ""}`}>{t("pqWords", { n: words, max: MAX_WORDS })}</p>

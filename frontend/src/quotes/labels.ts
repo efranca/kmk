@@ -5,7 +5,7 @@ export const STATUS_KEYS: Record<QuoteStatus, string> = {
 };
 export const TABS: QuoteFilter[] = ["new", "replied", "customer_replied", "won", "lost", "all"];
 export const TAB_KEYS: Record<QuoteFilter, string> = { ...STATUS_KEYS, all: "quoteTabAll" };
-export const KIND_KEYS: Record<QuoteKind, string> = { airbnb: "quoteKindAirbnb", commercial: "quoteKindCommercial" };
+export const KIND_KEYS: Record<QuoteKind, string> = { airbnb: "quoteKindAirbnb", commercial: "quoteKindCommercial", post_construction: "quoteKindPostConstruction" };
 export const PROPERTY_KEYS: Record<string, string> = {
   house: "quotePropHouse", apartment: "quotePropApartment", condo: "quotePropCondo", other: "quotePropOther", office: "quotePropOffice",
   clinic: "quotePropClinic", shop: "quotePropShop", restaurant: "quotePropRestaurant", industrial: "quotePropIndustrial",

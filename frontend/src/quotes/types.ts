@@ -1,6 +1,6 @@
 export type QuoteStatus = "new" | "replied" | "customer_replied" | "won" | "lost";
 export type QuoteFilter = QuoteStatus | "all";
-export type QuoteKind = "airbnb" | "commercial";
+export type QuoteKind = "airbnb" | "commercial" | "post_construction";
 
 export type QuoteSummary = {
   id: number;

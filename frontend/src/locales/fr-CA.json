@@ -461,6 +461,7 @@
   "quoteMessageCount_other": "{{count}} messages",
   "quoteKindAirbnb": "Airbnb",
   "quoteKindCommercial": "Commercial",
+  "quoteKindPostConstruction": "Après-construction",
   "quoteBack": "Toutes les soumissions",
   "quoteRequest": "Demande",
   "quoteEmail": "Courriel",
@@ -562,5 +563,14 @@
   "settingsWidgetQuotesSummary": "Résumé des soumissions",
   "settingsWidgetQuotesLatest": "Dernières soumissions",
   "quoteEmptyTitle": "Aucune demande de soumission pour l'instant.",
-  "quoteEmptyFun": "La boîte aux lettres est calme. Profitez-en!"
+  "quoteEmptyFun": "La boîte aux lettres est calme. Profitez-en!",
+  "dashQuotesSummary": "Soumissions",
+  "dashQuotesNeedReply": "À répondre",
+  "dashQuotesWaiting": "En attente du client",
+  "dashQuotesOverdue": "En retard",
+  "dashQuotesInboxZero": "Boîte vide!",
+  "dashQuotesInboxZeroFun": "Personne n'attend après vous. Allez prendre un café.",
+  "dashQuotesLatest": "Dernières soumissions",
+  "dashQuotesLatestEmpty": "Aucune demande de soumission pour l'instant.",
+  "dashQuotesLatestFun": "Le prochain client est en route."
 }

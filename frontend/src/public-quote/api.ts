@@ -22,7 +22,7 @@ async function call<T>(method: string, url: string, init: { json?: unknown; toke
 const BASE = "/api/public/quotes";
 
 export type QuoteInput = {
-  name: string; email: string; phone: string; locale: string; kind: "airbnb" | "commercial"; city: string; address: string; property: string; frequency: string;
+  name: string; email: string; phone: string; locale: string; kind: "airbnb" | "commercial" | "post_construction"; city: string; address: string; property: string; frequency: string;
   bedrooms?: number; bathrooms?: number; area_sqft?: number; message: string | null; website: string;
 };
 

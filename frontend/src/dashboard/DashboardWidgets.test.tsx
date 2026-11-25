@@ -1,20 +1,24 @@
-import { screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { DEFAULT_PREFERENCES } from "../preferences";
 import { mockApi, renderWithProviders, resetLanguage, testUser, useEnglish } from "../testUtils";
 import { DashboardPage } from "./DashboardPage";
 
-function setup(widgets: Partial<typeof DEFAULT_PREFERENCES.dashboard_widgets>) {
-  mockApi({
+function setup(widgets: Partial<typeof DEFAULT_PREFERENCES.dashboard_widgets>, role: "user" | "admin" = "user") {
+  const api = mockApi({
+    "GET /api/quotes": { quotes: [], counts: { new: 0, customer_replied: 0, replied: 0 } },
     "GET /api/schedule/events": () => ({ occurrences: [] }),
     "GET /api/schedule/people": () => ({ people: [] }),
     "GET /api/tasks": () => ({ tasks: [] }),
     "GET /api/tasks/categories": () => ({ categories: [] }),
   });
-  renderWithProviders(<DashboardPage user={testUser} mfaEnabled recoveryCodesLeft={null} />, {
+  const user = { ...testUser, role };
+  renderWithProviders(<DashboardPage user={user} mfaEnabled recoveryCodesLeft={null} />, {
+    session: { user },
     preferences: { ...DEFAULT_PREFERENCES, dashboard_widgets: { ...DEFAULT_PREFERENCES.dashboard_widgets, ...widgets } },
   });
+  return api;
 }
 
 beforeEach(async () => { await useEnglish(); });
@@ -39,5 +43,29 @@ describe("Dashboard widget switches", () => {
     setup({ my_events: false, all_events: false, my_tasks: false });
     expect(await screen.findByText(/All Dashboard cards are hidden/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
+  });
+
+  it("shows the two quote cards to an admin, and each can be switched off", async () => {
+    setup({}, "admin");
+    expect(await screen.findByRole("region", { name: "Quotes" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Latest quotes" })).toBeInTheDocument();
+    cleanup();
+    setup({ quotes_summary: false, quotes_latest: false }, "admin");
+    expect(await screen.findByRole("region", { name: "My events" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Quotes" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Latest quotes" })).toBeNull();
+  });
+
+  it("never shows or asks for quotes for a regular user", async () => {
+    const api = setup({}, "user");
+    expect(await screen.findByRole("region", { name: "My events" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Quotes" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Latest quotes" })).toBeNull();
+    expect(api.calls.some((c) => c.path === "/api/quotes")).toBe(false);
+  });
+
+  it("says every card is hidden for a regular user whose classic cards are off", async () => {
+    setup({ my_events: false, all_events: false, my_tasks: false }, "user");
+    expect(await screen.findByText(/All Dashboard cards are hidden/)).toBeInTheDocument();
   });
 });

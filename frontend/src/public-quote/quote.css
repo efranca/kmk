@@ -88,7 +88,7 @@ ul{margin:0;padding:0;list-style:none}
 .pq-fieldset{border:0;margin:0;padding:0;min-width:0}
 .pq-fieldset legend{font-size:13px;font-weight:600;margin-bottom:9px;padding:0}
 .pq-kinds{display:grid;gap:12px;grid-template-columns:1fr}
-@media (min-width:560px){ .pq-kinds{grid-template-columns:1fr 1fr} }
+@media (min-width:720px){ .pq-kinds{grid-template-columns:repeat(3,1fr)} }
 .pq-kind{
   display:grid;gap:2px;padding:16px 18px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--paper);cursor:pointer;position:relative;
   transition:border-color .2s,background .2s,box-shadow .2s;

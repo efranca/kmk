@@ -461,6 +461,7 @@
   "quoteMessageCount_other": "{{count}} mensagens",
   "quoteKindAirbnb": "Airbnb",
   "quoteKindCommercial": "Comercial",
+  "quoteKindPostConstruction": "Pós-obra",
   "quoteBack": "Todos os orçamentos",
   "quoteRequest": "Pedido",
   "quoteEmail": "Email",
@@ -562,5 +563,14 @@
   "settingsWidgetQuotesSummary": "Resumo dos orçamentos",
   "settingsWidgetQuotesLatest": "Últimos orçamentos",
   "quoteEmptyTitle": "Nenhum pedido de orçamento ainda.",
-  "quoteEmptyFun": "A caixa de correio está quieta. Aproveite a calma!"
+  "quoteEmptyFun": "A caixa de correio está quieta. Aproveite a calma!",
+  "dashQuotesSummary": "Orçamentos",
+  "dashQuotesNeedReply": "Precisam de resposta",
+  "dashQuotesWaiting": "Aguardando o cliente",
+  "dashQuotesOverdue": "Atrasados",
+  "dashQuotesInboxZero": "Caixa de entrada zerada!",
+  "dashQuotesInboxZeroFun": "Ninguém está esperando por você. Vá tomar um café.",
+  "dashQuotesLatest": "Últimos orçamentos",
+  "dashQuotesLatestEmpty": "Nenhum pedido de orçamento ainda.",
+  "dashQuotesLatestFun": "O próximo cliente está a caminho."
 }
