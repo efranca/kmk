@@ -18,6 +18,7 @@ from app.preferences import router as preferences_router
 from app.push.routes import router as push_router
 from app.quotes.routes import router as quotes_router
 from app.quotes.public_routes import router as quotes_public_router
+from app.schedule.feed import install_log_redaction, router as feed_router
 from app.schedule.routes import router as schedule_router
 from app.tasks.routes import router as tasks_router
 from app.system_settings import router as system_settings_router
@@ -53,6 +54,8 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
     app.include_router(avatars_router)
     app.include_router(mfa_router)
     app.include_router(schedule_router)
+    app.include_router(feed_router)
+    install_log_redaction()
     app.include_router(tasks_router)
     app.include_router(preferences_router)
     app.include_router(version_router)

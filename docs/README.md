@@ -40,6 +40,7 @@ browser --HTTPS--> Cloudflare --tunnel (outbound from this machine)--> cloudflar
 | 7 Schedule and Dashboard | shared calendar (Day, Week, Month, Year, repeating events, reminders, drag to move) and the Dashboard home page with the "My events" and "All events" widgets, in a FamillAI-style layout | done | [spec](superpowers/specs/2026-11-24-schedule-dashboard-design.md) | [plan](superpowers/plans/2026-11-24-schedule-dashboard.md) |
 | 8 Tasks | the team's to-do list: tasks for people or the whole team with a due date, categories with icons, status tabs (To do, In progress, Done), a List/Board view menu (the board moves cards by drag and drop or a "Move to" control), people filter, search, "Clear completed"; a "My tasks" Dashboard card; an optional "Show tasks" switch on the Schedule. No repeating tasks, rewards or AI | done | [spec](superpowers/specs/2026-11-24-tasks-design.md) | [plan](superpowers/plans/2026-11-24-tasks.md) |
 | 9 Quotes | the open quote form at `/devis` (public site's look, fr-CA/en-CA/pt-BR, photos, 10 requests per hour per IP), the admins' Quotes area (request as sent, conversation kept by hand for customer replies, status), a shared task due in 24 h and an Agenda deadline for every admin, a notification email and Web Push, company-wide System settings, an installable app | done; owner steps remain (VAPID keys, Resend sender domain, settings, link from the public site) | [spec](superpowers/specs/2026-11-25-quotes-design.md) | [plan](superpowers/plans/2026-11-25-quotes.md) |
+| Calendar feed | a personal secret `.ics` link per user (Account page) with the events they are listed on, title and time only, for FamillAI, Google, Apple or Outlook | done | [spec](superpowers/specs/2026-11-26-calendar-feed-design.md) | [plan](superpowers/plans/2026-11-26-calendar-feed.md) |
 | 6 Hardening | encrypted verified backups, container limits and health checks, dependency scan, independent security review, go-live runbook | built; go-live waits for the owner's steps (key, Resend, two-step, pilot) | [spec](superpowers/specs/2026-11-17-phase6-hardening-design.md) | [plan](superpowers/plans/2026-11-17-kmk-phase6-hardening.md) |
 
 ## Data model (as built)
@@ -68,6 +69,7 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 | `quote_messages` | the conversation: `out` is emailed from the app, `in` is a customer reply pasted by an admin | `direction`, `subject`, `body`, `author_id`, `sent_at`, `delivery` (`sent`/`failed`, out only) |
 | `app_settings` | company-wide settings (`quote_notify_email`, `quote_from`, `quote_reply_to`, `public_phone`) | `key`, `value`, `updated_by` |
 | `push_subscriptions` | one device of an admin that turned notifications on | `user_id`, `endpoint`, `p256dh`, `auth` |
+| `calendar_feeds` | one personal calendar feed link per user | `user_id` (primary key), `token_hash` (SHA-256, unique), `created_at`, `last_used_at` |
 | `alembic_version` | migration state | |
 
 Deletion is soft (`status = 'deleted'`, `deleted_at` set): the row stays, so the audit log keeps its references and the username and email stay reserved. An admin can restore a deleted account (it comes back `disabled`).
@@ -138,6 +140,8 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `GET /api/tasks/categories`, `POST /api/tasks/categories` | verified | list (by name) and add a category |
 | `PATCH` / `DELETE /api/tasks/categories/{id}` | admins and the super admin | rename, change the icon, or delete (its tasks are kept without a category) |
 | `GET /api/schedule/reminders/due`, `POST /api/schedule/reminders/dismiss` | verified | reminders that are due for the signed-in person; dismissing hides all reminders of one occurrence |
+| `GET` / `POST` / `DELETE /api/account/calendar-feed` | verified (POST and DELETE need CSRF) | whether you have a feed link; create or replace it (returns the link once: `{url, created_at}`); revoke it |
+| `GET /api/schedule/feed/{token}.ics` | public, the token is the credential | your listed events as iCalendar, title and time only, 31 days back to 365 ahead; every failure is `404 not_found` |
 
 The frontend pages (React Router in `frontend/src/App.tsx`; the card pages and the signed-in pages share one router and one query client):
 

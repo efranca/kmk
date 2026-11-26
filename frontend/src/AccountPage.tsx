@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { User } from "./api";
 import AvatarPicker from "./AvatarPicker";
+import { CalendarFeedCard } from "./settings/CalendarFeedCard";
 import ChangePassword from "./ChangePassword";
 import MfaBanner from "./MfaBanner";
 import MfaSetup from "./MfaSetup";
@@ -53,6 +54,7 @@ export default function AccountPage({
       {!mfaEnabled && <MfaBanner role={user.role} />}
       <SecuritySection csrfToken={csrfToken} mfaEnabled={mfaEnabled} onEnroll={() => setEnrolling(true)} onDisabled={() => onMfaChange(false)} />
       <ChangePassword csrfToken={csrfToken} />
+      <CalendarFeedCard csrfToken={csrfToken} />
     </>
   );
 }

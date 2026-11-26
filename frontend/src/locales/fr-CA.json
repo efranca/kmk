@@ -579,5 +579,21 @@
   "dashQuotesLatest": "Dernières soumissions",
   "dashQuotesLatestEmpty": "Aucune demande de soumission pour l'instant.",
   "dashQuotesLatestFun": "Le prochain client est en route.",
-  "quoteEmptyNewTitle": "Rien de nouveau. Vous êtes à jour!"
+  "quoteEmptyNewTitle": "Rien de nouveau. Vous êtes à jour!",
+  "feedTitle": "Flux de calendrier",
+  "feedHint": "Ajoutez vos événements KMK (titre et heure seulement) à FamillAI, Google Agenda, Calendrier Apple ou Outlook. Seuls les événements où vous figurez sont inclus.",
+  "feedCreate": "Créer le lien",
+  "feedRegenerate": "Créer un nouveau lien",
+  "feedRevoke": "Révoquer le lien",
+  "feedCopy": "Copier",
+  "feedCopied": "Lien copié",
+  "feedShownOnce": "Copiez ce lien maintenant. Il ne sera plus affiché.",
+  "feedWarning": "Toute personne qui a ce lien peut lire les titres et les heures de vos événements. Le révoquer coupe toutes les applications qui l’utilisent.",
+  "feedActive": "Un lien est actif depuis le {{date}}.",
+  "feedLastUsed": "Dernière lecture : {{date}}.",
+  "feedHowTo": "Dans FamillAI : Mes calendriers, Connecter un calendrier, puis collez le lien. Dans Google Agenda : Autres agendas, À partir de l’URL.",
+  "feedNone": "Aucun lien pour le moment.",
+  "feedLinkLabel": "Votre lien de calendrier",
+  "feedConfirmRevoke": "Révoquer le lien? Toutes les applications qui l’utilisent cesseront d’être mises à jour.",
+  "feedConfirmRegenerate": "Créer un nouveau lien? L’actuel cessera de fonctionner dans toutes les applications."
 }

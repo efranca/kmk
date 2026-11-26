@@ -183,6 +183,22 @@ Two-step verification is encouraged, not forced. To force it for admins: set `MF
 Effect: a listed role without TOTP can only enroll, read its own state and sign out (including an already open session), and cannot disable TOTP.
 Before doing it, make sure the key is backed up and `reset-mfa` works for you. To undo, empty the variable and recreate the container.
 
+## Calendar feed links
+
+- A user creates, replaces or revokes their link on the Account page (Calendar feed card). The link is shown once; a lost link means creating a new one.
+- Revoke someone's link by hand (lost phone, a link that leaked): `docker exec postgres psql -U postgres -d kmk -c "DELETE FROM calendar_feeds WHERE user_id = (SELECT id FROM users WHERE username = '<username>')"`. Disabling the account also stops it.
+- Subscribing apps: FamillAI (My calendars, Connect a calendar) refreshes about every 10 minutes; Google Calendar (Other calendars, From URL) refreshes on its own schedule, often hours.
+- **Owner step: keep links out of Caddy's log.** Caddy logs the full path, token included. A filter on the `log` directive should redact it; this was **not tested** (no Caddy binary was available while it was written), so check it with `caddy validate` and one request before relying on it:
+  ```
+  log {
+  	format filter {
+  		request>uri regexp ^/api/schedule/feed/[^/?]+ /api/schedule/feed/[redacted]
+  	}
+  }
+  ```
+  Then `docker compose restart caddy` and confirm `docker logs caddy` shows `[redacted]`. Until then, treat `docker logs caddy` as holding secrets.
+- If an app says it cannot read the link, check Cloudflare's Security events for `/api/schedule/feed/`: a bot challenge there blocks server-side fetchers. The fix is a skip rule for that path only.
+
 ## Cloudflare settings that matter
 
 - Zero Trust, Networking, Tunnels, the existing tunnel, Published application routes: `app` + `kmk-entretien.ca` to `http://localhost:8081`.

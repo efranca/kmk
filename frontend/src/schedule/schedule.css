@@ -103,9 +103,10 @@
 .sched-reminders__before { color: var(--text-muted); font-size: 0.9rem; }
 .sched-repeat__summary { margin: 0; font-weight: 600; color: var(--text); }
 .sched-colors { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.sched-colors__swatch { width: 28px; height: 28px; margin: 0; padding: 0; border-radius: 50%; border: 2px solid var(--surface); cursor: pointer; box-shadow: 0 0 0 1px var(--line); }
+/* Round swatches: the global `button { min-height: 44px }` (ds.css) would otherwise stretch them into ovals. */
+.sched-colors__swatch { flex: none; width: 32px; height: 32px; min-height: 32px; aspect-ratio: 1; margin: 0; padding: 0; border-radius: 50%; border: 2px solid var(--surface); cursor: pointer; box-shadow: 0 0 0 1px var(--line); }
 .sched-colors__swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--text); }
-.sched-colors__auto { min-height: 28px; margin: 0; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; font: inherit; font-size: 0.8rem; font-weight: 600; }
+.sched-colors__auto { min-height: 32px; margin: 0; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; font: inherit; font-size: 0.8rem; font-weight: 600; }
 .sched-colors__auto[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .sched-scope { display: flex; flex-direction: column; gap: 8px; }
 .sched-scope__title { margin: 0 0 8px; font-size: 1rem; color: var(--text); }
