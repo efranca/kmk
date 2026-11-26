@@ -579,5 +579,20 @@
   "dashQuotesLatest": "Últimos orçamentos",
   "dashQuotesLatestEmpty": "Nenhum pedido de orçamento ainda.",
   "dashQuotesLatestFun": "O próximo cliente está a caminho.",
-  "quoteEmptyNewTitle": "Nada de novo. Está tudo em dia!"
+  "quoteEmptyNewTitle": "Nada de novo. Está tudo em dia!",
+  "feedTitle": "Feed de calendário",
+  "feedHint": "Adicione seus eventos da KMK (somente título e horário) ao FamillAI, Google Agenda, Calendário da Apple ou Outlook. Só entram os eventos em que você está incluído.",
+  "feedCreate": "Criar link",
+  "feedRegenerate": "Criar um novo link",
+  "feedRevoke": "Revogar link",
+  "feedCopy": "Copiar",
+  "feedCopied": "Link copiado",
+  "feedShownOnce": "Copie este link agora. Ele não será mostrado de novo.",
+  "feedWarning": "Qualquer pessoa com este link pode ler os títulos e horários dos seus eventos. Revogá-lo corta todos os apps que o usam.",
+  "feedActive": "Um link está ativo desde {{date}}.",
+  "feedLastUsed": "Última leitura: {{date}}.",
+  "feedNone": "Nenhum link ainda.",
+  "feedLinkLabel": "Seu link de calendário",
+  "feedConfirmRevoke": "Revogar o link? Todos os apps que o usam deixam de ser atualizados.",
+  "feedConfirmRegenerate": "Criar um novo link? O atual para de funcionar em todos os apps."
 }

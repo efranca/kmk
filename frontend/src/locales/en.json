@@ -579,5 +579,20 @@
   "dashQuotesLatest": "Latest quotes",
   "dashQuotesLatestEmpty": "No quote requests yet.",
   "dashQuotesLatestFun": "The next customer is on the way.",
-  "quoteEmptyNewTitle": "Nothing new. You're all caught up!"
+  "quoteEmptyNewTitle": "Nothing new. You're all caught up!",
+  "feedTitle": "Calendar feed",
+  "feedHint": "Add your KMK events (title and time only) to FamillAI, Google Calendar, Apple Calendar or Outlook. Only events you are listed on are included.",
+  "feedCreate": "Create link",
+  "feedRegenerate": "Create a new link",
+  "feedRevoke": "Revoke link",
+  "feedCopy": "Copy",
+  "feedCopied": "Link copied",
+  "feedShownOnce": "Copy this link now. It will not be shown again.",
+  "feedWarning": "Anyone with this link can read your event titles and times. Revoking it cuts off every app that uses it.",
+  "feedActive": "A link is active since {{date}}.",
+  "feedLastUsed": "Last read {{date}}.",
+  "feedNone": "No link yet.",
+  "feedLinkLabel": "Your calendar link",
+  "feedConfirmRevoke": "Revoke the link? Every app using it stops updating.",
+  "feedConfirmRegenerate": "Create a new link? The current one stops working in every app."
 }

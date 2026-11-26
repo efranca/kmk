@@ -51,3 +51,7 @@
 }
 .settings-form__footer { padding-top: var(--space-4); border-top: 1px solid var(--line); }
 .settings-form__footer .btn { margin: 0; }
+
+/* Calendar feed card: the one-time link, selectable and never wider than the card. */
+.feed-link { display: grid; gap: var(--space-1); margin-block: var(--space-3); }
+.feed-link input { width: 100%; min-width: 0; font-family: ui-monospace, monospace; font-size: 0.85rem; }
