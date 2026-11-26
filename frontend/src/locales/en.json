@@ -591,6 +591,7 @@
   "feedWarning": "Anyone with this link can read your event titles and times. Revoking it cuts off every app that uses it.",
   "feedActive": "A link is active since {{date}}.",
   "feedLastUsed": "Last read {{date}}.",
+  "feedHowTo": "In FamillAI: My calendars, Connect a calendar, then paste the link. In Google Calendar: Other calendars, From URL.",
   "feedNone": "No link yet.",
   "feedLinkLabel": "Your calendar link",
   "feedConfirmRevoke": "Revoke the link? Every app using it stops updating.",

@@ -253,7 +253,7 @@ def test_failures_rate_limited(alice, make_client):
     for _ in range(3):
         assert guesser.get("/api/schedule/feed/" + "b" * 43 + ".ics").status_code == 404
     assert guesser.get("/api/schedule/feed/" + "b" * 43 + ".ics").status_code == 429
-    assert fetch(guesser, url).status_code == 429  # even a good token, from a limited address
+    assert fetch(guesser, url).status_code == 200  # a valid link still works from a limited address (final review)
     assert fetch(make_client(peer="6.6.6.6", rl_ip_max=3), url).status_code == 200
 
 
@@ -264,3 +264,45 @@ def test_successful_reads_are_not_counted(alice, owner_engine, make_client):
     for _ in range(4):
         assert fetch(reader, url).status_code == 200
     assert sql(owner_engine, "SELECT count(*) FROM login_attempts WHERE kind = 'feed'")[0][0] == 0
+
+
+# ---- final review fixes ----
+
+import logging  # noqa: E402
+
+
+def test_access_log_never_carries_the_token(make_client):
+    make_client()  # the app installs the filter when it is created
+    logger = logging.getLogger("uvicorn.access")
+    record = logging.LogRecord("uvicorn.access", logging.INFO, __file__, 1, '%s - "%s %s HTTP/%s" %d',
+                               ("1.2.3.4:5", "GET", "/api/schedule/feed/s3cr3tTOKEN.ics?x=1", "1.1", 200), None)
+    assert logger.filter(record)
+    line = record.getMessage()
+    assert "s3cr3tTOKEN" not in line and "/api/schedule/feed/" in line
+    other = logging.LogRecord("uvicorn.access", logging.INFO, __file__, 1, '%s - "%s %s HTTP/%s" %d',
+                              ("1.2.3.4:5", "GET", "/api/schedule/events?from=1", "1.1", 200), None)
+    assert logger.filter(other) and "/api/schedule/events?from=1" in other.getMessage()
+    assert sum(1 for f in logger.filters if type(f).__name__ == "FeedPathRedactor") == 1  # not stacked per app
+
+
+def test_valid_link_served_from_a_limited_address(alice, make_client):
+    """A shared fetcher (FamillAI's server, Google's pool) with stale links must not lose the valid ones."""
+    c, h = alice
+    url = make_feed(c, h)
+    fetcher = make_client(peer="8.8.8.8", rl_ip_max=3)
+    for _ in range(3):
+        fetcher.get("/api/schedule/feed/" + "c" * 43 + ".ics")
+    assert fetcher.get("/api/schedule/feed/" + "c" * 43 + ".ics").status_code == 429
+    assert fetch(fetcher, url).status_code == 200
+
+
+def test_dst_days_keep_wall_clock_times(alice, owner_engine, make_client, monkeypatch):
+    from app.schedule import service
+    monkeypatch.setattr(service, "now_toronto", lambda: datetime(2026, 10, 15, 12, 0))
+    c, h = alice
+    me = uid(owner_engine, "alice")
+    event(c, h, title="FallBack", start_date="2026-11-01", start_time="09:00", people=[me])
+    event(c, h, title="SpringFwd", start_date="2027-03-14", start_time="09:00", people=[me])
+    out = fetch(make_client(), make_feed(c, h)).text
+    assert "DTSTART;TZID=America/Toronto:20261101T090000\r\nDTEND;TZID=America/Toronto:20261101T100000" in out
+    assert "DTSTART;TZID=America/Toronto:20270314T090000\r\nDTEND;TZID=America/Toronto:20270314T100000" in out

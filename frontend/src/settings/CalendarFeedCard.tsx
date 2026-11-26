@@ -54,6 +54,7 @@ export function CalendarFeedCard({ csrfToken }: { csrfToken: string }) {
     <section className="section settings-card">
       <h2>{t("feedTitle")}</h2>
       <p className="settings-hint">{t("feedHint")}</p>
+      <p className="settings-hint">{t("feedHowTo")}</p>
       <p className="notice">{t("feedWarning")}</p>
       {info && !info.exists && <p className="status" role="status">{t("feedNone")}</p>}
       {info?.exists && info.created_at && (

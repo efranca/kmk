@@ -591,6 +591,7 @@
   "feedWarning": "Qualquer pessoa com este link pode ler os títulos e horários dos seus eventos. Revogá-lo corta todos os apps que o usam.",
   "feedActive": "Um link está ativo desde {{date}}.",
   "feedLastUsed": "Última leitura: {{date}}.",
+  "feedHowTo": "No FamillAI: Meus calendários, Conectar um calendário, e cole o link. No Google Agenda: Outras agendas, Do URL.",
   "feedNone": "Nenhum link ainda.",
   "feedLinkLabel": "Seu link de calendário",
   "feedConfirmRevoke": "Revogar o link? Todos os apps que o usam deixam de ser atualizados.",

@@ -3,6 +3,8 @@
 Only the token's hash is stored; the link is shown once, when it is created. See docs/security.md.
 """
 
+import logging
+import re
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -26,6 +28,24 @@ FEED_PATH = "/api/schedule/feed/"
 SUFFIX = ".ics"
 DAYS_BACK, DAYS_AHEAD = 31, 365
 RATE_KIND = "feed"
+
+
+_FEED_IN_PATH = re.compile(r"(/api/schedule/feed/)[^/?\s]*")
+
+
+class FeedPathRedactor(logging.Filter):
+    """Keeps the secret out of uvicorn's access log: the feed path is logged as /api/schedule/feed/[redacted]."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple) and any(isinstance(a, str) and FEED_PATH in a for a in record.args):
+            record.args = tuple(_FEED_IN_PATH.sub(r"\1[redacted]", a) if isinstance(a, str) else a for a in record.args)
+        return True
+
+
+def install_log_redaction() -> None:
+    logger = logging.getLogger("uvicorn.access")
+    if not any(isinstance(f, FeedPathRedactor) for f in logger.filters):
+        logger.addFilter(FeedPathRedactor())
 
 
 def feed_url(settings: Settings, raw: str) -> str:
@@ -84,15 +104,13 @@ def read_calendar(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
 ):
-    """Public: the secret in the link is the only credential. Every failure looks the same (404); failures are
-    rate-limited per address, successful reads are not counted (calendar apps poll often)."""
-    ip = request_ip(request, settings)
+    """Public: the secret in the link is the only credential. Every failure looks the same (404).
+
+    A valid link is served whatever the address's count of failures: FamillAI and Google fetch every subscription
+    from shared addresses, and stale links there must not lock out the valid ones (the tokens are 256-bit, so the
+    limit is only a brake on noise). Failed lookups are serialized, rate-limited and recorded per address."""
     raw = name[: -len(SUFFIX)] if name.endswith(SUFFIX) else ""
     digest = hash_token(raw)
-    identifier = digest[:16]
-    ratelimit.serialize(db, ip, identifier, RATE_KIND)
-    if ratelimit.is_limited(db, ip, identifier, settings, kind=RATE_KIND):
-        raise ApiError(429, "too_many_attempts")
     feed = None
     if raw:
         feed = db.scalar(
@@ -101,6 +119,11 @@ def read_calendar(
             .where(CalendarFeed.token_hash == digest, User.status == "active")
         )
     if feed is None:
+        ip = request_ip(request, settings)
+        identifier = digest[:16]
+        ratelimit.serialize(db, ip, identifier, RATE_KIND)
+        if ratelimit.is_limited(db, ip, identifier, settings, kind=RATE_KIND):
+            raise ApiError(429, "too_many_attempts")
         ratelimit.record_attempt(db, ip, identifier, False, kind=RATE_KIND)
         db.commit()
         raise ApiError(404, "not_found")

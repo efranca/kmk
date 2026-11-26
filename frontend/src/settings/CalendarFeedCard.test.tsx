@@ -35,6 +35,13 @@ describe("CalendarFeedCard", () => {
     expect(screen.queryByRole("button", { name: "Revoke link" })).toBeNull();
   });
 
+  it("says where to paste the link in FamillAI and Google Calendar", async () => {
+    mockApi({ info: NONE });
+    renderWithProviders(<CalendarFeedCard csrfToken="tok" />);
+    expect(await screen.findByText(/In FamillAI: My calendars, Connect a calendar/)).toBeInTheDocument();
+    expect(screen.getByText(/Google Calendar: Other calendars, From URL/)).toBeInTheDocument();
+  });
+
   it("creates a link, shows it once and copies it", async () => {
     const fn = mockApi({ info: NONE });
     const writeText = vi.fn(async () => undefined);
