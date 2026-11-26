@@ -81,6 +81,17 @@ class LoginAttempt(Base):
     kind: Mapped[str] = mapped_column(Text, default="login", server_default="login")
 
 
+class CalendarFeed(Base):
+    """A user's personal .ics feed (one per user). Only the token's hash is stored."""
+
+    __tablename__ = "calendar_feeds"
+
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    token_hash: Mapped[str] = mapped_column(Text, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class Token(Base):
     __tablename__ = "tokens"
     __table_args__ = (CheckConstraint("purpose in ('invite','reset')", name="tokens_purpose_valid"),)
