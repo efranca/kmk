@@ -2,6 +2,12 @@
 
 Where the project stands and what to pick up next. Status of the phases is also in the table in [README.md](README.md).
 
+## Done recently: personal calendar feed
+
+Each user can create a secret `.ics` link (Account page) with the events they are listed on, title and time only, for FamillAI, Google Calendar, Apple Calendar or Outlook; see the [design](superpowers/specs/2026-11-26-calendar-feed-design.md).
+**Not built, by choice:** several links per user, a company-wide feed, notes or people in the feed, two-way sync.
+**Follow-ups:** confirm on the live site that FamillAI's and Google's fetchers are not challenged by Cloudflare (see operations); a review of the new French and Portuguese strings.
+
 ## Done recently: phase 9, Quote requests
 
 The open quote form (`/devis`), the admins' Quotes area, the task and Agenda deadline per request, the notification email, Web Push, the company-wide System settings and an installable app are built; see the [design](superpowers/specs/2026-11-25-quotes-design.md).
