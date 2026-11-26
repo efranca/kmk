@@ -142,6 +142,30 @@ def list_occurrences(db: Session, from_: date, to: date, q: str | None, people: 
     return [payload for _, payload in found]
 
 
+def assigned_occurrences(db: Session, user_id: int, from_: date, to: date) -> list[Occurrence]:
+    """The occurrences of the events that list this person, in the range (for the personal feed).
+
+    Strict: an event with no people (an event "for everyone") is not included, unlike the on-screen filter.
+    """
+    events = db.scalars(
+        select(Event)
+        .join(EventPerson, EventPerson.event_id == Event.id)
+        .where(
+            EventPerson.user_id == user_id,
+            Event.start_date <= to,
+            or_(Event.recurrence.is_not(None), Event.start_date >= from_),
+        )
+    ).all()
+    exceptions_of = _exceptions_of(db, [e.id for e in events])
+    found = [
+        o
+        for event in events
+        for o in expand(_data(event), [_exception_data(x) for x in exceptions_of[event.id]], from_, to)
+    ]
+    found.sort(key=lambda o: (o.date, o.start_time is not None, o.start_time or time.min, o.event_id))
+    return found
+
+
 def event_payload(db: Session, event: Event) -> dict:
     people = _people_of(db, [event.id])[event.id]
     reminders = db.scalars(select(EventReminder).where(EventReminder.event_id == event.id).order_by(EventReminder.id)).all()

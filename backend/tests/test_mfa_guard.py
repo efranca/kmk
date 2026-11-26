@@ -11,6 +11,9 @@ PUBLIC = {
     ("POST", "/api/public/quotes"),
     ("PUT", "/api/public/quotes/{quote_id}/photos"),
     ("POST", "/api/public/quotes/{quote_id}/submit"),
+    # The personal calendar feed: the secret in the link is the credential (calendar apps cannot sign in).
+    # See docs/security.md.
+    ("GET", "/api/schedule/feed/{name}"),
 }
 # What a session in the "verify" state may still call.
 VERIFY_ALLOWED = {("GET", "/api/auth/me"), ("POST", "/api/auth/logout"), ("POST", "/api/auth/mfa/verify")}
