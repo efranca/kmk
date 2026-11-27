@@ -276,6 +276,26 @@ describe("visitors who are not signed in", () => {
   });
 });
 
+describe("set-password and forgot-password while signed in", () => {
+  it("send a signed-in person to the Dashboard instead of showing the form, and drop the token", async () => {
+    mockApi({ "GET /api/auth/me": signedIn() });
+    visit("/set-password#token=abc");
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Bonjour, alice" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: frCA.savePassword })).toBeNull();
+    expect(window.location.pathname).toBe("/");
+    expect(window.location.hash).toBe("");
+  });
+
+  it("do the same for the forgot-password page", async () => {
+    mockApi({ "GET /api/auth/me": signedIn() });
+    visit("/forgot-password");
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Bonjour, alice" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/");
+  });
+});
+
 describe("unknown pages", () => {
   it("show a friendly page to anonymous visitors", async () => {
     visit("/nope");

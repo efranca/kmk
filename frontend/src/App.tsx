@@ -57,9 +57,13 @@ const TITLE_KEYS: Record<Page, string | null> = {
   notfound: "notFoundTitle",
 };
 
+/** The pages for a person who is not signed in: choosing a password from an emailed link, and asking for one. */
+const isAnonOnly = (path: string) => path === "/set-password" || path === "/forgot-password";
+
 function pageFor(path: string, state: State): Page {
-  if (path === "/set-password") return "setpw";
-  if (path === "/forgot-password") return "forgot";
+  if (state.kind !== "auth" && path === "/set-password") return "setpw";
+  if (state.kind !== "auth" && path === "/forgot-password") return "forgot";
+  if (state.kind === "auth" && isAnonOnly(path)) return "welcome"; // signed in: the Dashboard (the address is replaced just below)
   if (state.kind === "checking") return "checking";
   if (state.kind === "anon") {
     if (/^\/(quotes|clients)\/\d+$/.test(path)) return "signin";
@@ -102,6 +106,10 @@ function AppContent() {
   const { path, navigate } = useRoute();
 
   const page = pageFor(path, state);
+  const signedInOnAnonPage = state.kind === "auth" && isAnonOnly(path);
+  useEffect(() => {
+    if (signedInOnAnonPage) navigate("/", true); // also drops any token from the emailed link
+  }, [signedInOnAnonPage, navigate]);
 
   useEffect(() => {
     const key = TITLE_KEYS[page];

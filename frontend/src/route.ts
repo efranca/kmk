@@ -33,13 +33,13 @@ export function forgetToken(): void {
   rememberedLang = null;
 }
 
-export function useRoute(): { path: string; search: string; navigate: (to: string) => void } {
+export function useRoute(): { path: string; search: string; navigate: (to: string, replace?: boolean) => void } {
   const location = useLocation();
   const go = useNavigate();
   const navigate = useCallback(
-    (to: string) => {
+    (to: string, replace = false) => {
       forgetToken();
-      go(to);
+      go(to, { replace });
     },
     [go],
   );
