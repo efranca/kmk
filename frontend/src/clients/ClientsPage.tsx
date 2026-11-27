@@ -51,7 +51,7 @@ export function ClientsPage() {
               <li key={c.id}>
                 <button type="button" className="client" onClick={() => navigate(`/clients/${c.id}`)}>
                   <strong>{c.name}</strong>
-                  <span className="chip-tag">{t(KIND_KEYS[c.kind])}</span>
+                  <span className="client__kinds">{c.kinds.map((k) => <span key={k} className="chip-tag">{t(KIND_KEYS[k])}</span>)}</span>
                   <span className="client__facts">
                     {[c.contact_name, c.phone, c.city].filter(Boolean).map((x) => <span key={x}>{x}</span>)}
                   </span>

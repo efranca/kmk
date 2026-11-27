@@ -6,7 +6,8 @@ export type ClientKind = "airbnb" | "commercial" | "post_construction" | "other"
 export type Client = {
   id: number;
   name: string;
-  kind: ClientKind;
+  /** One or more: a client can be Airbnb and Commercial at once. */
+  kinds: ClientKind[];
   contact_name: string | null;
   email: string | null;
   phone: string | null;

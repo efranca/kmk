@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime, time
 
 from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Identity, Integer, LargeBinary, String, Text, Time, Uuid, func, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -201,7 +201,7 @@ class Client(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     name: Mapped[str] = mapped_column(Text)
-    kind: Mapped[str] = mapped_column(Text, default="other")
+    kinds: Mapped[list[str]] = mapped_column(ARRAY(Text), default=lambda: ["other"])  # one or more of airbnb, commercial, post_construction, other
     contact_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     email: Mapped[str | None] = mapped_column(Text, nullable=True)
     phone: Mapped[str | None] = mapped_column(Text, nullable=True)

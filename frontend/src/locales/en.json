@@ -483,7 +483,7 @@
   "clientEmptyHint": "Add the people you work for, or create one from a won quote.",
   "clientNoResults": "No client matches “{{q}}”.",
   "clientFieldName": "Name",
-  "clientFieldKind": "Type",
+  "clientFieldKinds": "Type (one or more)",
   "clientFieldContact": "Contact person",
   "clientFieldEmail": "Email",
   "clientFieldPhone": "Phone",

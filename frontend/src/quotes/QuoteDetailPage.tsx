@@ -116,7 +116,7 @@ function Handling({ quote }: { quote: QuoteDetail }) {
       {creating && (
         <ClientDialog
           client={null} quoteId={quote.id} onClose={() => setCreating(false)}
-          prefill={{ name: quote.name, kind: quote.kind, email: quote.email, phone: quote.phone, address: quote.details.address ?? null, city: quote.details.city ?? null }}
+          prefill={{ name: quote.name, kinds: [quote.kind], email: quote.email, phone: quote.phone, address: quote.details.address ?? null, city: quote.details.city ?? null }}
         />
       )}
       <TextAreaField label={t("quoteNote")} hint={t("quoteNoteHint")} rows={3} maxLength={5000} value={shownNote} onChange={(e) => setNote(e.target.value)} onBlur={() => swallow(saveNote())} />

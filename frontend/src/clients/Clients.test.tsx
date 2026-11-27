@@ -7,7 +7,7 @@ import { ClientPicker } from "./ClientPicker";
 import { ClientsPage } from "./ClientsPage";
 
 const admin = { session: { user: { ...testUser, role: "admin" as const } } };
-const chantal = { id: 5, name: "Chantal Roy", kind: "airbnb", contact_name: "Chantal", email: "c@example.com", phone: "418-555-0101", address: "12 rue Saint-Jean", city: "Québec", notes: "Key under the mat", created_at: "2026-11-27T10:00:00Z", updated_at: "2026-11-27T10:00:00Z" };
+const chantal = { id: 5, name: "Chantal Roy", kinds: ["airbnb", "commercial"], contact_name: "Chantal", email: "c@example.com", phone: "418-555-0101", address: "12 rue Saint-Jean", city: "Québec", notes: "Key under the mat", created_at: "2026-11-27T10:00:00Z", updated_at: "2026-11-27T10:00:00Z" };
 const detail = { ...chantal, tasks: [{ id: 1, title: "Call Chantal", status: "pending", due_date: "2026-11-30" }], events: [{ id: 2, title: "Deep clean", start_date: "2026-12-04", start_time: "10:00" }], documents: [{ id: 3, title: "Lease", content_type: "application/pdf" }], quotes: [{ id: 9, reference: "D-0009", status: "won", kind: "airbnb", submitted_at: "2026-11-20T10:00:00Z" }] };
 
 beforeEach(async () => { await useEnglish(); });
@@ -33,7 +33,23 @@ describe("clients", () => {
     fireEvent.change(dialog.getByLabelText("Phone"), { target: { value: "418-555-0101" } });
     fireEvent.click(dialog.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(api.calls.some((c) => c.method === "POST")).toBe(true));
-    expect(api.calls.find((c) => c.method === "POST")!.body).toMatchObject({ name: "Chantal Roy", phone: "418-555-0101", kind: "other", email: null, notes: null });
+    expect(api.calls.find((c) => c.method === "POST")!.body).toMatchObject({ name: "Chantal Roy", phone: "418-555-0101", kinds: ["other"], email: null, notes: null });
+  });
+
+  it("lets a client be several kinds at once, and needs at least one", async () => {
+    const api = mockApi({ "GET /api/clients": { clients: [] }, "POST /api/clients": { client: chantal } });
+    renderWithProviders(<ClientsPage />, admin);
+    fireEvent.click(await screen.findByRole("button", { name: "New client" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    fireEvent.change(dialog.getByLabelText("Name"), { target: { value: "Chantal" } });
+    expect(dialog.getByRole("checkbox", { name: "Other" })).toBeChecked();
+    fireEvent.click(dialog.getByRole("checkbox", { name: "Other" }));
+    expect(dialog.getByRole("button", { name: "Save" })).toBeDisabled();
+    fireEvent.click(dialog.getByRole("checkbox", { name: "Commercial" }));
+    fireEvent.click(dialog.getByRole("checkbox", { name: "Airbnb" }));
+    fireEvent.click(dialog.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(api.calls.some((c) => c.method === "POST")).toBe(true));
+    expect(api.calls.find((c) => c.method === "POST")!.body).toMatchObject({ kinds: ["airbnb", "commercial"] });
   });
 
   it("shows a client's details and what is linked to them", async () => {

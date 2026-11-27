@@ -8,7 +8,7 @@ from app.auth.errors import ApiError
 from app.clients.schemas import ClientIn
 from app.models import Client, Document, Event, EventPerson, Quote, Task, User
 
-FIELDS = ("name", "kind", "contact_name", "email", "phone", "address", "city", "notes")
+FIELDS = ("name", "kinds", "contact_name", "email", "phone", "address", "city", "notes")
 LIST_LIMIT = 500
 LINKED_LIMIT = 200
 
