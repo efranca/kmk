@@ -5,7 +5,7 @@ import logging
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
-from app import system_settings
+from app import system_settings, user_settings
 from app.config import Settings, get_settings
 from app.emails import sender
 from app.push import service as push
@@ -54,9 +54,16 @@ def notify(engine: Engine, settings: Settings, quote_id: int) -> None:
                 return
             to = system_settings.get(db, "quote_notify_email")
             message = emails.new_quote_notice(quote, to, settings.public_base_url) if to else None
+            team = [
+                emails.new_quote_notice_for(quote, u.email, u.locale, settings.public_base_url)
+                for u in db.scalars(select(User).where(User.role.in_(PRIVILEGED), User.status == "active"))
+                if user_settings.normalize(u.settings)["notify_quotes"]
+            ]
             payload = {"title": "Nouvelle demande de soumission", "body": _label(quote), "url": f"/quotes/{quote.id}"}
         if message is not None:
             sender.deliver(engine, settings, message, None)
+        for each in team:
+            sender.deliver(engine, settings, each, None)
         _push(engine, settings, payload)
     except Exception:
         log.exception("quote notification failed")

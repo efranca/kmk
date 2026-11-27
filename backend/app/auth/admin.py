@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import names
+from app import names, user_settings
 from app.auth.avatars_url import avatar_url
 from app.auth import audit, lifecycle, policy, service, tokens
 from app.auth.account import queue_email
@@ -118,6 +118,7 @@ def row_payload(actor: User, user: User, last_sign_in) -> dict:
         "avatar_url": avatar_url(user),
         "status": user.status,
         "mfa_enabled": user.mfa_enabled,
+        "settings": user_settings.normalize(user.settings),
         "created_at": user.created_at.isoformat(),
         "last_sign_in": last_sign_in.isoformat() if last_sign_in else None,
         "actions": policy.available_actions(actor, user),
@@ -173,6 +174,27 @@ def edit_user(
         audit.log(db, "user_updated", actor_user_id=actor.id, target_user_id=target.id, ip=request_ip(request, settings), details={"fields": changed})
     db.commit()
     return {"user": service.user_payload(target)}
+
+
+@router.patch("/users/{user_id}/settings")
+def edit_user_settings(
+    user_id: int,
+    body: user_settings.SettingsIn,
+    request: Request,
+    actor: User = Depends(admin_actor),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings_dep),
+):
+    target = get_target(db, user_id)
+    policy.check(actor, target, "edit")
+    patch = user_settings.patch_of(body)
+    if not patch or (target.role not in policy.PRIVILEGED and "notify_quotes" in patch):
+        raise ApiError(422, "invalid")  # nothing to change; Staff never receive quote requests
+    db.refresh(target, with_for_update=True)
+    target.settings = {**user_settings.normalize(target.settings), **patch}
+    audit.log(db, "user_updated", actor_user_id=actor.id, target_user_id=target.id, ip=request_ip(request, settings), details={"fields": [f"settings.{k}" for k in patch]})
+    db.commit()
+    return {"settings": user_settings.normalize(target.settings)}
 
 
 def simple_action(action: str, event: str, change, user_id: int, request: Request, actor: User, db: Session, settings: Settings) -> dict:

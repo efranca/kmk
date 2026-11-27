@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Path, Query, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Path, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.auth.deps import get_db, get_settings_dep
@@ -10,7 +10,8 @@ from app.auth.guard import guard
 from app.auth.routes import request_ip
 from app.config import Settings
 from app.models import User, UserSession
-from app.schedule import service
+from app.emails import sender
+from app.schedule import notices, service
 from app.schedule.schemas import MAX_ID, DismissIn, EventIn
 
 router = APIRouter(prefix="/api/schedule")
@@ -48,17 +49,25 @@ def read_event(event_id: Annotated[int, Path(ge=1, le=MAX_ID)], auth: tuple[User
     return {"event": service.event_payload(db, service.get_event(db, event_id))}
 
 
+def _send(background: BackgroundTasks, request: Request, settings: Settings, mail: list) -> None:
+    for message, user_id in mail:
+        background.add_task(sender.deliver, request.app.state.engine, settings, message, user_id)
+
+
 @router.post("/events", status_code=201)
 def create_event(
     body: EventIn,
     request: Request,
+    background: BackgroundTasks,
     auth: tuple[User, UserSession] = Depends(guard()),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
 ):
     event = service.create_event(db, auth[0], body, request_ip(request, settings))
     payload = service.event_payload(db, event)
+    mail = notices.assignment_emails(db, event, set(payload["people"]), auth[0], settings.public_base_url)
     db.commit()
+    _send(background, request, settings, mail)
     return {"event": payload}
 
 
@@ -67,13 +76,17 @@ def change_event(
     event_id: Annotated[int, Path(ge=1, le=MAX_ID)],
     body: EventIn,
     request: Request,
+    background: BackgroundTasks,
     auth: tuple[User, UserSession] = Depends(guard()),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
 ):
+    before = set(service.event_payload(db, service.get_event(db, event_id))["people"])
     event = service.update_event(db, auth[0], event_id, body, request_ip(request, settings))
     payload = service.event_payload(db, event)
+    mail = notices.assignment_emails(db, event, set(payload["people"]) - before, auth[0], settings.public_base_url)
     db.commit()
+    _send(background, request, settings, mail)
     return {"event": payload}
 
 

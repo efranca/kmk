@@ -23,9 +23,10 @@ beforeEach(async () => {
 afterEach(async () => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); Reflect.deleteProperty(navigator, "standalone"); await resetLanguage(); });
 
 describe("NotificationsCard", () => {
-  it("is for admins and the super admin only", () => {
+  it("gives plain users the email switch but not push", () => {
     renderWithProviders(<NotificationsCard />, { session: { user: testUser } });
-    expect(screen.queryByText("Notifications")).toBeNull();
+    expect(screen.getByRole("switch", { name: "Email me when I am added to a Schedule event" })).toBeChecked();
+    expect(screen.queryByText(/on this device/)).toBeNull();
   });
 
   it("says so when the browser cannot show notifications", async () => {

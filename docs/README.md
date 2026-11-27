@@ -49,7 +49,7 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 
 | Table | Purpose | Key columns |
 | --- | --- | --- |
-| `users` | accounts | `username`, `name` (the person's display name, 1-100 characters, optional in the database for accounts that predate it), `email` (both lowercase, unique), `password_hash` (Argon2id, null until an invite is accepted), `role` (`user`/`admin`/`superadmin`; one super admin allowed), `locale` (`fr-CA`/`en`/`pt-BR`), `status` (`invited`/`active`/`disabled`/`deleted`), `mfa_enabled`, `mfa_secret` (Fernet-encrypted), `mfa_last_step`, `preferences` (JSON: theme, sidebar, tasks view, Schedule tasks switch, Dashboard widgets), `avatar_updated_at` (NULL = no picture) |
+| `users` | accounts | `username`, `name` (the person's display name, 1-100 characters, optional in the database for accounts that predate it), `email` (both lowercase, unique), `password_hash` (Argon2id, null until an invite is accepted), `role` (`user`/`admin`/`superadmin`; one super admin allowed; shown as Staff / Administrator / Administrator),`settings` (JSON, admin-managed, closed: `notify_quotes`; see `app/user_settings.py`), `locale` (`fr-CA`/`en`/`pt-BR`), `status` (`invited`/`active`/`disabled`/`deleted`), `mfa_enabled`, `mfa_secret` (Fernet-encrypted), `mfa_last_step`, `preferences` (JSON: theme, sidebar, tasks view, Schedule tasks switch, Dashboard widgets), `avatar_updated_at` (NULL = no picture) |
 | `sessions` | server-side sessions | `token_hash` (primary key), `user_id`, `expires_at` (5 days), `revoked_at`, `ip`, `user_agent`, `mfa_verified` |
 | `tokens` | invite and reset links | `token_hash`, `user_id`, `purpose` (`invite`/`reset`), `expires_at`, `used_at` |
 | `recovery_codes` | TOTP recovery codes | `user_id`, `code_hash` (unique), `used_at` |
@@ -112,6 +112,7 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `GET /api/admin/users` | verified admin or super admin | all accounts with role, status, two-step state, last sign-in, and the `actions` the caller may take on each row |
 | `POST /api/admin/users` | verified admin or super admin | create and invite an account: a **name** is required; role `user`, or `admin` for the super admin only |
 | `PATCH /api/admin/users/{id}` | verified admin or super admin (per [authority](security.md#administration-authority-and-account-lifecycle)) | change name or language; change email only while the account is `invited` (the super admin may also edit their own account) |
+| `PATCH /api/admin/users/{id}/settings` | as above (the `edit` rule) | change the person's admin-managed settings (`notify_quotes`; administrators only; unknown keys refused) |
 | `POST /api/admin/users/{id}/invite` | as above | re-send an invite |
 | `POST /api/admin/users/{id}/reset` | as above | email a reset link (admins and the super admin may also do it for themselves) |
 | `POST /api/admin/users/{id}/reset-mfa` | as above | remove the target's two-step verification and sign them out |

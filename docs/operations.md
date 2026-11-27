@@ -165,6 +165,8 @@ The schedule added `python-dateutil` (backend) and `react-router`, `@tanstack/re
   1. Generate the push keys: `docker compose exec api python -m app.cli vapid-keys`, put the two lines in `deploy/.env`, then `docker compose up -d` to restart the API.
   2. In Resend, verify the domain of the quote sender (for example `mail.kmk-entretien.com`) and keep `EMAIL_BACKEND=resend`.
   3. As super admin, open Settings > Company settings and fill: the notification email, the quote sender (`KMK Entretien <devis@mail.kmk-entretien.com>`), the Reply-To (the Gmail the team reads) and the public phone number. Replies to customers are refused (`sender_not_configured`) until the sender is set.
+  3b. Per-person quote emails: an administrator opens a person in Users and ticks "Receives quote requests"; that person then gets an email with a link for each new request (the notification address above still gets its copy). Staff never receive them.
+  3c. Everyone gets an email when added to an Agenda item (Settings > Notifications, on by default; each person can turn it off).
   4. Each admin turns on Settings > Notifications on their devices. On iPhone, the app must be added to the Home Screen first (the app is installable: manifest and icons).
 - **Customer replies** arrive in the team's Gmail (through the Reply-To), not in the app: paste them with "Add customer reply" on the quote so the history stays complete. There is no inbound email.
 - **Troubleshooting:** no push after turning it on → check `VAPID_*` are in the API's environment (`docker compose exec api env | grep VAPID`) and that the browser allowed notifications; a reply marked "Not sent" → the sender's domain is not verified in Resend, or the provider is down (use "Try again").
