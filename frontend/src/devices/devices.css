@@ -15,8 +15,8 @@
 /* people: cards flowing into columns, balanced by height, never split */
 .devices { columns: 3 24rem; column-gap: var(--space-4); max-width: 96rem; margin-top: var(--space-4); }
 .devices__group { display: flex; flex-direction: column; gap: 10px; break-inside: avoid; margin: 0 0 var(--space-4); padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); }
-.devices__who { display: flex; align-items: center; gap: 10px; }
-.devices__name { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.devices__who { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.devices__name { flex: 1 1 8rem; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .devices__name strong { font-family: Montserrat, Inter, system-ui, sans-serif; font-size: 1.05rem; overflow-wrap: anywhere; }
 .devices__all { flex: none; white-space: nowrap; font-size: 0.8125rem; min-height: 36px; padding-inline: 12px; }
 .devices__all:hover:not(:disabled) { background: var(--danger-tint); color: var(--danger); }
@@ -53,3 +53,6 @@
   .devices-stat__icon { display: none; }
   .devices-stat__label { font-size: 0.75rem; }
 }
+
+/* on a phone the name keeps the line to itself and the sign-out-all button drops below, full width */
+@media (max-width: 519px) { .devices__all { flex: 1 0 100%; justify-content: center; border: 1px solid var(--line); } }

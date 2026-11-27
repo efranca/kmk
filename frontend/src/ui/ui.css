@@ -227,3 +227,13 @@
 .ea-ring { fill: none; stroke: var(--text-muted); stroke-width: 4; stroke-linecap: round; }
 .ea-sun { fill: #f5b95c; }
 .ea-rays { fill: none; stroke: #f5b95c; stroke-width: 2.5; stroke-linecap: round; }
+
+/* the same switch as a dropdown (phones) */
+.segmented-menu { position: relative; display: inline-flex; }
+.segmented-menu__button { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; margin: 0; padding: 0 14px 0 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--text); font: inherit; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+.segmented-menu__button:focus-visible, .segmented-menu__item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.segmented-menu__panel { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; min-width: 12rem; display: grid; gap: 2px; padding: 8px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-m); }
+.segmented-menu__item { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 0.95rem; font-weight: 600; text-align: left; cursor: pointer; }
+.segmented-menu__item::before { content: ""; display: inline-block; width: 1em; }
+.segmented-menu__item[aria-checked="true"]::before { content: "✓"; color: var(--accent); }
+.segmented-menu__item:hover, .segmented-menu__item:focus-visible { background: var(--surface-2); }

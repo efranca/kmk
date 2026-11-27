@@ -58,7 +58,7 @@ export function TaskBoard({
     {narrow && (
       <div className="board-tabs">
         <Segmented label={t("taskStatusLabel")} value={tab} onChange={setTab}
-          options={COLUMNS.map(({ status, label }) => ({ value: status, label: `${t(label)} ${tasks.filter((x) => x.status === status).length}` }))} />
+          options={COLUMNS.map(({ status, label }) => ({ value: status, label: t(label) }))} />
       </div>
     )}
     <div className={narrow ? "board board--tabs" : "board"}>
