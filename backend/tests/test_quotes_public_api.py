@@ -277,3 +277,15 @@ def test_the_engine_hides_statement_parameters_so_personal_data_cannot_reach_the
     from app.db import make_engine
 
     assert make_engine("postgresql+psycopg://u:p@localhost/x").hide_parameters is True
+
+
+def test_airbnb_listing_link_is_optional_web_only_and_stored(client, owner_engine):
+    url = "https://www.airbnb.com/rooms/12345"
+    r = start(client, listing_url=url)
+    assert r.status_code == 201
+    assert sql(owner_engine, "SELECT details->>'listing_url' FROM quotes WHERE id = %s" % r.json()["id"])[0][0] == url
+    assert start(client, listing_url="").status_code == 201
+    assert start(client, listing_url="javascript:alert(1)").status_code == 422
+    assert start(client, listing_url="not a link").status_code == 422
+    commercial = dict(kind="commercial", property="office", frequency="weekly", message="x", bedrooms=None, bathrooms=None)
+    assert start(client, listing_url=url, **commercial).status_code == 422

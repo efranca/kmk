@@ -19,9 +19,9 @@ const SITE: Record<PublicLocale, string> = { "fr-CA": "https://kmk-entretien.ca/
 
 type Kind = "airbnb" | "commercial" | "post_construction";
 const KIND_STRINGS = { airbnb: ["pqKindAirbnb", "pqKindAirbnbHint"], commercial: ["pqKindCommercial", "pqKindCommercialHint"], post_construction: ["pqKindPost", "pqKindPostHint"] } as const;
-type Values = { name: string; email: string; phone: string; city: string; address: string; property: string; frequency: string; bedrooms: string; bathrooms: string; area: string; message: string };
+type Values = { name: string; email: string; phone: string; city: string; address: string; property: string; frequency: string; bedrooms: string; bathrooms: string; area: string; listing: string; message: string };
 type Errors = Partial<Record<keyof Values, string>>;
-const EMPTY: Values = { name: "", email: "", phone: "", city: "", address: "", property: "", frequency: "", bedrooms: "", bathrooms: "", area: "", message: "" };
+const EMPTY: Values = { name: "", email: "", phone: "", city: "", address: "", property: "", frequency: "", bedrooms: "", bathrooms: "", area: "", listing: "", message: "" };
 type Draft = { id: number; token: string; uploaded: number };
 
 function Field({ id, label, required, error, hint, children }: { id: string; label: string; required?: boolean; error?: string; hint?: string; children: ReactNode }) {
@@ -99,6 +99,7 @@ export function QuoteForm() {
       if (!e.bathrooms && !(v.bathrooms.trim() !== "" && baths >= 0 && baths <= 20 && (baths * 2) % 1 === 0)) e.bathrooms = t("pqErrBathrooms");
     }
     if (v.area.trim() !== "" && !(/^\d+$/.test(v.area.trim()) && Number(v.area) >= 1 && Number(v.area) <= 1_000_000)) e.area = t("pqErrArea");
+    if (kind === "airbnb" && v.listing.trim() !== "" && !/^https?:\/\/[^\s/]+\.[^\s/]+/i.test(v.listing.trim())) e.listing = t("pqErrListing");
     if (kind === "commercial" && !v.message.trim()) e.message = t("pqErrMessage");
     if (over) e.message = t("pqErrTooLong");
     return e;
@@ -109,6 +110,7 @@ export function QuoteForm() {
     return {
       name: v.name.trim(), email: v.email.trim(), phone: v.phone.trim(), locale, kind: kind!, city: v.city.trim(), address: v.address.trim(), property: v.property, frequency: v.frequency,
       ...(kind === "airbnb" ? { bedrooms: num(v.bedrooms), bathrooms: num(v.bathrooms) } : {}),
+      ...(kind === "airbnb" && v.listing.trim() ? { listing_url: v.listing.trim() } : {}),
       ...(num(v.area) !== undefined ? { area_sqft: num(v.area) } : {}),
       message: v.message.trim() || null, website: trap.current?.value ?? "",
     };
@@ -240,6 +242,9 @@ export function QuoteForm() {
                     <Field id="pq-bedrooms" label={t("pqBedrooms")} required error={errors.bedrooms}><input id="pq-bedrooms" type="number" inputMode="numeric" min={0} max={20} step={1} value={v.bedrooms} onChange={set("bedrooms")} disabled={sending} /></Field>
                     <Field id="pq-bathrooms" label={t("pqBathrooms")} required error={errors.bathrooms}><input id="pq-bathrooms" type="number" inputMode="decimal" min={0} max={20} step={0.5} value={v.bathrooms} onChange={set("bathrooms")} disabled={sending} /></Field>
                   </div>
+                )}
+                {kind === "airbnb" && (
+                  <Field id="pq-listing" label={t("pqListing")} hint={t("pqListingHint")} error={errors.listing}><input id="pq-listing" type="url" inputMode="url" autoComplete="off" maxLength={300} placeholder="https://www.airbnb.com/rooms/…" value={v.listing} onChange={set("listing")} disabled={sending} /></Field>
                 )}
                 <Field id="pq-area" label={t("pqArea")} error={errors.area}><input id="pq-area" type="number" inputMode="numeric" min={1} max={1000000} value={v.area} onChange={set("area")} disabled={sending} /></Field>
               </>

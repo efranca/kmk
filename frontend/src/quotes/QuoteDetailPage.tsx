@@ -36,6 +36,7 @@ function Request({ quote }: { quote: QuoteDetail }) {
         <Row label={t("quoteType")}>{t(KIND_KEYS[quote.kind])}</Row>
         <Row label={t("quoteCity")}>{d.city}</Row>
         <Row label={t("quoteAddress")}>{d.address ?? d.city}</Row>
+        {d.listing_url && /^https?:\/\//i.test(d.listing_url) && <Row label={t("quoteListing")}><a href={d.listing_url} target="_blank" rel="noopener noreferrer">{d.listing_url}</a></Row>}
         {d.property && <Row label={t("quoteProperty")}>{t(PROPERTY_KEYS[d.property] ?? "quotePropOther")}</Row>}
         {d.bedrooms !== undefined && <Row label={t("quoteBedrooms")}>{d.bedrooms}</Row>}
         {d.bathrooms !== undefined && <Row label={t("quoteBathrooms")}>{d.bathrooms}</Row>}

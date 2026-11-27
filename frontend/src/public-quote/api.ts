@@ -23,7 +23,7 @@ const BASE = "/api/public/quotes";
 
 export type QuoteInput = {
   name: string; email: string; phone: string; locale: string; kind: "airbnb" | "commercial" | "post_construction"; city: string; address: string; property: string; frequency: string;
-  bedrooms?: number; bathrooms?: number; area_sqft?: number; message: string | null; website: string;
+  bedrooms?: number; bathrooms?: number; area_sqft?: number; listing_url?: string; message: string | null; website: string;
 };
 
 export const publicConfig = () => call<{ phone: string }>("GET", `${BASE}/config`);

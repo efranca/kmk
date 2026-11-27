@@ -472,6 +472,7 @@
   "quoteEmail": "Email",
   "quotePhone": "Phone",
   "quoteType": "Type",
+  "quoteListing": "Airbnb listing",
   "quoteAddress": "Address or neighbourhood",
   "quoteProperty": "Property",
   "quoteBedrooms": "Bedrooms",

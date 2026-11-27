@@ -51,6 +51,7 @@ class QuoteIn(BaseModel):
     bathrooms: float | None = Field(default=None, ge=0, le=20)
     area_sqft: int | None = Field(default=None, ge=1, le=1_000_000)
     message: str | None = None
+    listing_url: str | None = None  # the Airbnb listing, optional
     website: str = ""  # the honeypot: people never see it
 
     @field_validator("name")
@@ -67,6 +68,18 @@ class QuoteIn(BaseModel):
     @classmethod
     def _address(cls, v: str) -> str:
         return _text(v, 1, 200, "address")  # only admins ever read it
+
+    @field_validator("listing_url")
+    @classmethod
+    def _listing_url(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = _text(v, 0, 300, "listing_url") if v.strip() else ""
+        if not v:
+            return None
+        if not re.match(r"^https?://[^\s/]+\.[^\s/]+", v, re.IGNORECASE):  # only web links: it becomes a link for admins
+            raise ValueError("listing_url")
+        return v
 
     @field_validator("email")
     @classmethod
@@ -100,6 +113,8 @@ class QuoteIn(BaseModel):
 
     @model_validator(mode="after")
     def _per_kind(self) -> "QuoteIn":
+        if self.listing_url and self.kind != "airbnb":
+            raise ValueError("a listing link is for Airbnb")
         if self.kind == "airbnb":
             if self.property not in AIRBNB_PROPERTY or self.frequency not in AIRBNB_FREQUENCY:
                 raise ValueError("property or frequency")
@@ -123,6 +138,8 @@ class QuoteIn(BaseModel):
         for key in ("bedrooms", "bathrooms", "area_sqft"):
             if getattr(self, key) is not None:
                 out[key] = getattr(self, key)
+        if self.listing_url:
+            out["listing_url"] = self.listing_url
         return out
 
 
