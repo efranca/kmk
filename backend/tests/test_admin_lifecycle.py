@@ -56,7 +56,7 @@ def test_list_shape_sorting_and_last_sign_in(make_client, add_user, owner_engine
     by = {u["username"]: u for u in rows}
     assert {"amy", "boss", "gone", "zed"} <= set(by)  # deleted accounts are listed too
     amy = by["amy"]
-    assert set(amy) == {"id", "username", "name", "email", "role", "locale", "status", "mfa_enabled", "created_at", "last_sign_in", "actions", "avatar_url"}
+    assert set(amy) == {"id", "username", "name", "email", "role", "locale", "status", "mfa_enabled", "created_at", "last_sign_in", "settings", "actions", "avatar_url"}
     assert (amy["locale"], amy["status"], amy["mfa_enabled"]) == ("en", "active", False)
     datetime.fromisoformat(amy["last_sign_in"])
     assert by["zed"]["last_sign_in"] is None
