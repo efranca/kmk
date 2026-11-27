@@ -103,8 +103,8 @@ def test_unlisted_plain_user_cannot_patch_or_delete(make_client, add_user, owner
     add_user("bob", "bob@example.com")
     ec, eh = session(make_client, add_user, "carol")
     eid = create(c, h, people=[uid(owner_engine, "bob")]).json()["event"]["id"]
-    assert ec.patch(f"/api/schedule/events/{eid}", json=body(title="Hijack"), headers=eh).status_code == 403
-    assert ec.delete(f"/api/schedule/events/{eid}", headers=eh).status_code == 403
+    assert ec.patch(f"/api/schedule/events/{eid}", json=body(title="Hijack"), headers=eh).status_code == 404  # not hers: not even visible
+    assert ec.delete(f"/api/schedule/events/{eid}", headers=eh).status_code == 404
     assert listing(c)[0]["title"] == "Visit"
 
 
@@ -129,8 +129,8 @@ def test_everyone_event_non_creator_plain_user_is_403(make_client, add_user):
     c, h = session(make_client, add_user, "alice")
     bc, bh = session(make_client, add_user, "bob")
     eid = create(c, h).json()["event"]["id"]
-    assert bc.patch(f"/api/schedule/events/{eid}", json=body(title="x"), headers=bh).status_code == 403
-    assert bc.delete(f"/api/schedule/events/{eid}", headers=bh).status_code == 403
+    assert bc.patch(f"/api/schedule/events/{eid}", json=body(title="x"), headers=bh).status_code == 404
+    assert bc.delete(f"/api/schedule/events/{eid}", headers=bh).status_code == 404
 
 
 def test_admin_can_change_any_event(make_client, add_user):
@@ -402,7 +402,7 @@ def test_schedule_responses_are_not_cached(alice):
 
 
 def test_event_made_by_the_website_is_listed_with_no_creator(make_client, add_user, owner_engine):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")  # an event for no one in particular is for admins
     sql(owner_engine, "INSERT INTO events (title, start_date, start_time, duration_minutes) VALUES ('Quote deadline', '2026-11-05', '09:00', 30)")
     occurrence = [o for o in listing(c) if o["title"] == "Quote deadline"][0]
     assert occurrence["created_by"] is None

@@ -26,15 +26,20 @@ beforeEach(async () => { await useEnglish(); });
 afterEach(async () => { await resetLanguage(); });
 
 describe("Dashboard widget switches", () => {
-  it("shows every card by default", async () => {
+  it("shows Staff their own cards by default, without All events", async () => {
     setup({});
     expect(await screen.findByRole("region", { name: "My events" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "All events" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "All events" })).toBeNull();
     expect(screen.getByRole("region", { name: "My tasks" })).toBeInTheDocument();
   });
 
+  it("shows an admin All events too", async () => {
+    setup({}, "admin");
+    expect(await screen.findByRole("region", { name: "All events" })).toBeInTheDocument();
+  });
+
   it("hides the cards switched off", async () => {
-    setup({ my_tasks: false, all_events: false });
+    setup({ my_tasks: false, all_events: false }, "admin");
     expect(await screen.findByRole("region", { name: "My events" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "All events" })).toBeNull();
     expect(screen.queryByRole("region", { name: "My tasks" })).toBeNull();

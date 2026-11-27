@@ -94,7 +94,7 @@ def list_tasks(
     db: Session = Depends(get_db),
 ):
     who, whole_team = _person(person)
-    return {"tasks": service.list_tasks(db, status, who, whole_team)}
+    return {"tasks": service.list_tasks(db, auth[0], status, who, whole_team)}
 
 
 @router.post("", status_code=201)
@@ -125,7 +125,7 @@ def clear_completed(
 
 @router.get("/{task_id}")
 def read_task(task_id: TaskId, auth: tuple[User, UserSession] = Depends(reader), db: Session = Depends(get_db)):
-    return {"task": service.task_payload(db, service.get_task(db, task_id))}
+    return {"task": service.task_payload(db, service.get_task(db, task_id, auth[0]))}
 
 
 @router.patch("/{task_id}")

@@ -31,7 +31,8 @@ function setup(items: Occurrence[], props = {}) {
     "GET /api/tasks": () => ({ tasks }),
     "GET /api/tasks/categories": () => ({ categories: [] }),
   });
-  renderWithProviders(<><DashboardPage user={testUser} mfaEnabled recoveryCodesLeft={null} {...props} /><Probe /></>);
+  const admin = { ...testUser, role: "admin" as const }; // only admins have the All events card
+  renderWithProviders(<><DashboardPage user={admin} mfaEnabled recoveryCodesLeft={null} {...props} /><Probe /></>, { session: { user: admin } });
   return api;
 }
 
@@ -107,7 +108,8 @@ describe("DashboardPage", () => {
       "GET /api/tasks": () => ({ tasks: [] }),
       "GET /api/tasks/categories": () => ({ categories: [] }),
     });
-    renderWithProviders(<DashboardPage user={testUser} mfaEnabled recoveryCodesLeft={null} />);
+    const admin = { ...testUser, role: "admin" as const };
+    renderWithProviders(<DashboardPage user={admin} mfaEnabled recoveryCodesLeft={null} />, { session: { user: admin } });
     await screen.findAllByText("Old client visit");
     const group = within(screen.getByRole("group", { name: "Gaby Gone" }));
     expect(group.getByText("Old client visit")).toBeInTheDocument();

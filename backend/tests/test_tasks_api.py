@@ -38,7 +38,7 @@ def alice(make_client, add_user):
 
 
 def test_create_and_read_back_all_fields(make_client, add_user, owner_engine):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")  # only admins add categories
     add_user("bob", "bob@example.com")
     bob = uid(owner_engine, "bob")
     cat = c.post("/api/tasks/categories", json={"name": "Office"}, headers=h).json()["category"]["id"]
@@ -112,9 +112,10 @@ def test_unlisted_plain_user_cannot_patch_or_delete(make_client, add_user, owner
     add_user("bob", "bob@example.com")
     t = create(c, h, people=[uid(owner_engine, "bob")])
     cc, hh = session(make_client, add_user, "carol")
-    assert cc.patch(f"/api/tasks/{t['id']}", json=body(), headers=hh).status_code == 403
-    assert cc.delete(f"/api/tasks/{t['id']}", headers=hh).status_code == 403
-    assert cc.post(f"/api/tasks/{t['id']}/complete", headers=hh).status_code == 403
+    # not on the task, so it is not even visible to her: the same 404 as a task that does not exist
+    assert cc.patch(f"/api/tasks/{t['id']}", json=body(), headers=hh).status_code == 404
+    assert cc.delete(f"/api/tasks/{t['id']}", headers=hh).status_code == 404
+    assert cc.post(f"/api/tasks/{t['id']}/complete", headers=hh).status_code == 404
 
 
 def test_listed_person_may_edit(make_client, add_user, owner_engine):
@@ -125,14 +126,13 @@ def test_listed_person_may_edit(make_client, add_user, owner_engine):
     assert bc.post(f"/api/tasks/{t['id']}/complete", headers=bh).status_code == 200
 
 
-def test_anyone_ticks_whole_team_task_but_cannot_edit_it(make_client, add_user):
+def test_staff_cannot_see_or_tick_a_whole_team_task_made_by_someone_else(make_client, add_user):
     c, h = session(make_client, add_user, "alice")
     t = create(c, h)
     cc, hh = session(make_client, add_user, "carol")
-    assert cc.post(f"/api/tasks/{t['id']}/complete", headers=hh).status_code == 200
-    assert cc.post(f"/api/tasks/{t['id']}/reopen", headers=hh).status_code == 200
-    assert cc.patch(f"/api/tasks/{t['id']}", json=body(), headers=hh).status_code == 403
-    assert cc.delete(f"/api/tasks/{t['id']}", headers=hh).status_code == 403
+    assert cc.post(f"/api/tasks/{t['id']}/complete", headers=hh).status_code == 404
+    assert cc.patch(f"/api/tasks/{t['id']}", json=body(), headers=hh).status_code == 404
+    assert cc.delete(f"/api/tasks/{t['id']}", headers=hh).status_code == 404
 
 
 def test_admin_changes_any_task(make_client, add_user, owner_engine):
@@ -148,7 +148,7 @@ def test_complete_is_idempotent(make_client, add_user):
     c, h = session(make_client, add_user, "alice")
     t = create(c, h)
     first = c.post(f"/api/tasks/{t['id']}/complete", headers=h).json()["task"]
-    cc, hh = session(make_client, add_user, "carol")
+    cc, hh = session(make_client, add_user, "carol", role="admin")
     second = cc.post(f"/api/tasks/{t['id']}/complete", headers=hh).json()["task"]
     assert first["status"] == "completed" and first["completed_at"]
     assert second["completed_at"] == first["completed_at"]
@@ -172,7 +172,8 @@ def test_clear_completed_only_deletes_permitted(make_client, add_user, owner_eng
     create(c, h, title="still open")
     r = c.delete("/api/tasks/completed", headers=h)
     assert (r.status_code, r.json()) == (200, {"deleted": 1})
-    assert sorted(t["title"] for t in listing(c)) == ["still open", "theirs"]
+    assert sorted(t["title"] for t in listing(c)) == ["still open"]  # hers only: Bob's task was never visible to her
+    assert [t["title"] for t in listing(bc)] == ["theirs"]
 
 
 def test_audit_rows_never_contain_text(make_client, add_user, owner_engine):
@@ -231,7 +232,7 @@ def test_start_needs_permission(make_client, add_user, owner_engine):
     c, h = session(make_client, add_user, "alice")
     t = create(c, h, people=[uid(owner_engine, "alice")])
     cb, hb = session(make_client, add_user, "bob")
-    assert cb.post(f"/api/tasks/{t['id']}/start", headers=hb).status_code == 403
+    assert cb.post(f"/api/tasks/{t['id']}/start", headers=hb).status_code == 404
 
 
 def test_start_is_audited(alice, owner_engine):
@@ -252,4 +253,4 @@ def test_task_made_by_the_website_reads_and_is_changed_by_its_people(make_client
     assert done.status_code == 200, done.text
     assert done.json()["task"]["updated_by"]["name"] == "alice"
     bob, bh = session(make_client, add_user, "bob")
-    assert bob.patch(f"/api/tasks/{tid}", json=body(), headers=bh).status_code == 403
+    assert bob.patch(f"/api/tasks/{tid}", json=body(), headers=bh).status_code == 404

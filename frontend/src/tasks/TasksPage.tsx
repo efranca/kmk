@@ -18,7 +18,7 @@ import { useToast } from "../ui/toastContext";
 import type { Person } from "../ui/Avatar";
 import { dueGroup, type DueGroup } from "./dueGroup";
 import { useCategories, useClearCompleted, useSetTaskStatus, useTasks, useToggleTask } from "./hooks";
-import { canChangeTask, canSetTaskStatus } from "./permissions";
+import { canChangeTask, canManageCategories, canSetTaskStatus } from "./permissions";
 import { matchesSearch } from "./search";
 import { CategoryChips, FALLBACK_CATEGORY_ICON } from "./CategoryChips";
 import { CategoryManager } from "./CategoryManager";
@@ -133,7 +133,7 @@ export function TasksPage() {
             <IconButton icon="search" label={t("taskSearchLabel")} aria-pressed={searchOpen} onClick={() => { setManaging(false); if (searchOpen) setText(""); setSearchOpen(!searchOpen); }} />
             <IconButton icon="users" label={t("taskShowPeople")} aria-pressed={showPeople} onClick={() => update({ show_task_people: !showPeople })} />
             <IconButton icon="tag" label={t("taskShowCategories")} aria-pressed={showChips} onClick={() => update({ show_task_categories: !showChips })} />
-            <ViewMenuButton view={view} onView={setView} managing={managing} onManage={() => { setSearchOpen(false); setText(""); setManaging(!managing); }}
+            <ViewMenuButton view={view} onView={setView} canManage={canManageCategories(user)} managing={managing} onManage={() => { setSearchOpen(false); setText(""); setManaging(!managing); }}
               onClear={clearable > 0 && (view === "board" || status === "completed") && !searching ? () => setClearing(true) : undefined} />
             <IconButton icon="plus" variant="primary" label={t("taskNew")} onClick={() => setEditing("new")} />
           </>

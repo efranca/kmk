@@ -37,6 +37,7 @@ export function DashboardPage({ user, mfaEnabled, recoveryCodesLeft }: { user: U
   const openTasks = () => navigate("/tasks");
   const items = range.data ?? [];
   const isAdmin = user.role !== "user";
+  const showAll = isAdmin && widgets.all_events; // Staff only see their own events, so "All events" would repeat "My events"
   const showSummary = isAdmin && widgets.quotes_summary;
   const showLatest = isAdmin && widgets.quotes_latest;
   const showClients = !isAdmin && widgets.my_clients; // Staff: the clients they are scheduled for
@@ -48,13 +49,13 @@ export function DashboardPage({ user, mfaEnabled, recoveryCodesLeft }: { user: U
       {!mfaEnabled && <MfaBanner role={user.role} />}
       <div className="dash__grid">
         {widgets.my_events && <MyEventsCard items={items} userId={user.id} people={byId} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />}
-        {widgets.all_events && <AllEventsCard items={items} everyone={people} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />}
+        {showAll && <AllEventsCard items={items} everyone={people} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />}
         {widgets.my_tasks && <TasksCard userId={user.id} people={byId} today={today} onOpenTasks={openTasks} />}
         {showClients && <ClientsCard onOpenClients={() => navigate("/clients")} onOpenClient={(id) => navigate(`/clients/${id}`)} />}
         {showSummary && <QuotesSummaryCard onOpenQuotes={(tab) => navigate(tab ? `/quotes?tab=${tab}` : "/quotes")} />}
         {showLatest && <QuotesLatestCard onOpenQuote={(id) => navigate(`/quotes/${id}`)} onOpenQuotes={() => navigate("/quotes")} locale={i18n.language} />}
       </div>
-      {!widgets.my_events && !widgets.all_events && !widgets.my_tasks && !showClients && !showSummary && !showLatest && (
+      {!widgets.my_events && !showAll && !widgets.my_tasks && !showClients && !showSummary && !showLatest && (
         <p className="status">
           {t("dashAllHidden")}{" "}
           <a href="/settings" onClick={(e) => { e.preventDefault(); navigate("/settings"); }}>{t("dashAllHiddenLink")}</a>

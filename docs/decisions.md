@@ -102,7 +102,7 @@ All entries below were decided on 2026-11-17 during the build (phase noted).
 ### D19. Tasks come back, without repeats, rewards or AI (phase 8)
 - **Decision:** copy FamillAI's task list (categories, status tabs, people filter, search, due-date groups, "Clear completed"), with a "My tasks" Dashboard card and an optional "Show tasks" switch on the Schedule. This reverses the schedule design's "Tasks dropped" (D18). Same approach as D18: port the screens, new Python backend.
 - **Left out on purpose:** repeating tasks (and the per-day completions they need), XP and rewards, children, the AI assistant and voice, uploaded icons.
-- **Who edits what:** like events, plus anyone may tick a task for the whole team; categories are admin-managed (see [security.md](security.md)).
+- **Who edits what:** like events; Staff see only the tasks and events that list them (or that they made), so there is no longer a task "anyone may tick"; categories are admin-managed (Staff cannot add one either) (see [security.md](security.md)).
 - **"My tasks", not everyone's:** the Dashboard card shows the tasks you are on and the whole team's, because with about 15 people a list of everyone's work gets long; the Tasks page shows everything.
 - **Rejected:** tasks as a kind of calendar event (different status, categories and no repeats), and including the AI now (it needs its own design: data flow, audit, a read-only role, where LiteLLM sends data).
 - **Revisit when:** recurring chores become common (add repeats), or the AI project starts.

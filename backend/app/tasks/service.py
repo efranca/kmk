@@ -1,6 +1,6 @@
 """Tasks and their categories. Authority rules live in app/auth/policy.py."""
 
-from sqlalchemy import delete, exists, func, select
+from sqlalchemy import delete, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -40,6 +40,8 @@ def _name_taken(db: Session, name: str, except_id: int | None = None) -> bool:
 
 
 def create_category(db: Session, actor: User, data: CategoryIn, ip: str) -> TaskCategory:
+    if not policy.can_manage_task_categories(actor):
+        raise ApiError(403, "forbidden")
     if _name_taken(db, data.name):
         raise ApiError(409, "category_exists")
     category = TaskCategory(name=data.name, icon=data.icon, created_by=actor.id)
@@ -117,8 +119,10 @@ def task_payload(db: Session, task: Task) -> dict:
     return task_payloads(db, [task])[0]
 
 
-def list_tasks(db: Session, status: str, person: int | None, whole_team: bool) -> list[dict]:
+def list_tasks(db: Session, actor: User, status: str, person: int | None, whole_team: bool) -> list[dict]:
     query = select(Task)
+    if actor.role not in policy.PRIVILEGED:  # staff see their own tasks (listed on them, or made by them)
+        query = query.where(or_(Task.created_by == actor.id, exists().where(TaskPerson.task_id == Task.id, TaskPerson.user_id == actor.id)))
     if status != "all":
         query = query.where(Task.status == status)
     if person is not None:
@@ -129,9 +133,10 @@ def list_tasks(db: Session, status: str, person: int | None, whole_team: bool) -
     return task_payloads(db, list(db.scalars(query)))
 
 
-def get_task(db: Session, task_id: int, *, lock: bool = False) -> Task:
+def get_task(db: Session, task_id: int, actor: User, *, lock: bool = False) -> Task:
+    """The task, or 404 when it does not exist or this person may not see it (the same answer for both)."""
     task = db.scalar(select(Task).where(Task.id == task_id).with_for_update()) if lock else db.get(Task, task_id)
-    if task is None:
+    if task is None or not policy.can_see_item(actor, task.created_by, _people_of(db, task.id)):
         raise ApiError(404, "task_not_found")
     return task
 
@@ -171,7 +176,7 @@ def create_task(db: Session, actor: User, data: TaskIn, ip: str) -> Task:
 
 
 def update_task(db: Session, actor: User, task_id: int, data: TaskIn, ip: str) -> Task:
-    task = get_task(db, task_id, lock=True)
+    task = get_task(db, task_id, actor, lock=True)
     old_people = _people_of(db, task.id)
     policy.check_task(actor, task.created_by, old_people)
     _check_category(db, data.category_id)
@@ -201,7 +206,7 @@ def update_task(db: Session, actor: User, task_id: int, data: TaskIn, ip: str) -
 def set_status(db: Session, actor: User, task_id: int, status: str, ip: str) -> Task:
     """Complete, start or reopen. Idempotent: asking for the status a task already has changes nothing (the row is locked, so
     two people ticking at once cannot overwrite who finished it or when)."""
-    task = get_task(db, task_id, lock=True)
+    task = get_task(db, task_id, actor, lock=True)
     policy.check_task_status(actor, task.created_by, _people_of(db, task.id))
     if task.status == status:
         return task
@@ -217,7 +222,7 @@ def set_status(db: Session, actor: User, task_id: int, status: str, ip: str) -> 
 
 
 def delete_task(db: Session, actor: User, task_id: int, ip: str) -> None:
-    task = get_task(db, task_id, lock=True)
+    task = get_task(db, task_id, actor, lock=True)
     policy.check_task(actor, task.created_by, _people_of(db, task.id))
     db.delete(task)
     audit.log(db, "task_deleted", actor_user_id=actor.id, ip=ip, details={"task_id": task_id})

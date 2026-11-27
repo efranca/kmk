@@ -96,6 +96,12 @@ def check_event(actor: User, creator_id: int | None, person_ids: frozenset[int])
         raise ApiError(403, "forbidden")
 
 
+def can_see_item(actor: User, creator_id: int | None, person_ids: frozenset[int]) -> bool:
+    """Who sees a task or a schedule event: an admin or the super admin see all; staff see the ones that list them, and
+    the ones they made themselves (so something they just added never vanishes). An item with no people is for admins."""
+    return actor.role in PRIVILEGED or actor.id == creator_id or actor.id in person_ids
+
+
 def can_change_task(actor: User, creator_id: int | None, person_ids: frozenset[int]) -> bool:
     """Who may edit or delete a task: an admin or the super admin, its creator, or a person it is for.
     A task for the whole team (no listed people) can be changed only by its creator or an admin."""
@@ -108,7 +114,7 @@ def can_set_task_status(actor: User, creator_id: int | None, person_ids: frozens
 
 
 def can_manage_task_categories(actor: User) -> bool:
-    """Anyone adds a category; only admins rename, re-icon or delete one."""
+    """Only admins add, rename, re-icon or delete a category (staff can still put a task in one)."""
     return actor.role in PRIVILEGED
 
 

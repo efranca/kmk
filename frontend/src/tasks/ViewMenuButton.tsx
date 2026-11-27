@@ -16,6 +16,7 @@ export function ViewMenuButton<V extends string = TasksView>({
   view,
   onView,
   onManage,
+  canManage = true,
   managing,
   views,
   menuLabel,
@@ -25,6 +26,8 @@ export function ViewMenuButton<V extends string = TasksView>({
   view: V;
   onView: (view: V) => void;
   onManage: () => void;
+  /** Whether the person may manage the categories (Staff may not): the menu then leaves the item out. */
+  canManage?: boolean;
   managing: boolean;
   /** The choices; the tasks' list and board when left out. */
   views?: ViewOption<V>[];
@@ -97,10 +100,14 @@ export function ViewMenuButton<V extends string = TasksView>({
               {v.label}
             </button>
           ))}
-          <hr />
-          <button type="button" role="menuitem" className="viewmenu__item" onClick={() => { close(false); onManage(); }}>
-            {t("taskCatManage")}
-          </button>
+          {canManage && (
+            <>
+              <hr />
+              <button type="button" role="menuitem" className="viewmenu__item" onClick={() => { close(false); onManage(); }}>
+                {t("taskCatManage")}
+              </button>
+            </>
+          )}
           {onClear && (
             <button type="button" role="menuitem" className="viewmenu__item" onClick={() => { close(false); onClear(); }}>
               {t("taskClearCompleted")}

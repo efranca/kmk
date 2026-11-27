@@ -30,6 +30,13 @@ describe("ViewMenuButton", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
+  it("leaves out Manage categories when the person may not manage them", () => {
+    setup({ canManage: false });
+    fireEvent.click(screen.getByRole("button", { name: "View and categories" }));
+    expect(screen.getByRole("menuitemradio", { name: "List" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Manage categories" })).toBeNull();
+  });
+
   it("Manage categories reports it", () => {
     const p = setup();
     fireEvent.click(screen.getByRole("button", { name: "View and categories" }));

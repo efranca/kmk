@@ -15,7 +15,7 @@ import type { Theme } from "./theme";
 const THEME_LABELS = { kmk: "themeKmk", light: "themeLight", dark: "themeDark" } as const;
 const WIDGETS = [
   { key: "my_events", label: "settingsWidgetMyEvents" },
-  { key: "all_events", label: "settingsWidgetAllEvents" },
+  { key: "all_events", label: "settingsWidgetAllEvents", adminOnly: true },
   { key: "my_tasks", label: "settingsWidgetMyTasks" },
   { key: "my_clients", label: "settingsWidgetMyClients", staffOnly: true },
   { key: "quotes_summary", label: "settingsWidgetQuotesSummary", adminOnly: true },

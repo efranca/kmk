@@ -114,7 +114,7 @@ def _occurrence_payload(o: Occurrence, event: Event, people: frozenset[int]) -> 
     }
 
 
-def list_occurrences(db: Session, from_: date, to: date, q: str | None, people: set[int] | None) -> list[dict]:
+def list_occurrences(db: Session, actor: User, from_: date, to: date, q: str | None, people: set[int] | None) -> list[dict]:
     if to < from_:
         raise ApiError(422, "bad_range")
     if (to - from_).days + 1 > MAX_RANGE_DAYS:
@@ -133,6 +133,8 @@ def list_occurrences(db: Session, from_: date, to: date, q: str | None, people: 
     found: list[tuple[Occurrence, dict]] = []
     for event in events:
         who = people_of[event.id]
+        if not policy.can_see_item(actor, event.created_by, who):
+            continue
         if people is not None and who and not (who & people):
             continue
         for o in expand(_data(event), [_exception_data(x) for x in exceptions_of[event.id]], from_, to):
@@ -208,9 +210,10 @@ def event_payload(db: Session, event: Event) -> dict:
     }
 
 
-def get_event(db: Session, event_id: int) -> Event:
+def get_event(db: Session, event_id: int, actor: User) -> Event:
+    """The event, or 404 when it does not exist or this person may not see it (the same answer for both)."""
     event = db.get(Event, event_id)
-    if event is None:
+    if event is None or not policy.can_see_item(actor, event.created_by, _people_of(db, [event.id])[event.id]):
         raise ApiError(404, "not_found")
     return event
 
@@ -329,7 +332,7 @@ def _end_series_before(db: Session, event: Event, day: date, actor: User) -> Non
 
 
 def update_event(db: Session, actor: User, event_id: int, data: EventIn, ip: str) -> Event:
-    event = get_event(db, event_id)
+    event = get_event(db, event_id, actor)
     old_people = _people_of(db, [event.id])[event.id]
     policy.check_event(actor, event.created_by, old_people)
     scope = _effective_scope(event, data.scope, data.occurrence_date)
@@ -379,7 +382,7 @@ def update_event(db: Session, actor: User, event_id: int, data: EventIn, ip: str
 
 
 def delete_event(db: Session, actor: User, event_id: int, scope: str, occurrence_date: date | None, ip: str) -> None:
-    event = get_event(db, event_id)
+    event = get_event(db, event_id, actor)
     policy.check_event(actor, event.created_by, _people_of(db, [event.id])[event.id])
     effective = _effective_scope(event, scope, occurrence_date)
     if effective == "all":
@@ -453,6 +456,6 @@ def due_reminders(db: Session, user: User) -> list[dict]:
 
 
 def dismiss_reminder(db: Session, user: User, event_id: int, occurrence_date: date) -> None:
-    get_event(db, event_id)
+    get_event(db, event_id, user)
     db.merge(ReminderDismissal(user_id=user.id, event_id=event_id, occurrence_date=occurrence_date))
     db.flush()

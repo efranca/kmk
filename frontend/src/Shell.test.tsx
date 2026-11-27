@@ -48,8 +48,8 @@ describe("signed-in pages", () => {
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1, name: "Bonjour, alice" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: frCA.dashMyEvents })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: frCA.dashAllEvents })).toBeInTheDocument();
-    expect((await screen.findAllByText(frCA.dashEmpty)).length).toBe(2);
+    expect(screen.queryByRole("region", { name: frCA.dashAllEvents })).toBeNull(); // Staff only see their own events
+    expect((await screen.findAllByText(frCA.dashEmpty)).length).toBe(1);
     expect(screen.getByRole("navigation")).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: frCA.language })).toBeNull(); // language lives in Settings; sign-out sits behind the account menu
     openAccountMenu();

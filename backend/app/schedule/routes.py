@@ -41,12 +41,12 @@ def list_events(
     auth: tuple[User, UserSession] = Depends(reader),
     db: Session = Depends(get_db),
 ):
-    return {"occurrences": service.list_occurrences(db, from_, to, q, _people_filter(people))}
+    return {"occurrences": service.list_occurrences(db, auth[0], from_, to, q, _people_filter(people))}
 
 
 @router.get("/events/{event_id}")
 def read_event(event_id: Annotated[int, Path(ge=1, le=MAX_ID)], auth: tuple[User, UserSession] = Depends(reader), db: Session = Depends(get_db)):
-    return {"event": service.event_payload(db, service.get_event(db, event_id))}
+    return {"event": service.event_payload(db, service.get_event(db, event_id, auth[0]))}
 
 
 def _send(background: BackgroundTasks, request: Request, settings: Settings, mail: list) -> None:
@@ -81,7 +81,7 @@ def change_event(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
 ):
-    before = set(service.event_payload(db, service.get_event(db, event_id))["people"])
+    before = set(service.event_payload(db, service.get_event(db, event_id, auth[0]))["people"])
     event = service.update_event(db, auth[0], event_id, body, request_ip(request, settings))
     payload = service.event_payload(db, event)
     mail = notices.assignment_emails(db, event, set(payload["people"]) - before, auth[0], settings.public_base_url)

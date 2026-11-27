@@ -12,8 +12,10 @@ def make(c, h, name="Office", icon="🏢"):
     return c.post("/api/tasks/categories", json={"name": name, "icon": icon}, headers=h)
 
 
-def test_any_user_creates_category(make_client, add_user):
-    c, h = session(make_client, add_user, "alice")
+def test_admin_creates_category_and_staff_cannot(make_client, add_user):
+    s, sh = session(make_client, add_user, "staffer")
+    assert make(s, sh).status_code == 403
+    c, h = session(make_client, add_user, "alice", role="admin")
     r = make(c, h)
     assert r.status_code == 201
     cat = r.json()["category"]
@@ -22,7 +24,7 @@ def test_any_user_creates_category(make_client, add_user):
 
 
 def test_list_is_ordered_by_name_ignoring_case(make_client, add_user):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     for n in ("beta", "Alpha", "Gamma"):
         make(c, h, n, None)
     assert [x["name"] for x in c.get("/api/tasks/categories").json()["categories"]] == ["Alpha", "beta", "Gamma"]
@@ -39,8 +41,9 @@ def test_duplicate_name_any_case_is_409(make_client, add_user):
 
 
 def test_plain_user_cannot_rename_or_delete(make_client, add_user):
+    a, ah = session(make_client, add_user, "boss", role="admin")
+    cid = make(a, ah).json()["category"]["id"]
     c, h = session(make_client, add_user, "alice")
-    cid = make(c, h).json()["category"]["id"]
     assert c.patch(f"/api/tasks/categories/{cid}", json={"name": "X"}, headers=h).status_code == 403
     assert c.delete(f"/api/tasks/categories/{cid}", headers=h).status_code == 403
 

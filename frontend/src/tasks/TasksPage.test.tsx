@@ -206,6 +206,20 @@ describe("TasksPage", () => {
     });
   });
 
+  it("Staff cannot manage categories; admins can", async () => {
+    api([task({ title: "Open one" })]);
+    const { unmount } = page();
+    await screen.findByText("Open one");
+    fireEvent.click(screen.getByRole("button", { name: "View and categories" }));
+    expect(screen.getByRole("menuitemradio", { name: "List" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Manage categories" })).not.toBeInTheDocument();
+    unmount();
+    renderWithProviders(<TasksPage />, { route: "/tasks", session: { user: { id: 1, username: "a", name: "A", email: "a@x.ca", role: "admin", locale: "en" } } });
+    await screen.findByText("Open one");
+    fireEvent.click(screen.getByRole("button", { name: "View and categories" }));
+    expect(screen.getByRole("menuitem", { name: "Manage categories" })).toBeInTheDocument();
+  });
+
   describe("people filter button", () => {
     it("shows the faces by default; the button hides them and saves the choice to the account", async () => {
       const { calls } = api([task({ title: "Open one" })]);
