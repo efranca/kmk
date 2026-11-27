@@ -162,7 +162,7 @@ describe("fromEvent", () => {
     expect(input).toEqual({
       title: "Music class", notes: "Bring the book", icon: "🎵", color: "violet", all_day: false, start_date: "2026-11-07",
       start_time: "09:00", duration_minutes: 90, people: [7], recurrence: e.recurrence, ends_on: "2027-06-30",
-      max_count: null, reminders: [{ amount: 1, unit: "days" }],
+      max_count: null, client_id: null, reminders: [{ amount: 1, unit: "days" }],
     });
   });
 

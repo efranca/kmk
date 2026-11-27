@@ -9,6 +9,7 @@ import { ChoiceChip, ChoiceChips } from "../ui/ChoiceChips";
 import { TextAreaField, TextField } from "../ui/Field";
 import { Icon } from "../ui/Icon";
 import { IconPicker } from "../ui/IconPicker";
+import { ClientPicker } from "../clients/ClientPicker";
 import { CategorySelect } from "./CategorySelect";
 import { DESCRIPTION_MAX, TITLE_MAX, type TaskFormErrors, type TaskFormValues } from "./taskForm";
 import { suggestIcon } from "./suggestIcon";
@@ -84,6 +85,7 @@ export function TaskFields({ values, errors, onChange, autoFocus, autoIcon }: Ta
       </div>
 
       <CategorySelect value={values.categoryId} onChange={(id) => set("categoryId", id)} />
+      <ClientPicker value={values.clientId} onChange={(id) => set("clientId", id)} />
 
       <TextAreaField
         label={`${t("taskFieldDescription")} (${t("optional")})`}

@@ -42,7 +42,7 @@ describe("TaskDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(lastBody(calls, "POST")).toEqual({
-      title: "Mop the floor", description: "Blue bucket", icon: "🧹", category_id: 3, people: [2], due_date: addDays(today, 1), show_on_dashboard: true,
+      title: "Mop the floor", description: "Blue bucket", icon: "🧹", category_id: 3, client_id: null, people: [2], due_date: addDays(today, 1), show_on_dashboard: true,
     });
   });
 

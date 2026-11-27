@@ -11,13 +11,13 @@ const task: Task = {
 describe("taskForm", () => {
   it("round trips a task through the form", () => {
     expect(formToInput(taskToForm(task))).toEqual({
-      title: "Mop", description: "Blue bucket", icon: "🧹", category_id: 3, people: [2, 5], due_date: "2026-11-30", show_on_dashboard: false,
+      title: "Mop", description: "Blue bucket", icon: "🧹", category_id: 3, client_id: null, people: [2, 5], due_date: "2026-11-30", show_on_dashboard: false,
     });
   });
 
   it("turns empty optional fields into null and trims", () => {
     const input = formToInput({ ...emptyTaskForm([4]), title: "  Wash  ", description: "   " });
-    expect(input).toEqual({ title: "Wash", description: null, icon: null, category_id: null, people: [4], due_date: null, show_on_dashboard: true });
+    expect(input).toEqual({ title: "Wash", description: null, icon: null, category_id: null, client_id: null, people: [4], due_date: null, show_on_dashboard: true });
   });
 
   it("flags a blank or too long title", () => {

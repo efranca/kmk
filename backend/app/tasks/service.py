@@ -4,6 +4,7 @@ from sqlalchemy import delete, exists, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.clients.service import check_client
 from app.auth import audit, policy
 from app.auth.errors import ApiError
 from app.models import Task, TaskCategory, TaskPerson, User
@@ -102,7 +103,7 @@ def task_payloads(db: Session, tasks: list[Task]) -> list[dict]:
 
     return [
         {
-            "id": t.id, "title": t.title, "description": t.description, "icon": t.icon, "category_id": t.category_id,
+            "id": t.id, "title": t.title, "description": t.description, "icon": t.icon, "category_id": t.category_id, "client_id": t.client_id,
             "people": sorted(people[t.id]), "status": t.status, "due_date": _iso(t.due_date),
             "completed_at": _iso(t.completed_at), "show_on_dashboard": t.show_on_dashboard,
             "created_by": ref(t.created_by), "updated_by": ref(t.updated_by),
@@ -147,6 +148,7 @@ def _check_category(db: Session, category_id: int | None) -> None:
 def _write(task: Task, data: TaskIn) -> None:
     task.title, task.description, task.icon = data.title, data.description, data.icon
     task.category_id, task.due_date, task.show_on_dashboard = data.category_id, data.due_date, data.show_on_dashboard
+    task.client_id = data.client_id
 
 
 def _replace_people(db: Session, task_id: int, people: set[int]) -> None:
@@ -156,6 +158,7 @@ def _replace_people(db: Session, task_id: int, people: set[int]) -> None:
 
 def create_task(db: Session, actor: User, data: TaskIn, ip: str) -> Task:
     _check_category(db, data.category_id)
+    check_client(db, data.client_id)
     people = _checked_people(db, data.people)
     task = Task(created_by=actor.id, updated_by=actor.id)
     _write(task, data)
@@ -172,6 +175,7 @@ def update_task(db: Session, actor: User, task_id: int, data: TaskIn, ip: str) -
     old_people = _people_of(db, task.id)
     policy.check_task(actor, task.created_by, old_people)
     _check_category(db, data.category_id)
+    check_client(db, data.client_id)
     people = _checked_people(db, data.people, keep=old_people)
     fields = [
         name

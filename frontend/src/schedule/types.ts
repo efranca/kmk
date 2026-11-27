@@ -63,6 +63,7 @@ export interface EventDetail {
   recurrence: RecurrenceRule | null;
   ends_on: string | null;
   max_count: number | null;
+  client_id?: number | null;
   people: number[];
   reminders: ReminderIn[];
   exceptions: EventException[];
@@ -83,6 +84,7 @@ export interface EventInput {
   recurrence: RecurrenceRule | null;
   ends_on: string | null;
   max_count: number | null;
+  client_id: number | null;
   people: number[];
   reminders: ReminderIn[];
 }
