@@ -48,6 +48,14 @@ describe("ViewMenuButton", () => {
     expect(screen.getByRole("menu")).toBeInTheDocument();
   });
 
+  it("works as a plain options menu: no views, nothing to manage, only switches", () => {
+    render(<ViewMenuButton views={[]} canManage={false} managing={false} menuLabel="Options" toggles={[{ id: "x", label: "Show x", checked: true, onChange: vi.fn() }]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
+    expect(screen.queryByRole("menuitemradio")).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Manage categories" })).toBeNull();
+    expect(screen.getByRole("menuitemcheckbox", { name: "Show x" })).toBeInTheDocument();
+  });
+
   it("Manage categories reports it", () => {
     const p = setup();
     fireEvent.click(screen.getByRole("button", { name: "View and categories" }));

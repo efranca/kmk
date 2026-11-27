@@ -345,6 +345,8 @@
   "taskDashMore": "+{{count}} a mais",
   "taskDashEmpty": "Nada esperando por você.",
   "schShowTasks": "Mostrar tarefas",
+  "schOptions": "Opções",
+  "schShowPeople": "Mostrar o filtro por pessoa",
   "navSettings": "Configurações",
   "sidebarCollapse": "Recolher menu",
   "sidebarExpand": "Expandir menu",

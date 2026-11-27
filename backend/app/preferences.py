@@ -18,6 +18,7 @@ DEFAULTS: dict = {
     "show_tasks_on_schedule": False,
     "show_task_categories": False,
     "show_task_people": True,
+    "show_schedule_people": True,
     "show_document_categories": False,
     "show_menu_labels": True,
     "notify_assigned": True,
@@ -48,6 +49,7 @@ class PreferencesIn(BaseModel):
     show_tasks_on_schedule: bool | None = None
     show_task_categories: bool | None = None
     show_task_people: bool | None = None
+    show_schedule_people: bool | None = None
     show_document_categories: bool | None = None
     show_menu_labels: bool | None = None
     notify_assigned: bool | None = None

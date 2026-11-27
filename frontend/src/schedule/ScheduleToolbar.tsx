@@ -26,13 +26,15 @@ interface ScheduleToolbarProps {
   onSearch: (text: string) => void;
   /** Whether the search box is showing (the magnifier in the page header opens it). */
   searchOpen: boolean;
+  /** Whether the people faces show (the gear menu switches them off; the page then ignores any people filter). */
+  showPeople?: boolean;
 }
 
 /**
  * View switch, previous/next/today, the search box (when opened) and the people faces. On a phone the faces sit to the
  * right of the view switch; on a tablet or desktop the search box is on their left.
  */
-export function ScheduleToolbar({ view, date, people, everyone, label, onView, onDate, onToday, onPeople, narrow, search, onSearch, searchOpen }: ScheduleToolbarProps) {
+export function ScheduleToolbar({ view, date, people, everyone, label, onView, onDate, onToday, onPeople, narrow, search, onSearch, searchOpen, showPeople = true }: ScheduleToolbarProps) {
   const { t } = useTranslation();
   return (
     <div className="sched-toolbar">
@@ -50,7 +52,7 @@ export function ScheduleToolbar({ view, date, people, everyone, label, onView, o
             <input type="search" value={search} autoFocus placeholder={t("schSearchPlaceholder")} onChange={(e) => onSearch(e.target.value)} />
           </label>
         )}
-        <div className="sched-toolbar__who">
+        {showPeople && <div className="sched-toolbar__who">
           <AvatarFilter
             people={everyone}
             selected={people}
@@ -61,7 +63,7 @@ export function ScheduleToolbar({ view, date, people, everyone, label, onView, o
             max={narrow ? 3 : 6}
             size={narrow ? "sm" : "md"}
           />
-        </div>
+        </div>}
       </div>
     </div>
   );

@@ -16,8 +16,8 @@ export type MenuToggle = { id: string; label: string; checked: boolean; onChange
  */
 export function ViewMenuButton<V extends string = TasksView>({
   view,
-  onView,
-  onManage,
+  onView = () => undefined,
+  onManage = () => undefined,
   canManage = true,
   managing,
   views,
@@ -26,9 +26,9 @@ export function ViewMenuButton<V extends string = TasksView>({
   onClear,
   toggles,
 }: {
-  view: V;
-  onView: (view: V) => void;
-  onManage: () => void;
+  view?: V;
+  onView?: (view: V) => void;
+  onManage?: () => void;
   /** Whether the person may manage the categories (Staff may not): the menu then leaves the item out. */
   canManage?: boolean;
   managing: boolean;
@@ -98,7 +98,7 @@ export function ViewMenuButton<V extends string = TasksView>({
       />
       {open && (
         <div ref={panel} className="viewmenu__panel" role="menu" aria-label={label} onKeyDown={onKeyDown}>
-          <p className="viewmenu__heading" aria-hidden="true">{heading ?? t("taskView")}</p>
+          {options.length > 0 && <p className="viewmenu__heading" aria-hidden="true">{heading ?? t("taskView")}</p>}
           {options.map((v) => (
             <button key={v.id} type="button" role="menuitemradio" aria-checked={view === v.id} className="viewmenu__item"
               onClick={() => { onView(v.id); close(true); }}>
@@ -107,7 +107,7 @@ export function ViewMenuButton<V extends string = TasksView>({
           ))}
           {toggles && toggles.length > 0 && (
             <>
-              <hr />
+              {options.length > 0 && <hr />}
               {toggles.map((x) => (
                 <button key={x.id} type="button" role="menuitemcheckbox" aria-checked={x.checked} className="viewmenu__item viewmenu__toggle" onClick={() => x.onChange(!x.checked)}>
                   {x.label}

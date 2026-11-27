@@ -5,7 +5,9 @@ import { IconButton } from "../ui/Button";
 import { EventDialog, type EventDialogTarget } from "./EventDialog";
 import { ErrorNotice, Loading } from "../ui/Feedback";
 import { PageHeader } from "../ui/PageHeader";
+import { usePreferences } from "../preferences";
 import { useSession } from "../session";
+import { ViewMenuButton } from "../tasks/ViewMenuButton";
 import { TaskDialog } from "../tasks/TaskDialog";
 import { useTasks, useToggleTask } from "../tasks/hooks";
 import { canSetTaskStatus } from "../tasks/permissions";
@@ -40,7 +42,10 @@ function rangeLabel(view: ScheduleViewKind, date: string, days: string[], locale
 export function SchedulePage() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
-  const { view, date, people, q, today, set } = useScheduleView();
+  const { view, date, people: pickedInUrl, q, today, set } = useScheduleView();
+  const { prefs, update } = usePreferences();
+  const showPeople = prefs.show_schedule_people; // hidden faces cannot filter, so every event shows
+  const people = showPeople ? pickedInUrl : [];
   const narrow = useNarrow();
   const { user } = useSession();
   const moveEvent = useMoveEvent();
@@ -93,7 +98,11 @@ export function SchedulePage() {
                 setSearchOpen(!searchOpen);
               }}
             />
-            <IconButton icon="tasks" label={t("schShowTasks")} aria-pressed={showTasks} onClick={() => setShowTasks(!showTasks)} />
+            <ViewMenuButton views={[]} canManage={false} managing={false} menuLabel={t("schOptions")}
+              toggles={[
+                { id: "tasks", label: t("schShowTasks"), checked: showTasks, onChange: setShowTasks },
+                { id: "people", label: t("schShowPeople"), checked: showPeople, onChange: (on) => update({ show_schedule_people: on }) },
+              ]} />
             <IconButton icon="plus" variant="primary" label={t("schAdd")} onClick={() => onCreate(view === "day" ? date : today)} />
           </>
         }
@@ -112,6 +121,7 @@ export function SchedulePage() {
         search={text}
         onSearch={setText}
         searchOpen={searchOpen}
+        showPeople={showPeople}
       />
       <div className="sched-swipe" {...swipe}>
         {searching ? (

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useLocation } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { DEFAULT_PREFERENCES } from "../preferences";
 import { mockApi, occurrence, person, renderWithProviders, reply, resetLanguage, useEnglish } from "../testUtils";
 import { todayIn, COMPANY_TIME_ZONE } from "./scheduleDates";
 import { SchedulePage } from "./SchedulePage";
@@ -23,6 +24,7 @@ function setup(items: Occurrence[], route = "/schedule?view=week&date=2026-11-12
       return { occurrences: q ? items.filter((i) => i.title.toLowerCase().includes(q.toLowerCase())) : items };
     },
     "GET /api/schedule/people": () => ({ people: [alice, leo] }),
+    "PATCH /api/me/preferences": () => ({ preferences: {} }),
   });
   const view = renderWithProviders(<><SchedulePage /><Probe /></>, { route });
   return { api, ...view };
@@ -118,7 +120,35 @@ describe("SchedulePage navigation", () => {
   });
 });
 
+/** The tasks and people switches live in the gear menu: opens it when it is closed. */
+async function menuSwitch(name: string) {
+  if (!screen.queryByRole("menu")) await userEvent.click(await screen.findByRole("button", { name: "Options" }));
+  return screen.findByRole("menuitemcheckbox", { name });
+}
+
 describe("SchedulePage people filter", () => {
+  it("the gear menu hides the faces and saves the choice to the account", async () => {
+    const { api } = setup([swimming]);
+    await screen.findByText("Swimming");
+    const item = await menuSwitch("Show people filter");
+    expect(item).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("group", { name: "Show" })).toBeInTheDocument();
+    await userEvent.click(item);
+    expect(screen.queryByRole("group", { name: "Show" })).not.toBeInTheDocument();
+    expect(item).toHaveAttribute("aria-checked", "false");
+    await waitFor(() => expect(api.calls.some((c) => c.method === "PATCH" && JSON.stringify(c.body) === JSON.stringify({ show_schedule_people: false }))).toBe(true));
+  });
+
+  it("ignores a people filter in the address while the faces are hidden", async () => {
+    const api = mockApi({
+      "GET /api/schedule/events": () => ({ occurrences: [swimming] }),
+      "GET /api/schedule/people": () => ({ people: [alice, leo] }),
+    });
+    renderWithProviders(<SchedulePage />, { route: "/schedule?view=week&date=2026-11-12&people=2", preferences: { ...DEFAULT_PREFERENCES, show_schedule_people: false } });
+    await screen.findByText("Swimming");
+    expect(api.calls.some((c) => c.path === "/api/schedule/events" && c.query.includes("people="))).toBe(false);
+  });
+
   it("picking a person asks for that person's events and puts it in the URL", async () => {
     const { api } = setup([swimming]);
     await screen.findByText("Swimming");
@@ -266,22 +296,22 @@ describe("SchedulePage tasks", () => {
 
   it("shows no tasks, and never asks for them, while the switch is off", async () => {
     const api = withTasks("/schedule?view=month&date=2026-11-12");
-    await screen.findByRole("button", { name: "Show tasks" });
+    await menuSwitch("Show tasks");
     expect(screen.queryByText("Mop the floor")).not.toBeInTheDocument();
     expect(api.calls.some((c) => c.path === "/api/tasks")).toBe(false);
   });
 
   it("shows a task with a due date as a chip on its day once the switch is on", async () => {
     withTasks("/schedule?view=month&date=2026-11-12");
-    await userEvent.click(await screen.findByRole("button", { name: "Show tasks" }));
+    await userEvent.click(await menuSwitch("Show tasks"));
     const chip = await screen.findByText("Mop the floor");
     expect(chip.closest("[data-date]")?.getAttribute("data-date")).toBe("2026-11-12");
-    expect(screen.getByRole("button", { name: "Show tasks" })).toHaveAttribute("aria-pressed", "true");
+    expect(await menuSwitch("Show tasks")).toHaveAttribute("aria-checked", "true");
   });
 
   it("shows it in the all-day strip of the week view, and ticking the chip completes the task", async () => {
     const api = withTasks("/schedule?view=week&date=2026-11-12");
-    await userEvent.click(await screen.findByRole("button", { name: "Show tasks" }));
+    await userEvent.click(await menuSwitch("Show tasks"));
     await screen.findByText("Mop the floor");
     await userEvent.click(screen.getByRole("checkbox", { name: "Mop the floor" }));
     await waitFor(() => expect(api.calls.some((c) => c.method === "POST" && c.path === "/api/tasks/11/complete")).toBe(true));
@@ -289,14 +319,14 @@ describe("SchedulePage tasks", () => {
 
   it("a task chip opens the task, not an event", async () => {
     withTasks("/schedule?view=month&date=2026-11-12");
-    await userEvent.click(await screen.findByRole("button", { name: "Show tasks" }));
+    await userEvent.click(await menuSwitch("Show tasks"));
     await userEvent.click(await screen.findByText("Mop the floor"));
     expect(await screen.findByRole("dialog", { name: "Task" })).toBeInTheDocument();
   });
 
   it("marks a day with a task in the year view", async () => {
     withTasks("/schedule?view=year&date=2026-11-12");
-    await userEvent.click(await screen.findByRole("button", { name: "Show tasks" }));
+    await userEvent.click(await menuSwitch("Show tasks"));
     await waitFor(() => expect(document.querySelector('[data-date="2026-11-12"] .year__dot')).not.toBeNull());
   });
 });
