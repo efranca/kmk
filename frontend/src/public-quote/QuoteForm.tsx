@@ -47,6 +47,7 @@ export function QuoteForm() {
   const [failure, setFailure] = useState<string | null>(null);
   const [reference, setReference] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   const draft = useRef<Draft | null>(null);
   const trap = useRef<HTMLInputElement>(null);
 
@@ -276,7 +277,7 @@ export function QuoteForm() {
               {busy ?? t("pqSend")}
             </button>
             <p className="form-note">{t("pqNote")}</p>
-            <p className="form-note">{t("pqPrivacy")}</p>
+            <p className="form-note">{t("pqPrivacy")} <button type="button" className="pq-link" onClick={() => setPrivacyOpen(true)}>{t("pqPrivacyLink")}</button></p>
           </form>
         )}
       </main>
@@ -285,9 +286,39 @@ export function QuoteForm() {
         <div className="wrap pq-ftr">
           <img className="brand-logo" src="/logo-horizontal.png" alt="KMK Entretien Ménager" />
           <p>{t("pqFooterArea")}</p>
+          <p><button type="button" className="pq-link" onClick={() => setPrivacyOpen(true)}>{t("pqPrivacyLink")}</button></p>
           {phone && <p>{t("pqFooterCall")} : <a href={`tel:${phone.replace(/[^\d+]/g, "")}`}>{phone}</a></p>}
         </div>
       </footer>
+      {privacyOpen && <PrivacyDialog t={t} phone={phone} onClose={() => setPrivacyOpen(false)} />}
+    </div>
+  );
+}
+
+function PrivacyDialog({ t, phone, onClose }: { t: (key: string, vars?: Record<string, string | number>) => string; phone: string; onClose: () => void }) {
+  const closeBtn = useRef<HTMLButtonElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    closeBtn.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close.current(); };
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("keydown", onKey); opener?.focus(); };
+  }, []);
+  const sections = [["pqPvCollectTitle", "pqPvCollect"], ["pqPvUseTitle", "pqPvUse"], ["pqPvKeepTitle", "pqPvKeep"], ["pqPvRightsTitle", "pqPvRights"], ["pqPvCookieTitle", "pqPvCookie"]];
+  return (
+    <div className="pq-backdrop" onClick={onClose}>
+      <div className="pq-dialog" role="dialog" aria-modal="true" aria-labelledby="pq-pv-title" onClick={(e) => e.stopPropagation()}>
+        <h2 id="pq-pv-title">{t("pqPvTitle")}</h2>
+        {sections.map(([title, body]) => (
+          <section key={title}>
+            <h3>{t(title)}</h3>
+            <p>{body === "pqPvRights" ? t(body, { call: phone ? t("pqPvRightsCall", { phone }) : "" }) : t(body)}</p>
+          </section>
+        ))}
+        <button ref={closeBtn} type="button" className="btn btn-primary" onClick={onClose}>{t("pqClose")}</button>
+      </div>
     </div>
   );
 }

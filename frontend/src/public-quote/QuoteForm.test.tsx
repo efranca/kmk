@@ -57,6 +57,24 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("QuoteForm", () => {
+  it("opens the privacy notice in a dialog from the note and from the footer, and closes it", async () => {
+    const user = userEvent.setup();
+    render(<QuoteForm />);
+    await user.click(screen.getByRole("radio", { name: /Airbnb/ }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const links = screen.getAllByRole("button", { name: "Privacy notice" });
+    expect(links).toHaveLength(2);
+    await user.click(links[0]);
+    const dialog = screen.getByRole("dialog", { name: "Privacy notice" });
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    expect(dialog.textContent).toMatch(/session cookie/i);
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await user.click(links[1]);
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("has a honeypot that people cannot reach", () => {
     render(<QuoteForm />);
     const trap = document.querySelector<HTMLInputElement>("input[name=website]")!;
