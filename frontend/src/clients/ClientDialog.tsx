@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
 import { ErrorNotice } from "../ui/Feedback";
-import { SelectField, TextAreaField, TextField } from "../ui/Field";
+import { TextAreaField, TextField } from "../ui/Field";
 import { useToast } from "../ui/toastContext";
 import type { Client, ClientInput, ClientKind } from "./api";
 import { useDeleteClient, useSaveClient } from "./hooks";
@@ -20,7 +20,7 @@ export function ClientDialog({ client, prefill, quoteId, onClose, onSaved, onDel
   const remove = useDeleteClient();
   const start = client ?? prefill;
   const [name, setName] = useState(start?.name ?? "");
-  const [kind, setKind] = useState<ClientKind>(start?.kind ?? "other");
+  const [kinds, setKinds] = useState<ClientKind[]>(start?.kinds?.length ? start.kinds : ["other"]);
   const [contact, setContact] = useState(start?.contact_name ?? "");
   const [email, setEmail] = useState(start?.email ?? "");
   const [phone, setPhone] = useState(start?.phone ?? "");
@@ -32,9 +32,9 @@ export function ClientDialog({ client, prefill, quoteId, onClose, onSaved, onDel
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || kinds.length === 0) return;
     const clean = (v: string) => v.trim() || null;
-    const input: ClientInput = { name: name.trim(), kind, contact_name: clean(contact), email: clean(email), phone: clean(phone), address: clean(address), city: clean(city), notes: clean(notes), ...(client || !quoteId ? {} : { quote_id: quoteId }) };
+    const input: ClientInput = { name: name.trim(), kinds: KINDS.filter((k) => kinds.includes(k)), contact_name: clean(contact), email: clean(email), phone: clean(phone), address: clean(address), city: clean(city), notes: clean(notes), ...(client || !quoteId ? {} : { quote_id: quoteId }) };
     try {
       const saved = await save.mutateAsync({ id: client?.id, input });
       toast(t("clientSaved"));
@@ -63,7 +63,7 @@ export function ClientDialog({ client, prefill, quoteId, onClose, onSaved, onDel
       {client && confirmDelete && <Button variant="danger" icon="trash" busy={remove.isPending} onClick={() => void doDelete()}>{t("clientDeleteConfirm")}</Button>}
       <span className="dialog__spacer" />
       <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
-      <Button type="submit" form="client-form" variant="primary" busy={save.isPending} disabled={!name.trim()}>{t("save")}</Button>
+      <Button type="submit" form="client-form" variant="primary" busy={save.isPending} disabled={!name.trim() || kinds.length === 0}>{t("save")}</Button>
     </>
   );
 
@@ -71,9 +71,15 @@ export function ClientDialog({ client, prefill, quoteId, onClose, onSaved, onDel
     <Dialog open title={client ? t("clientEdit") : t("clientNew")} onClose={onClose} footer={footer}>
       <form id="client-form" className="doc-form" onSubmit={(e) => void submit(e)} noValidate>
         <TextField label={t("clientFieldName")} value={name} maxLength={150} autoFocus onChange={(e) => setName(e.target.value)} />
-        <SelectField label={t("clientFieldKind")} value={kind} onChange={(e) => setKind(e.target.value as ClientKind)}>
-          {KINDS.map((k) => <option key={k} value={k}>{t(KIND_KEYS[k])}</option>)}
-        </SelectField>
+        <fieldset className="client-kinds">
+          <legend className="field__label">{t("clientFieldKinds")}</legend>
+          {KINDS.map((k) => (
+            <label key={k} className="check">
+              <input type="checkbox" checked={kinds.includes(k)} onChange={(e) => setKinds(e.target.checked ? [...kinds, k] : kinds.filter((x) => x !== k))} />
+              {t(KIND_KEYS[k])}
+            </label>
+          ))}
+        </fieldset>
         <TextField label={t("clientFieldContact")} value={contact} maxLength={100} onChange={(e) => setContact(e.target.value)} />
         <div className="client-f2">
           <TextField label={t("clientFieldEmail")} type="email" value={email} maxLength={254} onChange={(e) => setEmail(e.target.value)} />

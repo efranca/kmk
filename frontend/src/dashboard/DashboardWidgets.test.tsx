@@ -11,7 +11,7 @@ function setup(widgets: Partial<typeof DEFAULT_PREFERENCES.dashboard_widgets>, r
     "GET /api/schedule/events": () => ({ occurrences: [] }),
     "GET /api/schedule/people": () => ({ people: [] }),
     "GET /api/tasks": () => ({ tasks: [] }),
-    "GET /api/clients": () => ({ clients: [{ id: 5, name: "Chantal Roy", kind: "airbnb", contact_name: null, email: "c@example.com", phone: "418-555-0101", address: "12 rue Saint-Jean", city: "Québec", created_at: "", updated_at: "" }] }),
+    "GET /api/clients": () => ({ clients: [{ id: 5, name: "Chantal Roy", kinds: ["airbnb"], contact_name: null, email: "c@example.com", phone: "418-555-0101", address: "12 rue Saint-Jean", city: "Québec", created_at: "", updated_at: "" }] }),
     "GET /api/tasks/categories": () => ({ categories: [] }),
   });
   const user = { ...testUser, role };

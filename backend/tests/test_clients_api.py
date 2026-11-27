@@ -6,7 +6,7 @@ from test_schedule_api import create as create_event, session, uid
 
 
 def client_body(**kw):
-    base = {"name": "Chantal Roy", "kind": "airbnb", "contact_name": "Chantal", "email": "Chantal@Example.com", "phone": "418-555-0101", "address": "12 rue Saint-Jean", "city": "Québec", "notes": "Key under the mat"}
+    base = {"name": "Chantal Roy", "kinds": ["commercial", "airbnb"], "contact_name": "Chantal", "email": "Chantal@Example.com", "phone": "418-555-0101", "address": "12 rue Saint-Jean", "city": "Québec", "notes": "Key under the mat"}
     base.update(kw)
     return base
 
@@ -26,6 +26,7 @@ def test_admin_creates_reads_updates_and_deletes_a_client(boss, owner_engine):
     assert r.status_code == 201, r.text
     created = r.json()["client"]
     assert created["name"] == "Chantal Roy" and created["email"] == "chantal@example.com" and created["notes"] == "Key under the mat"
+    assert created["kinds"] == ["airbnb", "commercial"]  # one client can be several kinds, kept in a fixed order
     cid = created["id"]
     assert [x["id"] for x in c.get("/api/clients").json()["clients"]] == [cid]
     assert [x["id"] for x in c.get("/api/clients", params={"q": "chant"}).json()["clients"]] == [cid]
@@ -40,7 +41,15 @@ def test_admin_creates_reads_updates_and_deletes_a_client(boss, owner_engine):
     assert actions == ["client_created", "client_updated", "client_deleted"]
 
 
-@pytest.mark.parametrize("bad", [{"name": ""}, {"name": "x" * 200}, {"kind": "villa"}, {"email": "nope"}, {"phone": "x" * 80}, {"colour": "red"}])
+def test_the_kinds_are_deduplicated_and_default_to_other(boss):
+    c, h = boss
+    assert add(c, h, kinds=["airbnb", "airbnb"]).json()["client"]["kinds"] == ["airbnb"]
+    body = client_body()
+    del body["kinds"]
+    assert c.post("/api/clients", json=body, headers=h).json()["client"]["kinds"] == ["other"]
+
+
+@pytest.mark.parametrize("bad", [{"name": ""}, {"name": "x" * 200}, {"kinds": ["villa"]}, {"kinds": []}, {"kinds": "airbnb"}, {"kind": "airbnb"}, {"email": "nope"}, {"phone": "x" * 80}, {"colour": "red"}])
 def test_invalid_clients_are_refused(boss, bad):
     c, h = boss
     assert add(c, h, **bad).status_code == 422

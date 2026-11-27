@@ -70,7 +70,7 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 | `app_settings` | company-wide settings (`quote_notify_email`, `quote_from`, `quote_reply_to`, `public_phone`) | `key`, `value`, `updated_by` |
 | `push_subscriptions` | one device of an admin that turned notifications on | `user_id`, `endpoint`, `p256dh`, `auth` |
 | `calendar_feeds` | one personal calendar feed link per user | `user_id` (primary key), `token_hash` (SHA-256, unique), `created_at`, `last_used_at` |
-| `clients` | someone the company works for; tasks, events, documents and quotes point to one with `client_id` (`ON DELETE SET NULL`) | `name`, `kind` (`airbnb`/`commercial`/`post_construction`/`other`), `contact_name`, `email`, `phone`, `address`, `city`, `notes` (admins only), `created_by`, `updated_by` |
+| `clients` | someone the company works for; tasks, events, documents and quotes point to one with `client_id` (`ON DELETE SET NULL`) | `name`, `kinds` (one or more of `airbnb`/`commercial`/`post_construction`/`other`), `contact_name`, `email`, `phone`, `address`, `city`, `notes` (admins only), `created_by`, `updated_by` |
 | `alembic_version` | migration state | |
 
 Deletion is soft (`status = 'deleted'`, `deleted_at` set): the row stays, so the audit log keeps its references and the username and email stay reserved. An admin can restore a deleted account (it comes back `disabled`).

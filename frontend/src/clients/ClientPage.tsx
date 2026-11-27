@@ -34,7 +34,7 @@ export function ClientPage({ id }: { id: number }) {
   const tabs = canManage ? TABS : (["details", "events"] as Tab[]); // Staff: the details and their own Schedule, nothing else
   const counts: Record<Tab, number> = { details: 0, documents: documents.length, tasks: tasks.length, events: events.length, quotes: quotes.length };
   const facts: [string, string | null, string?][] = [
-    [t("clientFieldKind"), t(KIND_KEYS[client.kind])],
+    [t("clientFieldKinds"), client.kinds.map((k) => t(KIND_KEYS[k])).join(", ")],
     [t("clientFieldContact"), client.contact_name],
     [t("clientFieldEmail"), client.email, client.email ? `mailto:${client.email}` : undefined],
     [t("clientFieldPhone"), client.phone, client.phone ? `tel:${client.phone.replace(/[^\d+]/g, "")}` : undefined],

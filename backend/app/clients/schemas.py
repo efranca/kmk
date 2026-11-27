@@ -9,6 +9,7 @@ from app.auth.admin import clean_email
 from app.quotes.schemas import PHONE_RE
 from app.schedule.schemas import MAX_ID
 
+KINDS = ("airbnb", "commercial", "post_construction", "other")
 Kind = Literal["airbnb", "commercial", "post_construction", "other"]
 NOTES_MAX = 5000
 
@@ -30,7 +31,7 @@ class ClientIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    kind: Kind = "other"
+    kinds: list[Kind] = Field(default_factory=lambda: ["other"], min_length=1, max_length=4)
     contact_name: str | None = None
     email: str | None = None
     phone: str | None = None
@@ -38,6 +39,11 @@ class ClientIn(BaseModel):
     city: str | None = None
     notes: str | None = None
     quote_id: Annotated[int, Field(ge=1, le=MAX_ID)] | None = None
+
+    @field_validator("kinds")
+    @classmethod
+    def _kinds(cls, v: list[str]) -> list[str]:
+        return [k for k in KINDS if k in v]  # no repeats, always in the same order
 
     @field_validator("name")
     @classmethod

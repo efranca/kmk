@@ -483,7 +483,7 @@
   "clientEmptyHint": "Adicione as pessoas para quem você trabalha, ou crie um a partir de um orçamento ganho.",
   "clientNoResults": "Nenhum cliente corresponde a “{{q}}”.",
   "clientFieldName": "Nome",
-  "clientFieldKind": "Tipo",
+  "clientFieldKinds": "Tipo (um ou mais)",
   "clientFieldContact": "Pessoa de contato",
   "clientFieldEmail": "E-mail",
   "clientFieldPhone": "Telefone",
