@@ -134,7 +134,7 @@ export function TasksPage() {
               </label>
             )}
             <AvatarFilter people={selectable} selected={picked} onChange={setPicked} label={t("schWho")} everyoneLabel={t("everyone")}
-              moreLabel={(count) => t("schWhoMore", { count })} max={selectable.length} size={narrow ? "sm" : "md"} />
+              moreLabel={(count) => t("schWhoMore", { count })} max={narrow ? 3 : 6} size={narrow ? "sm" : "md"} />
           </div>
           {pickedPeople.length > 0 && all.data && (
             <section className="tasks-summary" aria-label={summaryTitle}>

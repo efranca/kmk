@@ -31,6 +31,7 @@ export function DocumentDialog({ document, categories, onClose }: { document: Do
   const [fileError, setFileError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const kind = fileKind(document?.content_type ?? null, document?.file_name ?? null);
   const category = categories.find((c) => c.id === document?.category_id);
   const failure = save.error ?? remove.error;
 
@@ -79,10 +80,14 @@ export function DocumentDialog({ document, categories, onClose }: { document: Do
 
   return (
     <Dialog open title={document ? (canManage ? t("docEditTitle") : document.title) : t("docNewTitle")} onClose={onClose} footer={footer}>
-      {document?.has_preview && <img className="doc-preview" src={previewUrl(document.id, document.updated_at)} alt="" loading="lazy" />}
+      {document?.has_file && kind.inline && (document.content_type ?? "").startsWith("image/")
+        ? <img className="doc-view doc-view--image" src={fileUrl(document.id)} alt={document.title} />
+        : document?.has_file && kind.inline
+          ? <iframe className="doc-view doc-view--frame" src={fileUrl(document.id)} title={document.title} />
+          : document?.has_preview && <img className="doc-preview" src={previewUrl(document.id, document.updated_at)} alt="" loading="lazy" />}
       {document?.has_file && (
         <p className="doc-links">
-          {fileKind(document.content_type, document.file_name).inline && (
+          {kind.inline && (
             <><a className="btn btn--secondary" href={fileUrl(document.id)} target="_blank" rel="noopener noreferrer">{t("docOpen")}</a>{" "}</>
           )}
           <a className="btn btn--secondary" href={fileUrl(document.id, true)}>{t("docDownload")}</a>

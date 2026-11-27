@@ -127,7 +127,7 @@ describe("Documents page", () => {
     expect(screen.getByText(/nothing like this/)).toBeInTheDocument();
   });
 
-  it("shows the preview in the dialog, and offers Open only for what a browser can show", async () => {
+  it("shows the document itself in the dialog, and offers Open only for what a browser can show", async () => {
     mockApi({
       "GET /api/documents": () => res(200, { categories: [], documents: [
         doc(7, { title: "Lease", has_preview: true }),
@@ -137,7 +137,7 @@ describe("Documents page", () => {
     renderWithProviders(<DocumentsPage />);
     fireEvent.click(await screen.findByText("Lease"));
     let dialog = await screen.findByRole("dialog");
-    expect(dialog.querySelector("img.doc-preview")).toHaveAttribute("src", expect.stringContaining("/api/documents/7/preview"));
+    expect(dialog.querySelector("iframe.doc-view")).toHaveAttribute("src", expect.stringContaining("/api/documents/7/file"));
     expect(within(dialog).getByRole("link", { name: en.docOpen })).toBeInTheDocument();
     fireEvent.click(within(dialog).getAllByRole("button", { name: en.close })[0]);
     fireEvent.click(await screen.findByText("Contract"));
