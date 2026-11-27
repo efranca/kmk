@@ -77,3 +77,10 @@
 .board--tabs .card-task { padding: 12px 14px; }
 .board--tabs .card-task__open { min-height: 44px; justify-content: center; }
 .board--tabs .card-task__move { min-height: 40px; font-size: 0.9rem; max-width: 12rem; padding: 6px 10px; }
+
+@media (max-width: 640px) {
+  .tasks-toolbar__search { flex: 1 1 100%; }
+  .tasks-toolbar__search input { width: 100%; min-width: 0; box-sizing: border-box; }
+  .tasks-toolbar__row { display: flex; flex: 1 1 100%; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+  .tasks-toolbar__row > .avatarfilter { margin-left: auto; }
+}

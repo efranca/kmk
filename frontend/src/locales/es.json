@@ -437,6 +437,7 @@
   "err_busy": "El servidor está recibiendo otros archivos. Inténtalo de nuevo en un momento.",
   "adminStatusLabel": "Qué cuentas",
   "taskShowCategories": "Mostrar etiquetas de categoría",
+  "taskShowPeople": "Mostrar el filtro por persona",
   "navAbout": "Acerca de",
   "docShowCategories": "Mostrar etiquetas de categoría",
   "settingsMenu": "Menú",

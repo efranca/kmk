@@ -8,6 +8,7 @@ DEFAULTS = {
     "tasks_view": "list",
     "show_tasks_on_schedule": False,
     "show_task_categories": False,
+    "show_task_people": True,
     "show_document_categories": False,
     "show_menu_labels": True,
     "notify_assigned": True,
@@ -91,6 +92,9 @@ def test_category_chips_on_the_tasks_page_are_off_until_chosen_and_follow_the_ac
     assert r.status_code == 200 and r.json()["preferences"]["show_task_categories"] is True
     assert login(make_client(), "alice").json()["preferences"]["show_task_categories"] is True
     assert c.patch("/api/me/preferences", json={"show_task_categories": "yes"}, headers=h).status_code == 422  # strict: a boolean
+    r = c.patch("/api/me/preferences", json={"show_task_people": False}, headers=h)
+    assert r.status_code == 200 and r.json()["preferences"]["show_task_people"] is False
+    assert c.patch("/api/me/preferences", json={"show_task_people": "no"}, headers=h).status_code == 422
 
 
 def test_category_chips_on_the_documents_page_are_off_until_chosen_and_follow_the_account(make_client, add_user):

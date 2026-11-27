@@ -437,6 +437,7 @@
   "err_busy": "The server is receiving other files. Try again in a moment.",
   "adminStatusLabel": "Which accounts",
   "taskShowCategories": "Show category chips",
+  "taskShowPeople": "Show people filter",
   "navAbout": "About",
   "docShowCategories": "Show category chips",
   "settingsMenu": "Menu",

@@ -20,7 +20,7 @@ import { dueGroup, type DueGroup } from "./dueGroup";
 import { useCategories, useClearCompleted, useSetTaskStatus, useTasks, useToggleTask } from "./hooks";
 import { canChangeTask, canSetTaskStatus } from "./permissions";
 import { matchesSearch } from "./search";
-import { CategoryChips } from "./CategoryChips";
+import { CategoryChips, FALLBACK_CATEGORY_ICON } from "./CategoryChips";
 import { CategoryManager } from "./CategoryManager";
 import { TaskBoard } from "./TaskBoard";
 import { TaskDialog } from "./TaskDialog";
@@ -45,7 +45,7 @@ export function TasksPage() {
   const today = todayIn(COMPANY_TIME_ZONE);
   const everyone = usePeople();
   const categories = useCategories();
-  const [picked, setPicked] = useTaskPeople();
+  const [pickedInUrl, setPicked] = useTaskPeople();
   const [status, setStatus] = useState<TaskStatus>("pending");
   const [searchOpen, setSearchOpen] = useState(false);
   const [text, setText] = useState("");
@@ -56,6 +56,8 @@ export function TasksPage() {
   const [view, setView] = useTasksView();
   const { prefs, update } = usePreferences();
   const showChips = prefs.show_task_categories; // off until the person turns them on; it follows their account
+  const showPeople = prefs.show_task_people; // on until they hide the faces; hidden faces cannot filter, so every task shows
+  const picked = showPeople ? pickedInUrl : [];
   const toggle = useToggleTask();
   const move = useSetTaskStatus();
   const clear = useClearCompleted();
@@ -100,6 +102,23 @@ export function TasksPage() {
           .filter((g) => g.tasks.length > 0)
       : [{ key: "none", tasks: visible }];
 
+  const searchBox = searchOpen && (
+    <label className="tasks-toolbar__search">
+      <span className="visually-hidden">{t("taskSearchLabel")}</span>
+      <input type="search" value={text} autoFocus placeholder={t("taskSearchPlaceholder")} onChange={(e) => setText(e.target.value)} />
+    </label>
+  );
+  const faces = showPeople && (
+    <AvatarFilter people={selectable} selected={picked} onChange={setPicked} label={t("schWho")} everyoneLabel={t("everyone")}
+      moreLabel={(count) => t("schWhoMore", { count })} max={narrow ? 3 : 6} size={narrow ? "sm" : "md"} />
+  );
+  // On a phone the category chips become a dropdown (like the Agenda's views), on the same line as the faces when they fit.
+  const categoryOptions = (categories.data ?? []).filter((c) => (countOf.get(c.id) ?? 0) > 0 || c.id === selected);
+  const categoryMenu = showChips && shown.data && (categories.data ?? []).length > 0 && (
+    <Segmented dropdown label={t("taskCatFilter")} value={selected === null ? "all" : String(selected)} onChange={(v) => setPick(v === "all" ? null : Number(v))}
+      options={[{ value: "all", label: `${t("taskCatAll")} ${loaded.length}` }, ...categoryOptions.map((c) => ({ value: String(c.id), label: `${c.icon ?? FALLBACK_CATEGORY_ICON} ${c.name} ${countOf.get(c.id) ?? 0}` }))]} />
+  );
+
   const row = (task: Task) => (
     <TaskRow key={task.id} task={task} people={byId} category={task.category_id ? categoryById.get(task.category_id) : undefined} today={today}
       canToggle={canSetTaskStatus(user, task)} onToggle={() => toggle.mutate(task)} onOpen={() => setEditing(task)} />
@@ -112,6 +131,7 @@ export function TasksPage() {
         actions={
           <>
             <IconButton icon="search" label={t("taskSearchLabel")} aria-pressed={searchOpen} onClick={() => { setManaging(false); if (searchOpen) setText(""); setSearchOpen(!searchOpen); }} />
+            <IconButton icon="users" label={t("taskShowPeople")} aria-pressed={showPeople} onClick={() => update({ show_task_people: !showPeople })} />
             <IconButton icon="tag" label={t("taskShowCategories")} aria-pressed={showChips} onClick={() => update({ show_task_categories: !showChips })} />
             <ViewMenuButton view={view} onView={setView} managing={managing} onManage={() => { setSearchOpen(false); setText(""); setManaging(!managing); }}
               onClear={clearable > 0 && (view === "board" || status === "completed") && !searching ? () => setClearing(true) : undefined} />
@@ -126,15 +146,11 @@ export function TasksPage() {
       ) : (
         <>
           <div className="tasks-toolbar">
+            {narrow && searchBox}
             {!searching && view === "list" && <Segmented label={t("taskStatusLabel")} value={status} onChange={setStatus} options={STATUSES.map((s) => ({ value: s, label: t(STATUS_KEYS[s]) }))} />}
-            {searchOpen && (
-              <label className="tasks-toolbar__search">
-                <span className="visually-hidden">{t("taskSearchLabel")}</span>
-                <input type="search" value={text} autoFocus placeholder={t("taskSearchPlaceholder")} onChange={(e) => setText(e.target.value)} />
-              </label>
-            )}
-            <AvatarFilter people={selectable} selected={picked} onChange={setPicked} label={t("schWho")} everyoneLabel={t("everyone")}
-              moreLabel={(count) => t("schWhoMore", { count })} max={narrow ? 3 : 6} size={narrow ? "sm" : "md"} />
+            {!narrow && searchBox}
+            {narrow && (categoryMenu || faces) && <div className="tasks-toolbar__row">{categoryMenu}{faces}</div>}
+            {!narrow && faces}
           </div>
           {pickedPeople.length > 0 && all.data && (
             <section className="tasks-summary" aria-label={summaryTitle}>
@@ -146,7 +162,7 @@ export function TasksPage() {
               <span className="tasks-summary__meter" aria-hidden="true"><i style={{ width: `${total ? (doneCount / total) * 100 : 0}%` }} /></span>
             </section>
           )}
-          {showChips && shown.data && (categories.data ?? []).length > 0 && (
+          {!narrow && showChips && shown.data && (categories.data ?? []).length > 0 && (
             <CategoryChips label={t("taskCatFilter")} allLabel={t("taskCatAll")} allCount={loaded.length}
               options={(categories.data ?? []).map((c) => ({ id: c.id, name: c.name, icon: c.icon, count: countOf.get(c.id) ?? 0 }))}
               selected={selected} onSelect={setPick} />

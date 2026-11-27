@@ -10,6 +10,7 @@ export type Preferences = {
   tasks_view: "list" | "board";
   show_tasks_on_schedule: boolean;
   show_task_categories: boolean;
+  show_task_people: boolean;
   show_document_categories: boolean;
   show_menu_labels: boolean;
   notify_assigned: boolean;
@@ -25,6 +26,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   tasks_view: "list",
   show_tasks_on_schedule: false,
   show_task_categories: false,
+  show_task_people: true,
   show_document_categories: false,
   show_menu_labels: true,
   notify_assigned: true,

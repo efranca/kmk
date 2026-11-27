@@ -206,6 +206,69 @@ describe("TasksPage", () => {
     });
   });
 
+  describe("people filter button", () => {
+    it("shows the faces by default; the button hides them and saves the choice to the account", async () => {
+      const { calls } = api([task({ title: "Open one" })]);
+      page();
+      await screen.findByText("Open one");
+      const button = screen.getByRole("button", { name: "Show people filter" });
+      expect(button).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("group", { name: "Show" })).toBeInTheDocument();
+      fireEvent.click(button);
+      expect(screen.queryByRole("group", { name: "Show" })).not.toBeInTheDocument();
+      expect(button).toHaveAttribute("aria-pressed", "false");
+      await waitFor(() => expect(calls.some((c) => c.method === "PATCH" && JSON.stringify(c.body) === JSON.stringify({ show_task_people: false }))).toBe(true));
+    });
+
+    it("stops filtering by people while the faces are hidden", async () => {
+      api([task({ title: "For Bob", people: [2] }), task({ title: "For Alice", people: [1] })]);
+      renderWithProviders(<TasksPage />, { route: "/tasks?people=2", preferences: { ...DEFAULT_PREFERENCES, show_task_people: false } });
+      expect(await screen.findByText("For Bob")).toBeInTheDocument();
+      expect(screen.getByText("For Alice")).toBeInTheDocument();
+    });
+  });
+
+  describe("on a phone", () => {
+    beforeEach(() => {
+      vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("max-width: 640px"), addEventListener: () => undefined, removeEventListener: () => undefined }));
+    });
+    const phone = () => renderWithProviders(<TasksPage />, { route: "/tasks", preferences: { ...DEFAULT_PREFERENCES, show_task_categories: true } });
+    const withCats = () => api([task({ title: "In office", category_id: 1 }), task({ title: "In shop", category_id: 2 })], {
+      "GET /api/tasks/categories": { categories: [{ id: 1, name: "Office", icon: "🏢" }, { id: 2, name: "Shop", icon: "🛒" }] },
+    });
+
+    it("puts the categories in a dropdown instead of chips", async () => {
+      withCats();
+      phone();
+      await screen.findByText("In office");
+      expect(screen.queryByRole("group", { name: "Filter by category" })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /^Filter by category: All 2/ }));
+      fireEvent.click(screen.getByRole("menuitemradio", { name: "🏢 Office 1" }));
+      expect(screen.queryByText("In shop")).not.toBeInTheDocument();
+      expect(screen.getByText("In office")).toBeInTheDocument();
+    });
+
+    it("puts the search box on its own line above the status switch", async () => {
+      withCats();
+      phone();
+      await screen.findByText("In office");
+      fireEvent.click(screen.getByRole("button", { name: "Search tasks" }));
+      const search = screen.getByRole("searchbox");
+      const status = screen.getByRole("radiogroup", { name: "Which tasks" });
+      expect(search.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+  });
+
+  it("keeps the chips and the search box beside the status switch on a wide screen", async () => {
+    api([task({ title: "Open one" })]);
+    page(true);
+    await screen.findByText("Open one");
+    fireEvent.click(screen.getByRole("button", { name: "Search tasks" }));
+    const search = screen.getByRole("searchbox");
+    const status = screen.getByRole("radiogroup", { name: "Which tasks" });
+    expect(status.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("falls back to All when the picked category is deleted", async () => {
     let cats = [{ id: 1, name: "Office", icon: "🏢" }];
     const { calls } = mockApi({

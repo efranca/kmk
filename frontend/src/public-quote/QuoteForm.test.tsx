@@ -67,7 +67,8 @@ describe("QuoteForm", () => {
     await user.click(links[0]);
     const dialog = screen.getByRole("dialog", { name: "Privacy notice" });
     expect(dialog.getAttribute("aria-modal")).toBe("true");
-    expect(dialog.textContent).toMatch(/session cookie/i);
+    expect(dialog.textContent).toMatch(/no tracking or advertising cookies/i);
+    expect(dialog.textContent).not.toMatch(/session/i);
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
     await user.click(links[1]);
