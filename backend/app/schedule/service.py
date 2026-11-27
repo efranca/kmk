@@ -11,7 +11,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from app import names
-from app.clients.service import check_client
+from app.clients.service import check_client, check_property
 from app.auth import audit, policy
 from app.auth.errors import ApiError
 from app.auth.avatars_url import avatar_url
@@ -25,7 +25,7 @@ PALETTE = ("red", "orange", "amber", "green", "teal", "blue", "violet", "pink")
 EVERYONE_COLOR = "teal"
 MAX_REMINDERS = 10
 MIN_SEARCH_LENGTH = 2
-SERIES_FIELDS = ("icon", "color", "all_day", "ends_on", "max_count", "client_id")
+SERIES_FIELDS = ("icon", "color", "all_day", "ends_on", "max_count", "client_id", "property_id")
 
 
 def avatar_color(user_id: int) -> str:
@@ -110,6 +110,7 @@ def _occurrence_payload(o: Occurrence, event: Event, people: frozenset[int]) -> 
         "people": sorted(people),
         "created_by": event.created_by,
         "client_id": event.client_id,
+        "property_id": event.property_id,
     }
 
 
@@ -187,6 +188,7 @@ def event_payload(db: Session, event: Event) -> dict:
         "ends_on": event.ends_on.isoformat() if event.ends_on else None,
         "max_count": event.max_count,
         "client_id": event.client_id,
+        "property_id": event.property_id,
         "people": sorted(people),
         "reminders": [{"amount": r.amount, "unit": r.unit} for r in reminders],
         "exceptions": [
@@ -255,7 +257,7 @@ def _write(event: Event, data: EventIn, first: date) -> None:
     event.duration_minutes = data.duration_minutes
     event.recurrence = data.recurrence.model_dump(mode="json") if data.recurrence else None
     event.ends_on, event.max_count = data.ends_on, data.max_count
-    event.client_id = data.client_id
+    event.client_id, event.property_id = data.client_id, data.property_id
 
 
 def _replace_links(db: Session, event_id: int, people: set[int], reminders: list[tuple[int, str]]) -> None:
@@ -268,6 +270,7 @@ def _replace_links(db: Session, event_id: int, people: set[int], reminders: list
 def create_event(db: Session, actor: User, data: EventIn, ip: str) -> Event:
     people = _checked_people(db, data.people)
     check_client(db, actor, data.client_id)
+    check_property(db, actor, data.property_id, data.client_id)
     reminders = _checked_reminders(data)
     first = _first_date(data, snap=True)
     event = Event(created_by=actor.id, updated_by=actor.id)
@@ -332,6 +335,7 @@ def update_event(db: Session, actor: User, event_id: int, data: EventIn, ip: str
     scope = _effective_scope(event, data.scope, data.occurrence_date)
     people = _checked_people(db, data.people, keep=old_people)
     check_client(db, actor, data.client_id, event.client_id)
+    check_property(db, actor, data.property_id, data.client_id)
     reminders = _checked_reminders(data)
     old_reminders = _reminder_pairs(db, event.id)
     details = {"event_id": event.id, "scope": scope}

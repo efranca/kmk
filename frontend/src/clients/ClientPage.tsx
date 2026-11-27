@@ -7,12 +7,15 @@ import { Button, IconButton } from "../ui/Button";
 import { ErrorNotice, Loading } from "../ui/Feedback";
 import { PageHeader } from "../ui/PageHeader";
 import { Segmented } from "../ui/Segmented";
+import type { Property } from "./api";
 import { ClientDialog, KIND_KEYS } from "./ClientDialog";
+import { PropertyCard } from "./PropertyCard";
+import { PropertyDialog } from "./PropertyDialog";
 import { useClient } from "./hooks";
 
-type Tab = "details" | "documents" | "tasks" | "events" | "quotes";
-const TABS: Tab[] = ["details", "documents", "tasks", "events", "quotes"];
-const TAB_KEYS: Record<Tab, string> = { details: "clientTabDetails", documents: "clientTabDocuments", tasks: "clientTabTasks", events: "clientTabEvents", quotes: "clientTabQuotes" };
+type Tab = "details" | "properties" | "documents" | "tasks" | "events" | "quotes";
+const TABS: Tab[] = ["details", "properties", "documents", "tasks", "events", "quotes"];
+const TAB_KEYS: Record<Tab, string> = { details: "clientTabDetails", properties: "clientTabProperties", documents: "clientTabDocuments", tasks: "clientTabTasks", events: "clientTabEvents", quotes: "clientTabQuotes" };
 
 /** One client: the details, and what is linked to them (documents, tasks, Agenda items, quotes). */
 export function ClientPage({ id }: { id: number }) {
@@ -22,6 +25,7 @@ export function ClientPage({ id }: { id: number }) {
   const { data: client, isPending, isError, error, refetch } = useClient(id);
   const [tab, setTab] = useState<Tab>("details");
   const [editing, setEditing] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | "new" | null>(null);
 
   const back = <IconButton icon="chev-left" label={t("clientsTitle")} onClick={() => navigate("/clients")} />;
   if (isPending) return <div className="page"><Loading /></div>;
@@ -31,8 +35,9 @@ export function ClientPage({ id }: { id: number }) {
   const tasks = client.tasks ?? [];
   const events = client.events ?? [];
   const quotes = client.quotes ?? [];
-  const tabs = canManage ? TABS : (["details", "events"] as Tab[]); // Staff: the details and their own Schedule, nothing else
-  const counts: Record<Tab, number> = { details: 0, documents: documents.length, tasks: tasks.length, events: events.length, quotes: quotes.length };
+  const tabs = canManage ? TABS : (["details", "properties", "events"] as Tab[]); // Staff: the details and their own Schedule, nothing else
+  const properties = client.properties ?? [];
+  const counts: Record<Tab, number> = { details: 0, properties: properties.length, documents: documents.length, tasks: tasks.length, events: events.length, quotes: quotes.length };
   const facts: [string, string | null, string?][] = [
     [t("clientFieldKinds"), client.kinds.map((k) => t(KIND_KEYS[k])).join(", ")],
     [t("clientFieldContact"), client.contact_name],
@@ -55,6 +60,12 @@ export function ClientPage({ id }: { id: number }) {
             ))}
           </dl>
         )}
+        {tab === "properties" && (
+          <>
+            {properties.length === 0 ? empty : <div className="proplist">{properties.map((p) => <PropertyCard key={p.id} property={p} onEdit={canManage ? () => setEditingProperty(p) : undefined} />)}</div>}
+            {canManage && <Button icon="plus" onClick={() => setEditingProperty("new")}>{t("propNew")}</Button>}
+          </>
+        )}
         {tab === "documents" && (documents.length === 0 ? empty : (
           <ul className="client-links">{documents.map((d) => <li key={d.id}><a href={`/api/documents/${d.id}/file`} target="_blank" rel="noopener noreferrer">{d.title}</a></li>)}</ul>
         ))}
@@ -68,6 +79,7 @@ export function ClientPage({ id }: { id: number }) {
           <ul className="client-links">{quotes.map((x) => <li key={x.id}><button type="button" onClick={() => navigate(`/quotes/${x.id}`)}>{x.reference}</button><small>{x.submitted_at?.slice(0, 10) ?? ""}</small></li>)}</ul>
         ))}
       </section>
+      {editingProperty && <PropertyDialog key={editingProperty === "new" ? "new" : editingProperty.id} clientId={client.id} property={editingProperty === "new" ? null : editingProperty} onClose={() => setEditingProperty(null)} />}
       {editing && <ClientDialog client={client} onClose={() => setEditing(false)} onDeleted={() => navigate("/clients")} />}
     </div>
   );

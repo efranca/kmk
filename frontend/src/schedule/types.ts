@@ -64,6 +64,7 @@ export interface EventDetail {
   ends_on: string | null;
   max_count: number | null;
   client_id?: number | null;
+  property_id?: number | null;
   people: number[];
   reminders: ReminderIn[];
   exceptions: EventException[];
@@ -85,6 +86,7 @@ export interface EventInput {
   ends_on: string | null;
   max_count: number | null;
   client_id: number | null;
+  property_id: number | null;
   people: number[];
   reminders: ReminderIn[];
 }

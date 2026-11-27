@@ -1,5 +1,6 @@
 """Request bodies of the clients API."""
 
+import re
 import unicodedata
 from typing import Annotated, Literal
 
@@ -12,6 +13,7 @@ from app.schedule.schemas import MAX_ID
 KINDS = ("airbnb", "commercial", "post_construction", "other")
 Kind = Literal["airbnb", "commercial", "post_construction", "other"]
 NOTES_MAX = 5000
+WEB_LINK = re.compile(r"^https?://[^\s/]+\.[^\s/]+", re.IGNORECASE)
 
 
 def _clean(v: str | None, high: int, what: str, *, lines: bool = False) -> str | None:
@@ -87,3 +89,47 @@ class ClientIn(BaseModel):
         if not PHONE_RE.match(v):
             raise ValueError("phone")
         return v
+
+
+class PropertyIn(BaseModel):
+    """The whole form (PATCH sends it all)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    kind: Kind = "other"
+    address: str | None = None
+    city: str | None = None
+    listing_url: str | None = None
+    access_notes: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str) -> str:
+        out = _clean(v, 100, "name")
+        if out is None:
+            raise ValueError("the name is required")
+        return out
+
+    @field_validator("address")
+    @classmethod
+    def _address(cls, v: str | None) -> str | None:
+        return _clean(v, 200, "address")
+
+    @field_validator("city")
+    @classmethod
+    def _city(cls, v: str | None) -> str | None:
+        return _clean(v, 60, "city")
+
+    @field_validator("access_notes")
+    @classmethod
+    def _notes(cls, v: str | None) -> str | None:
+        return _clean(v, 2000, "access_notes", lines=True)
+
+    @field_validator("listing_url")
+    @classmethod
+    def _listing(cls, v: str | None) -> str | None:
+        out = _clean(v, 300, "listing_url")
+        if out is not None and not WEB_LINK.match(out):  # only web links: it becomes a link people tap
+            raise ValueError("listing_url")
+        return out

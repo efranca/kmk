@@ -20,7 +20,20 @@ export type Client = {
 };
 
 /** Staff get only `events` (their own), and no `notes`. */
+export type Property = {
+  id: number;
+  client_id: number;
+  name: string;
+  kind: ClientKind;
+  address: string | null;
+  city: string | null;
+  listing_url: string | null;
+  access_notes: string | null;
+};
+export type PropertyInput = Omit<Property, "id" | "client_id">;
+
 export type ClientDetail = Client & {
+  properties: Property[];
   tasks?: { id: number; title: string; status: "pending" | "in_progress" | "completed"; due_date: string | null }[];
   events?: { id: number; title: string; start_date: string; start_time: string | null }[];
   documents?: { id: number; title: string; content_type: string | null }[];
@@ -37,3 +50,7 @@ export const getClient = async (id: number) => (await request<{ client: ClientDe
 export const createClient = async (input: ClientInput, csrf: string) => (await request<{ client: Client }>("POST", BASE, csrf, input)).client;
 export const updateClient = async (id: number, input: ClientInput, csrf: string) => (await request<{ client: Client }>("PATCH", `${BASE}/${id}`, csrf, input)).client;
 export const deleteClient = (id: number, csrf: string) => request<void>("DELETE", `${BASE}/${id}`, csrf);
+
+export const createProperty = async (clientId: number, input: PropertyInput, csrf: string) => (await request<{ property: Property }>("POST", `${BASE}/${clientId}/properties`, csrf, input)).property;
+export const updateProperty = async (id: number, input: PropertyInput, csrf: string) => (await request<{ property: Property }>("PATCH", `/api/properties/${id}`, csrf, input)).property;
+export const deleteProperty = (id: number, csrf: string) => request<void>("DELETE", `/api/properties/${id}`, csrf);

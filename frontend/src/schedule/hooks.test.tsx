@@ -10,7 +10,7 @@ import type { EventInput } from "./types";
 const user = { id: 1, username: "alice", name: null, email: "a@x.ca", role: "user" as const, locale: "en" as const };
 const input: EventInput = {
   title: "Visit", notes: null, icon: null, color: null, all_day: false, start_date: "2026-11-05", start_time: "09:00",
-  duration_minutes: 60, recurrence: null, ends_on: null, max_count: null, client_id: null, people: [], reminders: [],
+  duration_minutes: 60, recurrence: null, ends_on: null, max_count: null, client_id: null, property_id: null, people: [], reminders: [],
 };
 const occurrence = { event_id: 1, original_date: "2026-11-05", date: "2026-11-05", start_time: "09:00", end_time: "10:00", all_day: false,
   title: "Visit", notes: null, icon: null, color: "teal", repeating: false, modified: false, people: [], created_by: 1 };

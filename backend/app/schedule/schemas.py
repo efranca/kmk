@@ -38,6 +38,7 @@ class EventIn(BaseModel):
     ends_on: date | None = None
     max_count: int | None = Field(default=None, ge=1, le=MAX_COUNT)
     client_id: int | None = Field(default=None, ge=1, le=MAX_ID)
+    property_id: int | None = Field(default=None, ge=1, le=MAX_ID)
     people: list[Annotated[int, Field(ge=1, le=MAX_ID)]] = Field(default_factory=list, max_length=PEOPLE_MAX)
     reminders: list[ReminderIn] = Field(default_factory=list)
     scope: Scope = "all"
