@@ -53,12 +53,18 @@ describe("clients", () => {
   });
 
   it("shows a client's details and what is linked to them", async () => {
-    mockApi({ "GET /api/clients/5": { client: detail } });
+    const lease = { id: 3, title: "Lease", note: null, category_id: null, client_id: 5, visibility: "admins", file_name: "lease.pdf", content_type: "application/pdf", size_bytes: 2048, has_file: true, has_preview: false, created_by: { id: 1, name: "Alice" }, created_at: "2026-11-20T10:00:00Z", updated_at: "2026-11-20T10:00:00Z" };
+    mockApi({ "GET /api/clients/5": { client: { ...detail, properties: [] } }, "GET /api/documents": { documents: [lease, { ...lease, id: 4, title: "Other client's", client_id: 6 }], categories: [] } });
     renderWithProviders(<ClientPage id={5} />, admin);
     expect(await screen.findByText("Key under the mat")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "418-555-0101" })).toHaveAttribute("href", "tel:4185550101");
+    expect(screen.getByRole("link", { name: "Call" })).toHaveAttribute("href", "tel:4185550101");
+    expect(screen.getByRole("link", { name: "Email" })).toHaveAttribute("href", "mailto:c@example.com");
     fireEvent.click(screen.getByRole("radio", { name: /Documents/ }));
-    expect(screen.getByRole("link", { name: "Lease" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Lease/ })).toBeInTheDocument(); // a row like on the Documents page
+    expect(screen.queryByText("Other client's")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Add a document" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("dialog")).getAllByRole("button", { name: "Cancel" })[0]!);
     fireEvent.click(screen.getByRole("radio", { name: /Tasks/ }));
     expect(screen.getByText("Call Chantal")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: /Quotes/ }));

@@ -16,7 +16,7 @@ class User(Base):
         CheckConstraint("username = lower(username)", name="users_username_lower"),
         CheckConstraint("email = lower(email)", name="users_email_lower"),
         CheckConstraint("role in ('user','admin','superadmin')", name="users_role_valid"),
-        CheckConstraint("locale in ('fr-CA','en','pt-BR')", name="users_locale_valid"),
+        CheckConstraint("locale in ('fr-CA','en','pt-BR','es')", name="users_locale_valid"),
         CheckConstraint("status in ('invited','active','disabled','deleted')", name="users_status_valid"),
         CheckConstraint("name IS NULL OR char_length(btrim(name)) BETWEEN 1 AND 100", name="users_name_valid"),
     )
@@ -356,6 +356,8 @@ class Quote(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     client_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("clients.id", ondelete="SET NULL"), nullable=True)
+    source: Mapped[str] = mapped_column(Text, default="web", server_default="web")  # web (the open form) | manual (entered by an admin)
+    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     @property

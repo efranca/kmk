@@ -16,6 +16,8 @@ export type QuoteSummary = {
   /** Past its deadline and still New. */
   overdue: boolean;
   messages: number;
+  /** web = the open form; manual = entered by an administrator (a phone call, say). */
+  source?: "web" | "manual";
 };
 
 export type QuoteMessage = {
@@ -38,6 +40,7 @@ export type QuoteDetail = QuoteSummary & {
   geo_city: string | null;
   user_agent: string | null;
   client?: { id: number; name: string } | null;
+  created_by?: { id: number; name: string } | null;
   task_id: number | null;
   event_id: number | null;
   first_reply_at: string | null;
@@ -49,3 +52,22 @@ export type QuoteDetail = QuoteSummary & {
 export type QuoteCounts = { new: number; customer_replied: number; replied: number };
 export type QuotePatch = { status?: QuoteStatus; internal_note?: string; client_id?: number | null };
 export type MessageInput = { direction: "out"; subject: string; body: string } | { direction: "in"; body: string; sent_at?: string };
+
+/** The body of POST /api/quotes: a quote an administrator enters by hand. Only the name, phone and type are needed. */
+export type ManualQuoteInput = {
+  name: string;
+  phone: string;
+  email: string | null;
+  locale: "fr-CA" | "en-CA" | "pt-BR";
+  kind: QuoteKind;
+  city: string;
+  address: string;
+  property: string | null;
+  frequency: string | null;
+  bedrooms?: number;
+  bathrooms?: number;
+  area_sqft?: number;
+  listing_url?: string;
+  message: string | null;
+  client_id: number | null;
+};

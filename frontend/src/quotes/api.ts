@@ -1,10 +1,14 @@
 import { request } from "../schedule/api";
-import type { MessageInput, QuoteCounts, QuoteDetail, QuoteFilter, QuotePatch, QuoteSummary } from "./types";
+import type { ManualQuoteInput, MessageInput, QuoteCounts, QuoteDetail, QuoteFilter, QuotePatch, QuoteSummary } from "./types";
 
 const BASE = "/api/quotes";
 
 export async function listQuotes(status: QuoteFilter): Promise<{ quotes: QuoteSummary[]; counts: QuoteCounts }> {
   return request("GET", `${BASE}?status=${status}`);
+}
+
+export async function createQuote(input: ManualQuoteInput, csrf: string): Promise<QuoteDetail> {
+  return (await request<{ quote: QuoteDetail }>("POST", BASE, csrf, input)).quote;
 }
 
 export async function getQuote(id: number): Promise<QuoteDetail> {

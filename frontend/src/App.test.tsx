@@ -6,6 +6,7 @@ import i18n from "./i18n";
 import en from "./locales/en.json";
 import frCA from "./locales/fr-CA.json";
 import ptBR from "./locales/pt-BR.json";
+import es from "./locales/es.json";
 import { openAccountMenu } from "./testUtils";
 
 const alice = { id: 1, username: "alice", email: "alice@example.com", role: "admin", locale: "fr-CA" };
@@ -119,5 +120,13 @@ describe("App", () => {
     const keys = (o: object) => Object.keys(o).sort();
     expect(keys(en)).toEqual(keys(frCA));
     expect(keys(ptBR)).toEqual(keys(frCA));
+    expect(keys(es)).toEqual(keys(frCA));
+  });
+
+  it("Spanish keeps every placeholder of the English text", () => {
+    for (const [key, text] of Object.entries(en as Record<string, string>)) {
+      const names = (s: string) => (s.match(/{{\w+}}/g) ?? []).sort();
+      expect(names((es as Record<string, string>)[key]!), key).toEqual(names(text));
+    }
   });
 });

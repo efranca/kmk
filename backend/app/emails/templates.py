@@ -19,6 +19,7 @@ _GREETING = {
     "fr-CA": ("Bonjour {name},", "Bonjour,"),
     "en": ("Hello {name},", "Hello,"),
     "pt-BR": ("Olá {name},", "Olá,"),
+    "es": ("Hola {name},", "Hola,"),
 }
 
 # The text of the link in the HTML part (the long address with its token stays behind it): per locale, invite then reset.
@@ -26,6 +27,7 @@ _LINK_TEXT = {
     "fr-CA": ("Choisir mon mot de passe", "Choisir un nouveau mot de passe"),
     "en": ("Choose my password", "Choose a new password"),
     "pt-BR": ("Escolher minha senha", "Escolher uma nova senha"),
+    "es": ("Elegir mi contraseña", "Elegir una nueva contraseña"),
 }
 
 SITE = "app.kmk-entretien.ca"
@@ -70,6 +72,19 @@ _T = {
             "Este link é válido por 30 minutos e só pode ser usado uma vez.",
         ),
         "ignore": "Se você não esperava este e-mail, ignore-o: nada será alterado.",
+    },
+    "es": {
+        "invite": (
+            "Invitación a KMK Entretien Ménager",
+            "Se creó una cuenta para ti en app.kmk-entretien.ca. Para elegir tu contraseña, abre este enlace:",
+            "Este enlace es válido por 48 horas y solo se puede usar una vez.",
+        ),
+        "reset": (
+            "Restablecer tu contraseña",
+            "Se solicitó restablecer la contraseña de tu cuenta de KMK Entretien Ménager. Para elegir una nueva contraseña, abre este enlace:",
+            "Este enlace es válido por 30 minutos y solo se puede usar una vez.",
+        ),
+        "ignore": "Si no esperabas este correo, ignóralo: nada cambiará.",
     },
 }
 

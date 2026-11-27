@@ -8,7 +8,9 @@ import { ErrorNotice, Loading } from "../ui/Feedback";
 import { PageHeader } from "../ui/PageHeader";
 import { Segmented } from "../ui/Segmented";
 import type { Property } from "./api";
-import { ClientDialog, KIND_KEYS } from "./ClientDialog";
+import { ClientDetails } from "./ClientDetails";
+import { ClientDialog } from "./ClientDialog";
+import { ClientDocuments } from "./ClientDocuments";
 import { PropertyCard } from "./PropertyCard";
 import { PropertyDialog } from "./PropertyDialog";
 import { useClient } from "./hooks";
@@ -38,14 +40,6 @@ export function ClientPage({ id }: { id: number }) {
   const tabs = canManage ? TABS : (["details", "properties", "events"] as Tab[]); // Staff: the details and their own Schedule, nothing else
   const properties = client.properties ?? [];
   const counts: Record<Tab, number> = { details: 0, properties: properties.length, documents: documents.length, tasks: tasks.length, events: events.length, quotes: quotes.length };
-  const facts: [string, string | null, string?][] = [
-    [t("clientFieldKinds"), client.kinds.map((k) => t(KIND_KEYS[k])).join(", ")],
-    [t("clientFieldContact"), client.contact_name],
-    [t("clientFieldEmail"), client.email, client.email ? `mailto:${client.email}` : undefined],
-    [t("clientFieldPhone"), client.phone, client.phone ? `tel:${client.phone.replace(/[^\d+]/g, "")}` : undefined],
-    [t("clientFieldAddress"), [client.address, client.city].filter(Boolean).join(", ") || null],
-    [t("clientFieldNotes"), client.notes ?? null],
-  ];
   const empty = <p className="status">{t("clientNothingLinked")}</p>;
 
   return (
@@ -54,11 +48,7 @@ export function ClientPage({ id }: { id: number }) {
       <Segmented label={t("clientTabs")} value={tab} onChange={setTab} options={tabs.map((x) => ({ value: x, label: counts[x] ? `${t(TAB_KEYS[x])} ${counts[x]}` : t(TAB_KEYS[x]) }))} />
       <section className="section client-card">
         {tab === "details" && (
-          <dl className="client-facts">
-            {facts.filter(([, v]) => v).map(([label, value, href]) => (
-              <div key={label} style={{ display: "contents" }}><dt>{label}</dt><dd>{href ? <a href={href}>{value}</a> : value}</dd></div>
-            ))}
-          </dl>
+          <ClientDetails client={client} />
         )}
         {tab === "properties" && (
           <>
@@ -66,9 +56,7 @@ export function ClientPage({ id }: { id: number }) {
             {canManage && <Button icon="plus" onClick={() => setEditingProperty("new")}>{t("propNew")}</Button>}
           </>
         )}
-        {tab === "documents" && (documents.length === 0 ? empty : (
-          <ul className="client-links">{documents.map((d) => <li key={d.id}><a href={`/api/documents/${d.id}/file`} target="_blank" rel="noopener noreferrer">{d.title}</a></li>)}</ul>
-        ))}
+        {tab === "documents" && <ClientDocuments clientId={client.id} />}
         {tab === "tasks" && (tasks.length === 0 ? empty : (
           <ul className="client-links">{tasks.map((x) => <li key={x.id}><button type="button" onClick={() => navigate("/tasks")}>{x.title}</button><small>{x.due_date ?? ""}</small></li>)}</ul>
         ))}

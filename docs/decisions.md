@@ -83,7 +83,7 @@ All entries below were decided on 2026-11-17 during the build (phase noted).
 - **Safety choices:** the job refuses to run unless the partition is mounted; a restore only trusts archives whose hash the backup recorded.
 
 ### D15. Default language French (Canada); the language is stored per user on the server (phases 2, 5)
-- **Decision:** `fr-CA` by default, `en` and `pt-BR` available; a signed-in person's choice is saved on the server (so it follows them and sets their email language); before signing in a small picker is remembered in the browser; invitation links carry the language.
+- **Decision:** `fr-CA` by default, `en`, `pt-BR` and `es` (Spanish, added 2026-11; the private app and its emails only, the public quote form stays fr/en/pt) available; a signed-in person's choice is saved on the server (so it follows them and sets their email language); before signing in a small picker is remembered in the browser; invitation links carry the language.
 - **Open:** the Portuguese text has had no native review; the welcome page is a placeholder until the owner supplies the real content.
 
 ### D16. The documentation in `docs/` describes what is built; `scope.md` is the original plan (phase 4a)

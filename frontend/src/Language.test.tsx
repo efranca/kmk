@@ -9,6 +9,7 @@ import { initialLanguage, isLang, rememberLanguage, savedLanguage } from "./lang
 import enJson from "./locales/en.json";
 import frCA from "./locales/fr-CA.json";
 import ptBR from "./locales/pt-BR.json";
+import es from "./locales/es.json";
 import { consumeToken, forgetToken, linkLanguage } from "./route";
 
 const res = (status: number, body: unknown = {}) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
@@ -41,8 +42,8 @@ afterEach(async () => {
 });
 
 describe("language helpers", () => {
-  it("accepts only the three languages", () => {
-    expect(["fr-CA", "en", "pt-BR"].every(isLang)).toBe(true);
+  it("accepts only the four languages", () => {
+    expect(["fr-CA", "en", "pt-BR", "es"].every(isLang)).toBe(true);
     expect([isLang("de"), isLang(""), isLang(null), isLang(undefined), isLang(3)]).toEqual([false, false, false, false, false]);
   });
 
@@ -150,9 +151,21 @@ describe("language in emailed links", () => {
 
 describe("locale files", () => {
   it("define the language labels in every language", () => {
-    for (const f of [frCA, enJson, ptBR]) {
+    for (const f of [frCA, enJson, ptBR, es]) {
       expect(f.language).toBeTruthy();
       expect(f.langError).toBeTruthy();
     }
+  });
+});
+
+describe("Spanish", () => {
+  it("is available for the app, with plural forms, and can be remembered", async () => {
+    await act(() => i18n.changeLanguage("es"));
+    expect(i18n.t("schReminderHours", { count: 1 })).toBe("1 hora");
+    expect(i18n.t("schReminderHours", { count: 3 })).toBe("3 horas");
+    expect(i18n.t("signInTitle")).toBe("Iniciar sesión");
+    expect(window.localStorage.getItem("kmk.lang")).toBeNull();
+    rememberLanguage("es");
+    expect(initialLanguage()).toBe("es");
   });
 });

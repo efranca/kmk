@@ -134,7 +134,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--username", required=True)
     p.add_argument("--email", required=True)
     p.add_argument("--name", required=True, help="the person's name, for example \"Marie Tremblay\"")
-    p.add_argument("--locale", default="fr-CA", choices=["fr-CA", "en", "pt-BR"])
+    p.add_argument("--locale", default="fr-CA", choices=["fr-CA", "en", "pt-BR", "es"])
     n = sub.add_parser("set-name", help="set or change a person's name")
     n.add_argument("--username", required=True)
     n.add_argument("--name", required=True)

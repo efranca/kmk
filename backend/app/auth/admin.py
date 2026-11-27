@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/admin")
 
 USERNAME_RE = re.compile(r"^[a-z0-9._-]{3,32}$")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-Locale = Literal["fr-CA", "en", "pt-BR"]
+Locale = Literal["fr-CA", "en", "pt-BR", "es"]
 
 
 def clean_email(v: str) -> str:

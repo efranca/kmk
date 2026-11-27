@@ -12,7 +12,7 @@ from app.auth.routes import request_ip
 from app.config import Settings
 from app.models import User, UserSession
 from app.quotes import service
-from app.quotes.schemas import MessageIn, QuotePatch
+from app.quotes.schemas import ManualQuoteIn, MessageIn, QuotePatch
 from app.schedule.schemas import MAX_ID
 
 router = APIRouter(prefix="/api/quotes")
@@ -27,6 +27,15 @@ Status = Literal["all", "new", "replied", "customer_replied", "won", "lost"]
 def list_quotes(status: Annotated[Status, Query()] = "all", auth: tuple[User, UserSession] = Depends(reader), db: Session = Depends(get_db)):
     policy.check_quotes(auth[0])
     return service.list_quotes(db, status)
+
+
+@router.post("", status_code=201)
+def enter_quote(body: ManualQuoteIn, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    policy.check_quotes(auth[0])
+    quote = service.enter_quote(db, auth[0], body, request_ip(request, settings))
+    payload = service.quote_payload(db, quote)
+    db.commit()
+    return {"quote": payload}
 
 
 @router.get("/{quote_id}")

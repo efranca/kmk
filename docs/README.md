@@ -49,7 +49,7 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 
 | Table | Purpose | Key columns |
 | --- | --- | --- |
-| `users` | accounts | `username`, `name` (the person's display name, 1-100 characters, optional in the database for accounts that predate it), `email` (both lowercase, unique), `password_hash` (Argon2id, null until an invite is accepted), `role` (`user`/`admin`/`superadmin`; one super admin allowed; shown as Staff / Administrator / Administrator),`settings` (JSON, admin-managed, closed: `notify_quotes`; see `app/user_settings.py`), `locale` (`fr-CA`/`en`/`pt-BR`), `status` (`invited`/`active`/`disabled`/`deleted`), `mfa_enabled`, `mfa_secret` (Fernet-encrypted), `mfa_last_step`, `preferences` (JSON: theme, sidebar, tasks view, Schedule tasks switch, Dashboard widgets), `avatar_updated_at` (NULL = no picture) |
+| `users` | accounts | `username`, `name` (the person's display name, 1-100 characters, optional in the database for accounts that predate it), `email` (both lowercase, unique), `password_hash` (Argon2id, null until an invite is accepted), `role` (`user`/`admin`/`superadmin`; one super admin allowed; shown as Staff / Administrator / Administrator),`settings` (JSON, admin-managed, closed: `notify_quotes`; see `app/user_settings.py`), `locale` (`fr-CA`/`en`/`pt-BR`/`es`), `status` (`invited`/`active`/`disabled`/`deleted`), `mfa_enabled`, `mfa_secret` (Fernet-encrypted), `mfa_last_step`, `preferences` (JSON: theme, sidebar, tasks view, Schedule tasks switch, Dashboard widgets), `avatar_updated_at` (NULL = no picture) |
 | `sessions` | server-side sessions | `token_hash` (primary key), `user_id`, `expires_at` (5 days), `revoked_at`, `ip`, `user_agent`, `mfa_verified` |
 | `tokens` | invite and reset links | `token_hash`, `user_id`, `purpose` (`invite`/`reset`), `expires_at`, `used_at` |
 | `recovery_codes` | TOTP recovery codes | `user_id`, `code_hash` (unique), `used_at` |
@@ -64,7 +64,7 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 | `tasks` | one task, to do or completed | `title`, `description`, `icon`, `category_id` (set null when the category is deleted), `status` (`pending`/`in_progress`/`completed`), `due_date` (a date in the company time zone, optional), `completed_at` and `completed_by` (set exactly when completed), `show_on_dashboard`, `created_by`, `updated_by` |
 | `task_people` | who a task is for (no rows = the whole team) | `task_id`, `user_id` |
 | `user_avatars` | a person's profile picture, at most 50 KB (JPEG, PNG or WebP); `users.avatar_updated_at` says whether there is one | `user_id`, `content_type`, `data`, `updated_at` |
-| `quotes` | one quote request (a `draft` until the customer presses Send, then `new`, `replied`, `customer_replied`, `won`, `lost`) | `reference` (`D-` + id, computed), `kind` (`airbnb`/`commercial`), `name`, `email`, `phone`, `locale`, `details` (JSON: address, property, frequency, bedrooms, bathrooms, area), `message` (up to 2000 words), `internal_note`, `ip`, `ip_key` (IPv6 per /64, counted for the hourly limit), `geo_*`, `user_agent`, `token_hash` (the draft's one-time token), `deadline_at` (24 h), `first_reply_at`, `task_id`, `event_id` |
+| `quotes` | one quote request (a `draft` until the customer presses Send, then `new`, `replied`, `customer_replied`, `won`, `lost`) | `reference` (`D-` + id, computed), `kind` (`airbnb`/`commercial`), `name`, `email`, `phone`, `locale`, `details` (JSON: address, property, frequency, bedrooms, bathrooms, area), `message` (up to 2000 words), `internal_note`, `ip`, `ip_key` (IPv6 per /64, counted for the hourly limit), `geo_*`, `user_agent`, `token_hash` (the draft's one-time token), `deadline_at` (24 h), `first_reply_at`, `task_id`, `event_id`, `source` (`web`/`manual`), `created_by` (who entered a manual one) |
 | `quote_photos` | up to 10 photos of 8 MiB (JPEG, PNG, WebP, HEIC) | `quote_id`, `content_type`, `size`, `data` |
 | `quote_messages` | the conversation: `out` is emailed from the app, `in` is a customer reply pasted by an admin | `direction`, `subject`, `body`, `author_id`, `sent_at`, `delivery` (`sent`/`failed`, out only) |
 | `app_settings` | company-wide settings (`quote_notify_email`, `quote_from`, `quote_reply_to`, `public_phone`) | `key`, `value`, `updated_by` |
@@ -90,7 +90,7 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `POST /api/auth/forgot-password` | anyone | request a reset email (always answers the same) |
 | `POST /api/auth/set-password` | anyone with a token | accept an invite or finish a reset |
 | `POST /api/auth/change-password` | verified | needs the current password |
-| `POST /api/auth/locale` | verified | set your own interface and email language (`fr-CA`, `en`, `pt-BR`) |
+| `POST /api/auth/locale` | verified | set your own interface and email language (`fr-CA`, `en`, `pt-BR`, `es`) |
 | `POST /api/auth/mfa/setup` | verified or `setup` state | start enrollment, returns the secret and `otpauth://` URI |
 | `POST /api/auth/mfa/enable` | verified or `setup` state | confirm a code, returns the 10 recovery codes once |
 | `POST /api/auth/mfa/verify` | `verify` state | second login step: a code or a recovery code |
@@ -136,7 +136,8 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `PUT /api/public/quotes/{id}/photos` | the draft's token (`X-Quote-Token`) | one photo as the raw body |
 | `POST /api/public/quotes/{id}/submit` | the draft's token | makes it a request: creates the task and the Agenda item, then emails and pushes; answers `{reference}`; sending twice changes nothing |
 | `GET /api/quotes?status`, `GET /api/quotes/{id}`, `GET /api/quotes/{id}/photos/{photo_id}` | admins and the super admin | list (with the counts for the navigation badge), one request, one photo |
-| `PATCH /api/quotes/{id}` | admins and the super admin | status and internal note |
+| `POST /api/quotes` | admins and the super admin | enter a quote by hand (a phone call): name, phone and type are required; email, address, property, frequency, notes and client are optional. It starts New with the 24-hour deadline (`source` = `manual`, `created_by`) and makes no task, Agenda item, email or push. A reply cannot be emailed without an email (`422 no_email`); a customer reply can still be logged |
+| `PATCH /api/quotes/{id}` | admins and the super admin | status, internal note, client |
 | `POST /api/quotes/{id}/messages`, `POST /api/quotes/{id}/messages/{mid}/retry` | admins and the super admin | send a reply by email (`409 sender_not_configured` without a sender) or paste a customer reply; retry a failed send |
 | `DELETE /api/quotes/{id}` | super admin | delete the request, its photos and its conversation |
 | `GET` / `PATCH /api/settings/system` | super admin | the company-wide settings |

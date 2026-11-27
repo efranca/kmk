@@ -1,15 +1,16 @@
-export type Lang = "fr-CA" | "en" | "pt-BR";
+export type Lang = "fr-CA" | "en" | "pt-BR" | "es";
 
 export const LANGS: { code: Lang; label: string }[] = [
   { code: "fr-CA", label: "FR" },
   { code: "en", label: "EN" },
   { code: "pt-BR", label: "PT" },
+  { code: "es", label: "ES" },
 ];
 
 const KEY = "kmk.lang";
 
 export function isLang(x: unknown): x is Lang {
-  return x === "fr-CA" || x === "en" || x === "pt-BR";
+  return x === "fr-CA" || x === "en" || x === "pt-BR" || x === "es";
 }
 
 /** The language chosen on this browser before signing in (storage may be blocked: then there is none). */

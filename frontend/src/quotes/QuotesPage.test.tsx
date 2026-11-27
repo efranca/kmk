@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { mockApi, renderWithProviders, resetLanguage, useEnglish } from "../testUtils";
@@ -88,5 +88,26 @@ describe("QuotesPage", () => {
     first.unmount();
     renderWithProviders(<QuotesPage />, { route: "/quotes?tab=bogus" });
     expect(await screen.findByRole("radio", { name: "New" })).toBeChecked();
+  });
+
+  it("lets an administrator enter a quote taken by phone", async () => {
+    const calls = mockApi({
+      "GET /api/quotes": { quotes: [], counts: { new: 0, customer_replied: 0 } },
+      "GET /api/clients": { clients: [] },
+      "POST /api/quotes": { quote: { ...summary({ id: 9 }), details: {}, conversation: [], photos: [] } },
+    });
+    renderWithProviders(<QuotesPage />, { session: { user: { id: 1, username: "a", name: "A", email: "a@x.ca", role: "admin", locale: "en" } } });
+    fireEvent.click(await screen.findByRole("button", { name: "New quote" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    fireEvent.click(dialog.getByRole("button", { name: "Save" }));
+    expect(await dialog.findByText("Enter the name.")).toBeInTheDocument(); // name and phone are needed
+    expect(calls.calls.some((c) => c.method === "POST")).toBe(false);
+    fireEvent.change(dialog.getByLabelText("Name"), { target: { value: "  Chantal Roy " } });
+    fireEvent.change(dialog.getByLabelText("Phone"), { target: { value: "418-555-0101" } });
+    fireEvent.change(dialog.getByLabelText("City"), { target: { value: "Québec" } });
+    fireEvent.change(dialog.getByLabelText("What the customer asked for"), { target: { value: "Weekly turnover" } });
+    fireEvent.click(dialog.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(calls.calls.some((c) => c.method === "POST")).toBe(true));
+    expect(calls.calls.find((c) => c.method === "POST")!.body).toMatchObject({ name: "Chantal Roy", phone: "418-555-0101", email: null, kind: "airbnb", city: "Québec", message: "Weekly turnover", client_id: null, locale: "fr-CA" });
   });
 });

@@ -1,5 +1,6 @@
 """The internal side of quotes: reading them, the conversation, and what a message changes (status, task, Agenda item)."""
 
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Response
@@ -14,7 +15,7 @@ from app.config import Settings
 from app.emails import sender
 from app.models import Client, Event, Quote, QuoteMessage, QuotePhoto, Task, User
 from app.quotes import emails
-from app.quotes.schemas import MessageIn, QuotePatch
+from app.quotes.schemas import ManualQuoteIn, MessageIn, QuotePatch
 from app.schedule.service import display_name
 
 CLOCK_SKEW = timedelta(minutes=2)
@@ -39,7 +40,7 @@ def get_quote(db: Session, quote_id: int, *, lock: bool = False) -> Quote:
 def _summary(quote: Quote, messages: int) -> dict:
     return {
         "id": quote.id, "reference": quote.reference, "status": quote.status, "kind": quote.kind, "name": quote.name,
-        "email": quote.email, "phone": quote.phone, "city": (quote.details or {}).get("city", ""), "submitted_at": _iso(quote.submitted_at), "deadline_at": _iso(quote.deadline_at),
+        "email": quote.email, "phone": quote.phone, "source": quote.source, "city": (quote.details or {}).get("city", ""), "submitted_at": _iso(quote.submitted_at), "deadline_at": _iso(quote.deadline_at),
         "overdue": quote.status == "new" and quote.deadline_at is not None and quote.deadline_at < _now(), "messages": messages,
     }
 
@@ -69,6 +70,11 @@ def _client_ref(db: Session, client_id: int | None) -> dict | None:
     return {"id": client.id, "name": client.name} if client else None
 
 
+def _user_ref(db: Session, user_id: int | None) -> dict | None:
+    user = db.get(User, user_id) if user_id is not None else None
+    return {"id": user.id, "name": display_name(user)} if user else None
+
+
 def quote_payload(db: Session, quote: Quote) -> dict:
     messages = list(db.scalars(select(QuoteMessage).where(QuoteMessage.quote_id == quote.id).order_by(QuoteMessage.sent_at, QuoteMessage.id)))
     ids = {m.author_id for m in messages if m.author_id}
@@ -78,7 +84,7 @@ def quote_payload(db: Session, quote: Quote) -> dict:
         **_summary(quote, len(messages)),
         "locale": quote.locale, "details": quote.details, "message": quote.message,
         "internal_note": quote.internal_note, "ip": quote.ip, "geo_country": quote.geo_country, "geo_city": quote.geo_city,
-        "client": _client_ref(db, quote.client_id), "user_agent": quote.user_agent, "task_id": quote.task_id, "event_id": quote.event_id, "first_reply_at": _iso(quote.first_reply_at),
+        "client": _client_ref(db, quote.client_id), "created_by": _user_ref(db, quote.created_by), "user_agent": quote.user_agent, "task_id": quote.task_id, "event_id": quote.event_id, "first_reply_at": _iso(quote.first_reply_at),
         "photos": [{"id": i, "content_type": t, "size": s} for i, t, s in photos],
         "conversation": [_message_payload(m, authors) for m in messages],
         "default_subject": emails.default_subject(quote),
@@ -96,6 +102,22 @@ def photo_response(db: Session, quote_id: int, photo_id: int) -> Response:
         content=photo.data, media_type=photo.content_type,
         headers={"Content-Disposition": disposition, "X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=3600"},
     )
+
+
+def enter_quote(db: Session, actor: User, data: ManualQuoteIn, ip: str) -> Quote:
+    """A quote an admin writes down by hand (a phone call). It starts as New, with the same 24-hour deadline, but makes no task,
+    Agenda item, email or push: the person entering it is already handling it."""
+    check_client(db, actor, data.client_id)
+    now = _now()
+    quote = Quote(
+        status="new", kind=data.kind, name=data.name, email=data.email or "", phone=data.phone, locale=data.locale,
+        details=data.details(), message=data.message, ip="-", ip_key="manual", token_hash=secrets.token_hex(32),  # no draft token is ever used
+        submitted_at=now, deadline_at=now + timedelta(hours=24), source="manual", created_by=actor.id, client_id=data.client_id,
+    )
+    db.add(quote)
+    db.flush()
+    audit.log(db, "quote_entered", actor_user_id=actor.id, ip=ip, details={"quote_id": quote.id})
+    return quote
 
 
 def update_quote(db: Session, actor: User, quote_id: int, data: QuotePatch, ip: str) -> Quote:
@@ -135,6 +157,8 @@ def _apply_reply_rules(db: Session, quote: Quote, message: QuoteMessage, actor: 
 
 def _send(db: Session, quote: Quote, subject: str, body: str, settings: Settings) -> str:
     """Emails the customer now. Returns "sent" or "failed" (a provider error never escapes)."""
+    if not quote.email:
+        raise ApiError(422, "no_email")  # a quote taken by phone may have none: log the reply instead
     sender_address = system_settings.get(db, "quote_from")
     if not sender_address:
         raise ApiError(409, "sender_not_configured")

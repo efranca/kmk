@@ -27,3 +27,14 @@
 .eventplace { display: grid; gap: 6px; margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); }
 .eventplace p { margin: 0; overflow-wrap: anywhere; }
 .eventplace__client { font-weight: 600; }
+.clientdetails { display: grid; gap: 16px; }
+.clientdetails__hero { display: flex; align-items: center; gap: 14px; }
+.clientdetails__hero h2 { margin: 0 0 4px; font-size: 1.25rem; overflow-wrap: anywhere; }
+.clientdetails__avatar { display: grid; place-items: center; flex: none; width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: 1.2rem; letter-spacing: 0.02em; }
+.clientdetails__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.clientdetails__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 10px; margin: 0; }
+.clientdetails__facts > div { padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.clientdetails__facts dt { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.clientdetails__facts dd { margin: 2px 0 0; overflow-wrap: anywhere; font-weight: 500; }
+.clientdetails__notes { padding: 12px 14px; border-radius: 12px; border-left: 4px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.clientdetails__notes p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }

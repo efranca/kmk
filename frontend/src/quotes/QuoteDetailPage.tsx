@@ -33,7 +33,7 @@ function Request({ quote }: { quote: QuoteDetail }) {
     <section className="section quote-card">
       <h2>{t("quoteRequest")}</h2>
       <dl className="quote-facts">
-        <Row label={t("quoteEmail")}><a href={`mailto:${quote.email}`}>{quote.email}</a></Row>
+        {quote.email && <Row label={t("quoteEmail")}><a href={`mailto:${quote.email}`}>{quote.email}</a></Row>}
         <Row label={t("quotePhone")}><a href={`tel:${quote.phone.replace(/[^\d+]/g, "")}`}>{quote.phone}</a></Row>
         <Row label={t("quoteType")}>{t(KIND_KEYS[quote.kind])}</Row>
         <Row label={t("quoteCity")}>{d.city}</Row>
@@ -46,8 +46,9 @@ function Request({ quote }: { quote: QuoteDetail }) {
         {d.frequency && <Row label={t("quoteFrequency")}>{t(FREQUENCY_KEYS[d.frequency] ?? "quoteFreqUnsure")}</Row>}
         <Row label={t("quoteReceived")}>{when(quote.submitted_at)}</Row>
         <Row label={t("quoteLanguage")}>{LOCALE_NAMES[quote.locale] ?? quote.locale}</Row>
-        <Row label={t("quoteIp")}>{quote.ip}</Row>
-        {place && <Row label={t("quotePlace")}>{place}</Row>}
+        {quote.source === "manual"
+          ? <Row label={t("quoteSource")}>{t("quoteManualBy", { name: quote.created_by?.name ?? "" })}</Row>
+          : <><Row label={t("quoteIp")}>{quote.ip}</Row>{place && <Row label={t("quotePlace")}>{place}</Row>}</>}
       </dl>
       <h3>{t("quoteDescription")}</h3>
       {quote.message ? <p className="quote-body">{quote.message}</p> : <p className="status">{t("quoteNoDescription")}</p>}

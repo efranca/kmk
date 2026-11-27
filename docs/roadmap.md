@@ -70,6 +70,7 @@ F17 safe-name check for scratch databases; F18 failed weekly copy handling; F24 
 | Who is the super admin? | created with the server command (see [operations.md](operations.md)) |
 | Resend sender address | suggested `no-reply@mail.kmk-entretien.ca`; Resend itself is not set up yet |
 | Welcome page copy in EN, FR-CA, PT-BR | superseded: the Welcome page was replaced by the Dashboard (phase 7) |
+| Spanish review | open: the Spanish UI and email text was written without a native reviewer |
 | Portuguese review | open: all Portuguese UI and email text was written without a native reviewer |
 | Schedule the regulation and backup reviews | open |
 | Invite the ~15 employees | waits until the above is ready; the owner chose to do it after everything else |

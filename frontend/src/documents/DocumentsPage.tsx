@@ -7,18 +7,16 @@ import { Button, IconButton } from "../ui/Button";
 import { EmptyArt } from "../ui/EmptyArt";
 import { EmptyState, ErrorNotice, Loading } from "../ui/Feedback";
 import { PageHeader } from "../ui/PageHeader";
-import { CategoryChips, FALLBACK_CATEGORY_ICON } from "../tasks/CategoryChips";
+import { CategoryChips } from "../tasks/CategoryChips";
 import { matchesSearch } from "../tasks/search";
 import type { DocumentItem } from "./api";
 import { ViewMenuButton } from "../tasks/ViewMenuButton";
 import { DocCategoryManager } from "./DocCategoryManager";
 import { DocumentDialog } from "./DocumentDialog";
+import { DocumentRow } from "./DocumentRow";
 import { DocumentTile } from "./DocumentTile";
 import { useDocuments } from "./hooks";
 import { useDocumentsView, type DocumentsView } from "./useDocumentsView";
-import { formatSize } from "./prepareDocument";
-
-const LEVEL_KEYS = { everyone: "docLevelEveryone", admins: "docLevelAdmins", superadmin: "docLevelSuperadmin" } as const;
 
 /** The company library: documents by category, found by title, note, category or file name. Administrators add and change them. */
 export function DocumentsPage() {
@@ -91,24 +89,7 @@ export function DocumentsPage() {
             )
             : (
               <ul className="docs">
-                {visible.map((d) => {
-                  const category = d.category_id ? categoryById.get(d.category_id) : undefined;
-                  return (
-                    <li key={d.id}>
-                      <button type="button" className="doc" onClick={() => setEditing(d)}>
-                        <span className="doc__icon" aria-hidden="true">{d.content_type === "application/pdf" ? "📄" : "🖼️"}</span>
-                        <span className="doc__main">
-                          <strong>{d.title}</strong>
-                          <span className="muted">
-                            {category ? `${category.icon ?? FALLBACK_CATEGORY_ICON} ${category.name} · ` : ""}
-                            {formatSize(d.size_bytes ?? 0)} · {new Date(d.created_at).toLocaleDateString(i18n.language, { dateStyle: "medium" })}
-                          </span>
-                        </span>
-                        <span className="chip-tag">{t(LEVEL_KEYS[d.visibility])}</span>
-                      </button>
-                    </li>
-                  );
-                })}
+                {visible.map((d) => <DocumentRow key={d.id} document={d} category={d.category_id ? categoryById.get(d.category_id) : undefined} onOpen={() => setEditing(d)} />)}
               </ul>
             )}
         </>
