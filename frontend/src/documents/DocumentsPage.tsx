@@ -53,8 +53,8 @@ export function DocumentsPage() {
         actions={
           <>
             <IconButton icon="search" label={t("docSearchLabel")} aria-pressed={searchOpen} onClick={() => { setManaging(false); if (searchOpen) setText(""); setSearchOpen(!searchOpen); }} />
-            <IconButton icon="tag" label={t("docShowCategories")} aria-pressed={showChips} onClick={() => update({ show_document_categories: !showChips })} />
             <ViewMenuButton<DocumentsView> view={view} onView={setView} managing={managing} menuLabel={t("docViewMenu")} heading={t("docView")}
+              toggles={[{ id: "categories", label: t("docShowCategories"), checked: showChips, onChange: (on) => update({ show_document_categories: on }) }]}
               views={[{ id: "list", label: t("docViewList") }, { id: "tiles", label: t("docViewTiles") }]}
               onManage={() => { setSearchOpen(false); setText(""); setManaging(!managing); }} />
             {canManage && <IconButton icon="plus" variant="primary" label={t("docNew")} onClick={() => setEditing("new")} />}

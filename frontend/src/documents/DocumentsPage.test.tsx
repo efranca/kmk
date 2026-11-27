@@ -71,6 +71,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** The category switch lives in the gear menu: opens it when it is closed. */
+const menuSwitch = () => {
+  if (!screen.queryByRole("menu")) fireEvent.click(screen.getByRole("button", { name: en.docViewMenu }));
+  return screen.getByRole("menuitemcheckbox", { name: en.docShowCategories });
+};
+
 describe("Documents page", () => {
   it("lists documents with their category, level and size", async () => {
     mockApi();
@@ -94,11 +100,11 @@ describe("Documents page", () => {
     renderWithProviders(<DocumentsPage />);
     await screen.findByText("Zebra");
     expect(screen.queryByRole("group", { name: en.docCatFilter })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: en.docShowCategories }));
+    fireEvent.click(menuSwitch());
     expect(await screen.findByRole("button", { name: /HR 1/ })).toBeInTheDocument();
     await waitFor(() => expect(calls("PATCH /api/me/preferences")).toHaveLength(1));
     expect(JSON.parse(String((calls("PATCH /api/me/preferences")[0][1] as RequestInit).body))).toEqual({ show_document_categories: true });
-    fireEvent.click(screen.getByRole("button", { name: en.docShowCategories }));
+    fireEvent.click(menuSwitch());
     expect(screen.queryByRole("button", { name: /HR 1/ })).toBeNull();
   });
 
@@ -108,7 +114,7 @@ describe("Documents page", () => {
     await screen.findByText("Zebra");
     fireEvent.click(screen.getByRole("button", { name: /HR 1/ }));
     expect(screen.queryByText("Zebra")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: en.docShowCategories }));
+    fireEvent.click(menuSwitch());
     expect(screen.getByText("Zebra")).toBeInTheDocument();
   });
 
