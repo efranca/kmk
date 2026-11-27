@@ -36,7 +36,7 @@ export function ScheduleToolbar({ view, date, people, everyone, label, onView, o
   const { t } = useTranslation();
   return (
     <div className="sched-toolbar">
-      <Segmented label={t("schViewLabel")} value={view} onChange={onView} options={VIEWS.map((v) => ({ value: v, label: t(`schViews${v[0]!.toUpperCase()}${v.slice(1)}`) }))} />
+      <Segmented dropdown={narrow} label={t("schViewLabel")} value={view} onChange={onView} options={VIEWS.map((v) => ({ value: v, label: t(`schViews${v[0]!.toUpperCase()}${v.slice(1)}`) }))} />
       <div className="sched-toolbar__nav">
         <Button variant="ghost" onClick={onToday}>{t("schToday")}</Button>
         <IconButton icon="chev-left" label={t("schPrev")} onClick={() => onDate(shiftDate(view, date, -1, narrow))} />

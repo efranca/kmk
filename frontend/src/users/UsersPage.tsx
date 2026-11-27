@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { adminList, type AdminResult, type AdminUser, type Session } from "../api";
 import { fold } from "../person";
+import { useNarrow } from "../schedule/useNarrow";
 import { IconButton } from "../ui/Button";
 import { EmptyState } from "../ui/Feedback";
 import { PageHeader } from "../ui/PageHeader";
@@ -26,6 +27,7 @@ const ERRORS = {
 
 /** The people of the team: a list like Tasks, a plus to invite someone, and a dialog with the actions for one person. */
 export default function UsersPage({ session }: { session: Session }) {
+  const narrow = useNarrow();
   const { t } = useTranslation();
   const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -96,7 +98,7 @@ export default function UsersPage({ session }: { session: Session }) {
       {!dialogOpen && message}
       <div className="users-toolbar">
         {!searching && users && (
-          <Segmented label={t("adminStatusLabel")} value={tab} onChange={setTab}
+          <Segmented dropdown={narrow} label={t("adminStatusLabel")} value={tab} onChange={setTab}
             options={TABS.map((s) => ({ value: s, label: `${t(`status_${s}`)} ${countOf(s)}` }))} />
         )}
         {searchOpen && (

@@ -78,3 +78,15 @@ describe("Toast", () => {
     spy.mockRestore();
   });
 });
+
+describe("Segmented as a dropdown", () => {
+  it("shows the current choice and picks another from the menu", () => {
+    const onChange = vi.fn();
+    render(<Segmented dropdown label="View" value="week" onChange={onChange} options={[{ value: "day", label: "Day" }, { value: "week", label: "Week" }]} />);
+    fireEvent.click(screen.getByRole("button", { name: "View: Week" }));
+    expect(screen.getByRole("menuitemradio", { name: "Week" })).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Day" }));
+    expect(onChange).toHaveBeenCalledWith("day");
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+});

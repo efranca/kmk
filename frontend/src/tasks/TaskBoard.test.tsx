@@ -89,12 +89,12 @@ describe("TaskBoard", () => {
 describe("on a phone", () => {
   const mixed = () => [task({ title: "Todo one" }), task({ title: "Doing one", status: "in_progress" }), task({ title: "Doing two", status: "in_progress" }), task({ title: "Done one", status: "completed" })];
 
-  it("shows one column at a time, chosen with tabs that carry the counts, instead of scrolling sideways", () => {
+  it("shows one column at a time, chosen with tabs (no counts), instead of scrolling sideways", () => {
     setup(mixed(), () => true, true);
-    expect(screen.getAllByRole("radio").map((r) => r.textContent)).toEqual(["To do 1", "In progress 2", "Done 1"]);
+    expect(screen.getAllByRole("radio").map((r) => r.textContent)).toEqual(["To do", "In progress", "Done"]);
     expect(screen.getByText("Todo one")).toBeInTheDocument();
     expect(screen.queryByText("Doing one")).toBeNull();
-    fireEvent.click(screen.getByRole("radio", { name: "In progress 2" }));
+    fireEvent.click(screen.getByRole("radio", { name: "In progress" }));
     expect(screen.getByText("Doing one")).toBeInTheDocument();
     expect(screen.getByText("Doing two")).toBeInTheDocument();
     expect(screen.queryByText("Todo one")).toBeNull();
@@ -103,7 +103,7 @@ describe("on a phone", () => {
 
   it("starts on To do and opens a card", () => {
     const { onOpen } = setup(mixed(), () => true, true);
-    expect(screen.getByRole("radio", { name: "To do 1" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "To do" })).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByRole("button", { name: /Todo one/ }));
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ title: "Todo one" }));
   });
@@ -116,7 +116,7 @@ describe("on a phone", () => {
 
   it("tells when the tab is empty", () => {
     setup([task({ title: "Only todo" })], () => true, true);
-    fireEvent.click(screen.getByRole("radio", { name: "Done 0" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Done" }));
     expect(screen.getByText(/nothing here/i)).toBeInTheDocument();
   });
 

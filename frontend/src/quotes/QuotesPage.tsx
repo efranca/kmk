@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useRoute } from "../route";
+import { useNarrow } from "../schedule/useNarrow";
 import { IconButton } from "../ui/Button";
 import { EmptyArt } from "../ui/EmptyArt";
 import { EmptyState, ErrorNotice, Loading } from "../ui/Feedback";
@@ -20,6 +21,7 @@ function matches(quote: QuoteSummary, query: string): boolean {
 
 /** The quote requests, newest first, with a tab per status and a search over the people and the places. */
 export function QuotesPage() {
+  const narrow = useNarrow();
   const { t, i18n } = useTranslation();
   const { navigate, search } = useRoute();
   const [tab, setTab] = useState<QuoteFilter>(() => {
@@ -38,7 +40,7 @@ export function QuotesPage() {
       <PageHeader title={t("quoteTitle")} actions={<IconButton icon="plus" variant="primary" label={t("quoteManualNew")} onClick={() => setEntering(true)} />} />
       <div className="quotes-toolbar">
         <div className="quotes-tabs">
-          <Segmented label={t("quoteTabs")} value={tab} onChange={setTab} options={TABS.map((value) => ({ value, label: t(TAB_KEYS[value]) }))} />
+          <Segmented dropdown={narrow} label={t("quoteTabs")} value={tab} onChange={setTab} options={TABS.map((value) => ({ value, label: t(TAB_KEYS[value]) }))} />
         </div>
         <input type="search" className="input quotes-search" aria-label={t("quoteSearch")} placeholder={t("quoteSearchPlaceholder")} value={text} onChange={(e) => setText(e.target.value)} />
       </div>
