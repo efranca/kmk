@@ -13,6 +13,7 @@ import { usePreferences } from "../preferences";
 import { MyEventsCard } from "./MyEventsCard";
 import { QuotesLatestCard } from "./QuotesLatestCard";
 import { QuotesSummaryCard } from "./QuotesSummaryCard";
+import { ClientsCard } from "./ClientsCard";
 import { TasksCard } from "./TasksCard";
 
 /** Today and the next seven days. */
@@ -38,6 +39,7 @@ export function DashboardPage({ user, mfaEnabled, recoveryCodesLeft }: { user: U
   const isAdmin = user.role !== "user";
   const showSummary = isAdmin && widgets.quotes_summary;
   const showLatest = isAdmin && widgets.quotes_latest;
+  const showClients = !isAdmin && widgets.my_clients; // Staff: the clients they are scheduled for
 
   return (
     <div className="page page--dashboard">
@@ -48,10 +50,11 @@ export function DashboardPage({ user, mfaEnabled, recoveryCodesLeft }: { user: U
         {widgets.my_events && <MyEventsCard items={items} userId={user.id} people={byId} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />}
         {widgets.all_events && <AllEventsCard items={items} everyone={people} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />}
         {widgets.my_tasks && <TasksCard userId={user.id} people={byId} today={today} onOpenTasks={openTasks} />}
+        {showClients && <ClientsCard onOpenClients={() => navigate("/clients")} onOpenClient={(id) => navigate(`/clients/${id}`)} />}
         {showSummary && <QuotesSummaryCard onOpenQuotes={(tab) => navigate(tab ? `/quotes?tab=${tab}` : "/quotes")} />}
         {showLatest && <QuotesLatestCard onOpenQuote={(id) => navigate(`/quotes/${id}`)} onOpenQuotes={() => navigate("/quotes")} locale={i18n.language} />}
       </div>
-      {!widgets.my_events && !widgets.all_events && !widgets.my_tasks && !showSummary && !showLatest && (
+      {!widgets.my_events && !widgets.all_events && !widgets.my_tasks && !showClients && !showSummary && !showLatest && (
         <p className="status">
           {t("dashAllHidden")}{" "}
           <a href="/settings" onClick={(e) => { e.preventDefault(); navigate("/settings"); }}>{t("dashAllHiddenLink")}</a>

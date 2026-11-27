@@ -12,7 +12,7 @@ DEFAULTS = {
     "show_menu_labels": True,
     "notify_assigned": True,
     "documents_view": "list",
-    "dashboard_widgets": {"my_events": True, "all_events": True, "my_tasks": True, "quotes_summary": True, "quotes_latest": True},
+    "dashboard_widgets": {"my_events": True, "all_events": True, "my_tasks": True, "quotes_summary": True, "quotes_latest": True, "my_clients": True},
 }
 
 
@@ -37,7 +37,7 @@ def test_patch_persists_and_merges(make_client, add_user):
     r = c.patch("/api/me/preferences", json={"tasks_view": "board", "dashboard_widgets": {"my_tasks": False}}, headers=h)
     prefs = r.json()["preferences"]
     assert prefs["theme"] == "dark" and prefs["tasks_view"] == "board"
-    assert prefs["dashboard_widgets"] == {"my_events": True, "all_events": True, "my_tasks": False, "quotes_summary": True, "quotes_latest": True}
+    assert prefs["dashboard_widgets"] == {"my_events": True, "all_events": True, "my_tasks": False, "quotes_summary": True, "quotes_latest": True, "my_clients": True}
     assert c.get("/api/auth/me").json()["preferences"] == prefs
 
 

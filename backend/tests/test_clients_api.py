@@ -46,12 +46,12 @@ def test_invalid_clients_are_refused(boss, bad):
     assert add(c, h, **bad).status_code == 422
 
 
-def test_staff_cannot_use_clients_yet(make_client, add_user, boss):
+def test_staff_cannot_change_clients(make_client, add_user, boss):
     c, h = boss
     cid = add(c, h).json()["client"]["id"]
     s, sh = session(make_client, add_user, "tom")
-    assert s.get("/api/clients").status_code == 403
-    assert s.get(f"/api/clients/{cid}").status_code == 403
+    assert s.get("/api/clients").json() == {"clients": []}  # Staff see only the clients they are scheduled for
+    assert s.get(f"/api/clients/{cid}").status_code == 404
     assert s.post("/api/clients", json=client_body(), headers=sh).status_code == 403
     assert s.patch(f"/api/clients/{cid}", json=client_body(), headers=sh).status_code == 403
     assert s.delete(f"/api/clients/{cid}", headers=sh).status_code == 403

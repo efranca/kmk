@@ -158,7 +158,7 @@ def _replace_people(db: Session, task_id: int, people: set[int]) -> None:
 
 def create_task(db: Session, actor: User, data: TaskIn, ip: str) -> Task:
     _check_category(db, data.category_id)
-    check_client(db, data.client_id)
+    check_client(db, actor, data.client_id)
     people = _checked_people(db, data.people)
     task = Task(created_by=actor.id, updated_by=actor.id)
     _write(task, data)
@@ -175,7 +175,7 @@ def update_task(db: Session, actor: User, task_id: int, data: TaskIn, ip: str) -
     old_people = _people_of(db, task.id)
     policy.check_task(actor, task.created_by, old_people)
     _check_category(db, data.category_id)
-    check_client(db, data.client_id)
+    check_client(db, actor, data.client_id, task.client_id)
     people = _checked_people(db, data.people, keep=old_people)
     fields = [
         name

@@ -49,12 +49,23 @@ describe("clients", () => {
     expect(screen.getByText("D-0009")).toBeInTheDocument();
   });
 
-  it("offers the client picker to administrators, never to Staff", async () => {
+  it("offers the client picker to everyone, listing what the server lets them see", async () => {
     mockApi({ "GET /api/clients": { clients: [chantal] } });
     const { unmount } = renderWithProviders(<ClientPicker value={null} onChange={() => undefined} />, admin);
     expect(await screen.findByRole("option", { name: "Chantal Roy" })).toBeInTheDocument();
     unmount();
     renderWithProviders(<ClientPicker value={null} onChange={() => undefined} />, { session: { user: testUser } });
-    expect(screen.queryByLabelText("Client")).toBeNull();
+    expect(await screen.findByRole("option", { name: "Chantal Roy" })).toBeInTheDocument();
+  });
+
+  it("gives Staff the details and their Schedule only, with no editing", async () => {
+    const { notes: _notes, ...staffView } = chantal;
+    mockApi({ "GET /api/clients/5": { client: { ...staffView, events: detail.events } } });
+    renderWithProviders(<ClientPage id={5} />, { session: { user: testUser } });
+    expect(await screen.findByText("12 rue Saint-Jean, Québec")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit client" })).toBeNull();
+    expect(screen.queryByRole("radio", { name: /Documents|Tasks|Quotes/ })).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: /Schedule/ }));
+    expect(screen.getByText("Deep clean")).toBeInTheDocument();
   });
 });

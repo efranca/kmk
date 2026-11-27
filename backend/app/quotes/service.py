@@ -104,7 +104,7 @@ def update_quote(db: Session, actor: User, quote_id: int, data: QuotePatch, ip: 
         audit.log(db, "quote_status_changed", actor_user_id=actor.id, ip=ip, details={"quote_id": quote.id, "from": quote.status, "to": data.status})
         quote.status = data.status
     if "client_id" in data.model_fields_set:
-        check_client(db, data.client_id)
+        check_client(db, actor, data.client_id)
         quote.client_id = data.client_id
     if data.internal_note is not None:
         quote.internal_note = data.internal_note.strip() or None

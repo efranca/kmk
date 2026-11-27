@@ -6,14 +6,14 @@ import MoreSheet from "./MoreSheet";
 import { fitTabs, MIN_TAB_PX } from "./navFit";
 
 export type NavId = "dashboard" | "schedule" | "tasks" | "documents" | "clients" | "quotes" | "admin" | "devices";
-type NavItem = { id: NavId; to: string; labelKey: string; icon: IconName; adminOnly?: boolean; superAdminOnly?: boolean };
+type NavItem = { id: NavId; to: string; labelKey: string; icon: IconName; adminOnly?: boolean; superAdminOnly?: boolean; staffWithClients?: boolean };
 
 const ITEMS: NavItem[] = [
   { id: "dashboard", to: "/", labelKey: "navDashboard", icon: "home" },
   { id: "schedule", to: "/schedule", labelKey: "schTitle", icon: "calendar" },
   { id: "tasks", to: "/tasks", labelKey: "taskTitle", icon: "tasks" },
   { id: "documents", to: "/documents", labelKey: "navDocuments", icon: "document" },
-  { id: "clients", to: "/clients", labelKey: "clientsTitle", icon: "clients", adminOnly: true },
+  { id: "clients", to: "/clients", labelKey: "clientsTitle", icon: "clients", staffWithClients: true },
   { id: "quotes", to: "/quotes", labelKey: "quoteTitle", icon: "quote", adminOnly: true },
   { id: "admin", to: "/admin", labelKey: "navUsers", icon: "users", adminOnly: true },
   { id: "devices", to: "/devices", labelKey: "navDevices", icon: "devices", superAdminOnly: true },
@@ -51,6 +51,7 @@ export default function Nav({
   active,
   isAdmin,
   isSuperAdmin,
+  hasClients = false,
   collapsed,
   badges,
   showLabels = true,
@@ -61,6 +62,8 @@ export default function Nav({
   active: NavId | null;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  /** Staff see Clients only once they are scheduled for one. */
+  hasClients?: boolean;
   collapsed: boolean;
   /** A small number on a page's entry: what is waiting for the person (0 or missing shows nothing). */
   badges?: Partial<Record<NavId, number>>;
@@ -75,7 +78,7 @@ export default function Nav({
   const ref = useRef<HTMLElement>(null);
   const width = useBarWidth(ref);
   const [sheet, setSheet] = useState(false);
-  const items = ITEMS.filter((item) => (!item.adminOnly || isAdmin) && (!item.superAdminOnly || isSuperAdmin));
+  const items = ITEMS.filter((item) => (!item.adminOnly || isAdmin) && (!item.staffWithClients || isAdmin || hasClients) && (!item.superAdminOnly || isSuperAdmin));
   // On a phone the account button takes one slot of the bar.
   const { shown, more } = fitTabs(items, width > 0 ? width - MIN_TAB_PX : 0);
   if (sheet && more.length === 0) setSheet(false); // the sheet must not reopen if the pages fit again later
