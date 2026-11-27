@@ -91,6 +91,12 @@ A deleted account keeps its username and email reserved (nothing new can take th
 - Creates, changes and deletes are audit-logged (`event_created`, `event_updated`, `event_deleted`) with the event id, the scope and the names of the fields that changed, **never the notes or title text**.
 - Reads need a verified session but no CSRF token (like the admin list); changes need both. Responses under `/api/schedule` are `Cache-Control: no-store`.
 
+## Staff and clients
+
+The `user` role is shown as **Staff** (and `superadmin` as Administrator: a display name only; permissions are unchanged). Staff see the Dashboard, Schedule, Tasks, Documents, Settings, Account and About, and **Clients** once they are scheduled for one. Quotes, Users and Devices are not offered and the API refuses them.
+
+Clients: administrators read and edit everything. Staff read only the clients with an Agenda item that lists them (an item for everyone opens nothing), in SQL (`app/clients/service.py`, `scheduled_for`), without the internal `notes`; their client detail carries the contact details and their own events, never documents, tasks or quotes. A hidden client answers 404, the same as a missing one, and linking a task or event to a client requires being able to see it (a link already there may stay). Quote emails (`settings.notify_quotes`) go only to administrators; Staff get the email for being added to an Agenda item (`preferences.notify_assigned`, which they can turn off).
+
 ## Calendar feed (the personal .ics link)
 
 - Each user can create **one** secret link (`POST /api/account/calendar-feed`, Account page) that serves their events as iCalendar at `GET /api/schedule/feed/<token>.ics`, so FamillAI, Google Calendar, Apple Calendar or Outlook can subscribe. Calendar apps cannot sign in, so **the token in the link is the only credential**: no password, no two-step verification. This is the one public route that returns signed-in data; it is listed in `PUBLIC` in `tests/test_mfa_guard.py`.
