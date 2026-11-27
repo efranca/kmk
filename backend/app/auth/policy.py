@@ -142,6 +142,16 @@ def check_quotes(actor: User) -> None:
         raise ApiError(403, "forbidden")
 
 
+def can_manage_clients(actor: User) -> bool:
+    """Who reads and edits clients: admins and the super admin (Staff see only the clients they are scheduled for: later)."""
+    return actor.role in PRIVILEGED
+
+
+def check_clients(actor: User) -> None:
+    if not can_manage_clients(actor):
+        raise ApiError(403, "forbidden")
+
+
 def check_quote_delete(actor: User) -> None:
     """Deleting a customer's request (and its photos and conversation) is for the super admin only."""
     if actor.role != "superadmin":

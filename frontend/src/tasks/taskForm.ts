@@ -9,6 +9,7 @@ export interface TaskFormValues {
   icon: string; // "" = none, else one emoji
   description: string;
   categoryId: number | null;
+  clientId: number | null;
   people: number[]; // empty = the whole team
   dueDate: string; // "" = none, else YYYY-MM-DD
   showOnDashboard: boolean;
@@ -18,11 +19,11 @@ export interface TaskFormValues {
 export type TaskFormErrors = { title?: "taskErrTitle"; description?: "taskErrDescription" };
 
 export const emptyTaskForm = (people: number[] = []): TaskFormValues => ({
-  title: "", icon: "", description: "", categoryId: null, people, dueDate: "", showOnDashboard: true,
+  title: "", icon: "", description: "", categoryId: null, clientId: null, people, dueDate: "", showOnDashboard: true,
 });
 
 export const taskToForm = (t: Task): TaskFormValues => ({
-  title: t.title, icon: t.icon ?? "", description: t.description ?? "", categoryId: t.category_id,
+  title: t.title, icon: t.icon ?? "", description: t.description ?? "", categoryId: t.category_id, clientId: t.client_id ?? null,
   people: t.people, dueDate: t.due_date ?? "", showOnDashboard: t.show_on_dashboard,
 });
 
@@ -39,6 +40,7 @@ export function formToInput(v: TaskFormValues): TaskInput {
     description: v.description.trim() || null,
     icon: v.icon || null,
     category_id: v.categoryId,
+    client_id: v.clientId,
     people: v.people,
     due_date: v.dueDate || null,
     show_on_dashboard: v.showOnDashboard,

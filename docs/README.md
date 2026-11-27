@@ -70,6 +70,7 @@ Tables, all created by the migrations in `backend/alembic/versions/`:
 | `app_settings` | company-wide settings (`quote_notify_email`, `quote_from`, `quote_reply_to`, `public_phone`) | `key`, `value`, `updated_by` |
 | `push_subscriptions` | one device of an admin that turned notifications on | `user_id`, `endpoint`, `p256dh`, `auth` |
 | `calendar_feeds` | one personal calendar feed link per user | `user_id` (primary key), `token_hash` (SHA-256, unique), `created_at`, `last_used_at` |
+| `clients` | someone the company works for; tasks, events, documents and quotes point to one with `client_id` (`ON DELETE SET NULL`) | `name`, `kind` (`airbnb`/`commercial`/`post_construction`/`other`), `contact_name`, `email`, `phone`, `address`, `city`, `notes` (admins only), `created_by`, `updated_by` |
 | `alembic_version` | migration state | |
 
 Deletion is soft (`status = 'deleted'`, `deleted_at` set): the row stays, so the audit log keeps its references and the username and email stay reserved. An admin can restore a deleted account (it comes back `disabled`).
@@ -106,6 +107,7 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `PUT /api/documents/{id}/file` | verified admin or super admin | the raw file as the body (`X-File-Name`, percent-encoded): add or replace; at most 2 uploads at once (`503 busy`) |
 | `GET /api/documents/{id}/file[?download=1]` | verified | the file, served with `nosniff`, `Content-Security-Policy: sandbox`, `Cache-Control: private, no-store` |
 | `POST/PATCH/DELETE /api/document-categories[/{id}]` | verified admin or super admin | document categories (deleting one keeps its documents) |
+| `GET/POST /api/clients`, `GET/PATCH/DELETE /api/clients/{id}` | verified; writes admin or super admin. Staff read only the clients they are scheduled for (an Agenda item that lists them), without `notes`, and their detail has only their own events; others are 404 | list (`?q=` searches name, contact, email, phone, address, city), create (with `quote_id` it links that quote), read (with its linked tasks, events, documents, quotes), change, delete (links are cleared) |
 | `GET /api/admin/devices` | verified **super admin only** | every active session grouped by person: id (a public uuid, never the token), browser string, start, last access, last address, approximate country and city |
 | `DELETE /api/admin/devices/{id}` | super admin only | end one session (404 `device_not_found` if unknown or already ended; ending your own session is a sign-out) |
 | `POST /api/admin/users/{id}/devices/logout-all` | super admin only | end every session of one person |

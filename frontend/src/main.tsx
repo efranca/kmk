@@ -10,6 +10,7 @@ import "./tasks/tasks.css";
 import "./users/users.css";
 import "./devices/devices.css";
 import "./documents/documents.css";
+import "./clients/clients.css";
 import "./quotes/quotes.css";
 import "./settings/settings.css";
 import "./ds.css";

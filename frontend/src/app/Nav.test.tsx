@@ -85,6 +85,14 @@ describe("the Quotes entry", () => {
     render(nav({ isAdmin: false, isSuperAdmin: false }));
     expect(screen.queryByRole("link", { name: /Quotes/ })).toBeNull();
   });
+  it("gives Staff the working pages, and Clients only once they have one", () => {
+    const { rerender } = render(nav({ isAdmin: false, isSuperAdmin: false }));
+    for (const name of ["Dashboard", "Schedule", "Tasks", "Documents"]) expect(screen.getByRole("link", { name })).toBeInTheDocument();
+    for (const name of ["Clients", "Quotes", "Users", "Devices"]) expect(screen.queryByRole("link", { name })).toBeNull();
+    rerender(nav({ isAdmin: false, isSuperAdmin: false, hasClients: true }));
+    expect(screen.getByRole("link", { name: "Clients" })).toBeInTheDocument();
+  });
+
   it("shows no badge when nothing is waiting", () => {
     render(nav({ badges: { quotes: 0 } }));
     expect(within(screen.getByRole("link", { name: /Quotes/ })).queryByText("0")).toBeNull();

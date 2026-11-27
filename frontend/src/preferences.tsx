@@ -14,7 +14,7 @@ export type Preferences = {
   show_menu_labels: boolean;
   notify_assigned: boolean;
   documents_view: "list" | "tiles";
-  dashboard_widgets: { my_events: boolean; all_events: boolean; my_tasks: boolean; quotes_summary: boolean; quotes_latest: boolean };
+  dashboard_widgets: { my_events: boolean; all_events: boolean; my_tasks: boolean; quotes_summary: boolean; quotes_latest: boolean; my_clients: boolean };
 };
 
 export type PreferencesPatch = Partial<Omit<Preferences, "dashboard_widgets">> & { dashboard_widgets?: Partial<Preferences["dashboard_widgets"]> };
@@ -29,7 +29,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   show_menu_labels: true,
   notify_assigned: true,
   documents_view: "list",
-  dashboard_widgets: { my_events: true, all_events: true, my_tasks: true, quotes_summary: true, quotes_latest: true },
+  dashboard_widgets: { my_events: true, all_events: true, my_tasks: true, quotes_summary: true, quotes_latest: true, my_clients: true },
 };
 
 /** `base` with `patch` laid over it (the widgets merge one by one). */

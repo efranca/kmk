@@ -7,11 +7,12 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app import system_settings
+from app.clients.service import check_client
 from app.auth import audit
 from app.auth.errors import ApiError
 from app.config import Settings
 from app.emails import sender
-from app.models import Event, Quote, QuoteMessage, QuotePhoto, Task, User
+from app.models import Client, Event, Quote, QuoteMessage, QuotePhoto, Task, User
 from app.quotes import emails
 from app.quotes.schemas import MessageIn, QuotePatch
 from app.schedule.service import display_name
@@ -63,6 +64,11 @@ def _message_payload(m: QuoteMessage, authors: dict[int, User]) -> dict:
     }
 
 
+def _client_ref(db: Session, client_id: int | None) -> dict | None:
+    client = db.get(Client, client_id) if client_id is not None else None
+    return {"id": client.id, "name": client.name} if client else None
+
+
 def quote_payload(db: Session, quote: Quote) -> dict:
     messages = list(db.scalars(select(QuoteMessage).where(QuoteMessage.quote_id == quote.id).order_by(QuoteMessage.sent_at, QuoteMessage.id)))
     ids = {m.author_id for m in messages if m.author_id}
@@ -72,7 +78,7 @@ def quote_payload(db: Session, quote: Quote) -> dict:
         **_summary(quote, len(messages)),
         "locale": quote.locale, "details": quote.details, "message": quote.message,
         "internal_note": quote.internal_note, "ip": quote.ip, "geo_country": quote.geo_country, "geo_city": quote.geo_city,
-        "user_agent": quote.user_agent, "task_id": quote.task_id, "event_id": quote.event_id, "first_reply_at": _iso(quote.first_reply_at),
+        "client": _client_ref(db, quote.client_id), "user_agent": quote.user_agent, "task_id": quote.task_id, "event_id": quote.event_id, "first_reply_at": _iso(quote.first_reply_at),
         "photos": [{"id": i, "content_type": t, "size": s} for i, t, s in photos],
         "conversation": [_message_payload(m, authors) for m in messages],
         "default_subject": emails.default_subject(quote),
@@ -97,6 +103,9 @@ def update_quote(db: Session, actor: User, quote_id: int, data: QuotePatch, ip: 
     if data.status is not None and data.status != quote.status:
         audit.log(db, "quote_status_changed", actor_user_id=actor.id, ip=ip, details={"quote_id": quote.id, "from": quote.status, "to": data.status})
         quote.status = data.status
+    if "client_id" in data.model_fields_set:
+        check_client(db, actor, data.client_id)
+        quote.client_id = data.client_id
     if data.internal_note is not None:
         quote.internal_note = data.internal_note.strip() or None
     quote.updated_at = _now()

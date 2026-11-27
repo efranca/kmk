@@ -37,6 +37,7 @@ export type QuoteDetail = QuoteSummary & {
   geo_country: string | null;
   geo_city: string | null;
   user_agent: string | null;
+  client?: { id: number; name: string } | null;
   task_id: number | null;
   event_id: number | null;
   first_reply_at: string | null;
@@ -46,5 +47,5 @@ export type QuoteDetail = QuoteSummary & {
 };
 
 export type QuoteCounts = { new: number; customer_replied: number; replied: number };
-export type QuotePatch = { status?: QuoteStatus; internal_note?: string };
+export type QuotePatch = { status?: QuoteStatus; internal_note?: string; client_id?: number | null };
 export type MessageInput = { direction: "out"; subject: string; body: string } | { direction: "in"; body: string; sent_at?: string };

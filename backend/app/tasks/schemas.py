@@ -50,6 +50,7 @@ class TaskIn(BaseModel):
     description: str | None = None
     icon: str | None = Field(default=None, max_length=ICON_MAX)
     category_id: int | None = Field(default=None, ge=1, le=MAX_ID)
+    client_id: int | None = Field(default=None, ge=1, le=MAX_ID)
     people: list[Annotated[int, Field(ge=1, le=MAX_ID)]] = Field(default_factory=list, max_length=PEOPLE_MAX)
     due_date: date | None = None
     show_on_dashboard: bool = True

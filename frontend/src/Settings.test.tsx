@@ -33,6 +33,20 @@ afterEach(async () => {
   await act(() => i18n.changeLanguage("fr-CA"));
 });
 
+describe("Settings page for Staff", () => {
+  it("has language, theme, menu labels, notifications and the switches of the cards Staff have, and nothing for administrators", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => res(200, {})));
+    await act(() => i18n.changeLanguage("en"));
+    render(<Providers session={{ user: { ...testUser, role: "user" } }}><SettingsPage onLanguageChanged={vi.fn()} /></Providers>);
+    for (const heading of ["Language", "Theme", "Menu", "Dashboard", "Notifications"]) expect(screen.getByRole("heading", { name: new RegExp(heading) })).toBeInTheDocument();
+    for (const name of ["My events", "All events", "My tasks", "My clients"]) expect(screen.getByRole("switch", { name })).toBeInTheDocument();
+    for (const name of ["Quotes", "Latest quotes"]) expect(screen.queryByRole("switch", { name })).toBeNull();
+    expect(screen.getByRole("switch", { name: /added to a Schedule event/ })).toBeInTheDocument(); // the email, not push
+    expect(screen.queryByRole("button", { name: /Turn on notifications/ })).toBeNull();
+    expect(screen.queryByRole("heading", { name: /Company/ })).toBeNull();
+  });
+});
+
 describe("Settings page", () => {
   it("offers the three themes with the saved one selected", () => {
     render(<Providers preferences={{ ...DEFAULT_PREFERENCES, theme: "light" }}><SettingsPage onLanguageChanged={vi.fn()} /></Providers>);
