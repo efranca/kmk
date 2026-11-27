@@ -84,3 +84,6 @@
   .tasks-toolbar__row { display: flex; flex: 1 1 100%; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
   .tasks-toolbar__row > .avatarfilter { margin-left: auto; }
 }
+/* The global `button:hover` rule paints pine; the open buttons stay transparent and the whole card or row takes the soft tint instead (as the Dashboard's My events rows do). */
+.card-task__open:hover:not(:disabled), .task__open:hover:not(:disabled) { background: transparent; color: var(--text); }
+.card-task:hover, .task:hover { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
