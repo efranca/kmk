@@ -16,3 +16,6 @@
 @media (max-width: 599px) { .user-card__open { flex-wrap: wrap; } .user-card__chips { flex-basis: 100%; } }
 .users-toolbar .segmented__option { white-space: nowrap; }
 @media (max-width: 599px) { .users-toolbar .segmented { max-width: 100%; } .users-toolbar .segmented__option { padding: 6px 9px; font-size: 0.82rem; } }
+.user-dialog__check { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 14px; cursor: pointer; }
+.user-dialog__check input { width: 20px; height: 20px; flex: none; margin-top: 2px; accent-color: var(--accent); }
+.user-dialog__check small { display: block; }

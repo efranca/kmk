@@ -218,6 +218,8 @@ export type AdminUser = {
   createdAt: string;
   lastSignIn: string | null;
   avatarUrl: string | null;
+  /** Admin-managed settings (a closed JSON object on the server). */
+  settings: { notify_quotes: boolean };
   actions: string[];
 };
 
@@ -241,6 +243,7 @@ export async function adminList(): Promise<AdminUser[] | null> {
       createdAt: u.created_at,
       lastSignIn: u.last_sign_in ?? null,
       avatarUrl: u.avatar_url ?? null,
+      settings: { notify_quotes: (u.settings as { notify_quotes?: boolean } | undefined)?.notify_quotes === true },
       actions: u.actions ?? [],
     }));
   } catch {
@@ -276,6 +279,7 @@ export const adminInvite = (csrf: string, v: { name: string; username: string; e
 export const adminAct = (csrf: string, id: number, action: "invite" | "reset" | "disable" | "enable" | "delete" | "restore" | "reset-mfa") =>
   adminCall(csrf, "POST", `users/${id}/${action}`);
 export const adminSetRole = (csrf: string, id: number, role: "user" | "admin") => adminCall(csrf, "POST", `users/${id}/role`, { role });
+export const adminSettings = (csrf: string, id: number, v: Partial<AdminUser["settings"]>) => adminCall(csrf, "PATCH", `users/${id}/settings`, v);
 export const adminRemoveAvatar = (csrf: string, id: number) => adminCall(csrf, "DELETE", `users/${id}/avatar`);
 export const adminEdit = (csrf: string, id: number, v: { locale?: string; email?: string; name?: string }) => adminCall(csrf, "PATCH", `users/${id}`, v);
 

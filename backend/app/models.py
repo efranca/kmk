@@ -37,6 +37,7 @@ class User(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     avatar_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     preferences: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+    settings: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")  # admin-managed, see app/user_settings.py
 
 
 class UserSession(Base):

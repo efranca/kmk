@@ -1,7 +1,7 @@
 import { FormEvent, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { adminAct, adminEdit, adminRemoveAvatar, adminSetRole, type AdminResult, type AdminUser } from "../api";
+import { adminAct, adminEdit, adminRemoveAvatar, adminSetRole, adminSettings, type AdminResult, type AdminUser } from "../api";
 import { displayName } from "../person";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
@@ -31,6 +31,7 @@ export default function UserDialog({
   const [locale, setLocale] = useState<string>(user.locale);
   const [email, setEmail] = useState(user.email);
   const [name, setName] = useState(user.name ?? "");
+  const [notifyQuotes, setNotifyQuotes] = useState(user.settings.notify_quotes);
 
   const label = (action: string) => (action === "set_role" ? (user.role === "admin" ? t("act_make_user") : t("act_make_admin")) : t(`act_${action}`));
 
@@ -76,6 +77,12 @@ export default function UserDialog({
   }
 
   const actions = user.actions.filter((a) => a !== "view");
+  // Only people who can read quote requests (administrators) have the switch, and only someone who may edit them can flip it.
+  const canSetQuotes = user.actions.includes("edit") && user.role !== "user";
+  async function toggleQuotes(on: boolean) {
+    setNotifyQuotes(on);
+    if (!(await run(adminSettings(csrfToken, user.id, { notify_quotes: on })))) setNotifyQuotes(!on);
+  }
   const canRemovePicture = user.avatarUrl !== null && user.actions.includes("edit");
 
   return (
@@ -95,6 +102,12 @@ export default function UserDialog({
           </span>
         </div>
       </div>
+      {canSetQuotes && !editing && !pending && (
+        <label className="user-dialog__check">
+          <input type="checkbox" checked={notifyQuotes} onChange={(e) => void toggleQuotes(e.target.checked)} />
+          <span>{t("adminNotifyQuotes")}<small className="muted"> {t("adminNotifyQuotesHint")}</small></span>
+        </label>
+      )}
       {editing ? (
         <form onSubmit={save} className="form">
           <label>

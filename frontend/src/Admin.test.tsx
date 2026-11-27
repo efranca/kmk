@@ -22,6 +22,7 @@ const row = (o: Record<string, unknown>) => ({
   created_at: "2026-01-01T00:00:00Z",
   last_sign_in: null as string | null,
   actions: ["view"],
+  settings: { notify_quotes: false },
   ...o,
 });
 
@@ -338,5 +339,21 @@ describe("inviting", () => {
     fill();
     submit();
     expect(await within(screen.getByRole("dialog")).findByText(frCA.errExists)).toBeInTheDocument();
+  });
+});
+
+describe("quote emails switch", () => {
+  it("is not offered for Staff", async () => {
+    await openAdmin([row({ id: 12, username: "tom", role: "user", actions: ["view", "edit"] })], "superadmin");
+    expect(openUser("tom").queryByRole("checkbox")).toBeNull();
+  });
+
+  it("is offered for administrators and saves at once", async () => {
+    const fn = await openAdmin([row({ id: 11, username: "ana", role: "admin", actions: ["view", "edit"] })], "superadmin", {
+      "PATCH /api/admin/users/11/settings": () => res(200, { settings: { notify_quotes: true } }),
+    });
+    fireEvent.click(openUser("ana").getByRole("checkbox", { name: new RegExp(frCA.adminNotifyQuotes) }));
+    await waitFor(() => expect(calls(fn, "PATCH /api/admin/users/11/settings")).toHaveLength(1));
+    expect(bodyOf(calls(fn, "PATCH /api/admin/users/11/settings")[0])).toEqual({ notify_quotes: true });
   });
 });

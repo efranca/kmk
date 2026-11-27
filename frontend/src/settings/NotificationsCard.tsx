@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { currentSubscription, disablePush, enablePush, pushSupported, testPush } from "../push";
+import { usePreferences } from "../preferences";
 import { useSession } from "../session";
 import { Button } from "../ui/Button";
+import { Toggle } from "../ui/Toggle";
 import { ErrorNotice } from "../ui/Feedback";
 import { useToast } from "../ui/toastContext";
 
@@ -15,12 +17,13 @@ function needsHomeScreen(): boolean {
   return /iPhone|iPad|iPod/.test(nav.userAgent) && nav.standalone === false;
 }
 
-/** Turns push notifications on or off for this device (admins and the super admin). */
+/** What the app tells this person: an email when they are added to an event (everyone), and push on this device (admins). */
 export function NotificationsCard() {
   const { t } = useTranslation();
   const toast = useToast();
   const { user, csrfToken } = useSession();
   const allowed = user.role !== "user";
+  const { prefs, update } = usePreferences();
   const [state, setState] = useState<State>("checking");
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<unknown>(null);
@@ -32,8 +35,6 @@ export function NotificationsCard() {
     currentSubscription().then((s) => alive && setState(s ? "on" : "off")).catch(() => alive && setState("off"));
     return () => { alive = false; };
   }, [allowed]);
-
-  if (!allowed) return null;
 
   async function run(work: () => Promise<void>) {
     setBusy(true);
@@ -53,6 +54,8 @@ export function NotificationsCard() {
   return (
     <section className="section settings-card">
       <h2>{t("pushTitle")}</h2>
+      <Toggle label={t("notifyAssigned")} checked={prefs.notify_assigned} onChange={(e) => update({ notify_assigned: e.target.checked })} />
+      {allowed && <>
       <p className="settings-hint">{t("pushIntro")}</p>
       <p className={state === "on" ? "status ok" : "status"} role="status">{message[state]}</p>
       {state !== "unsupported" && needsHomeScreen() && <p className="notice">{t("pushIosHint")}</p>}
@@ -66,6 +69,7 @@ export function NotificationsCard() {
           </>
         )}
       </div>
+      </>}
     </section>
   );
 }
