@@ -32,7 +32,7 @@ class SetPasswordBody(BaseModel):
 
 
 class LocaleBody(BaseModel):
-    locale: Literal["fr-CA", "en", "pt-BR"]
+    locale: Literal["fr-CA", "en", "pt-BR", "es"]
 
 
 class ChangePasswordBody(BaseModel):

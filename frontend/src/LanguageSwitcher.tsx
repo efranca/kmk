@@ -29,6 +29,7 @@ export default function LanguageSwitcher({ csrfToken, onChanged }: { csrfToken: 
         <option value="fr-CA">Français (CA)</option>
         <option value="en">English</option>
         <option value="pt-BR">Português (BR)</option>
+        <option value="es">Español</option>
       </select>
       {failed && <span className="error" role="alert">{t("langError")}</span>}
     </span>

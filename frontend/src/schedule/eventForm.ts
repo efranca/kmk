@@ -33,6 +33,7 @@ export interface EventFormValues {
   endTime: string; // "" = none (the event lasts one hour); sent to the server as a length in minutes
   people: number[]; // user ids; empty = everyone
   clientId: number | null;
+  propertyId: number | null;
   repeat: RepeatForm;
   reminders: ReminderIn[];
 }
@@ -51,7 +52,7 @@ export const emptyRepeat = (): RepeatForm => ({
 
 /** A new event on `date`, starting at `time` (default 09:00). */
 export const emptyEventForm = (date: string, time = "09:00"): EventFormValues => ({
-  title: "", notes: "", icon: "", color: "", allDay: false, date, startTime: time, endTime: "", people: [], clientId: null,
+  title: "", notes: "", icon: "", color: "", allDay: false, date, startTime: time, endTime: "", people: [], clientId: null, propertyId: null,
   repeat: emptyRepeat(), reminders: [],
 });
 
@@ -83,6 +84,7 @@ export function toEventInput(v: EventFormValues): EventInput {
     duration_minutes: v.allDay || !v.endTime ? null : minutesBetween(v.startTime, v.endTime),
     people: v.people,
     client_id: v.clientId,
+    property_id: v.clientId === null ? null : v.propertyId,
     recurrence,
     ends_on: repeating && v.repeat.end === "on" ? v.repeat.endsOn : null,
     max_count: repeating && v.repeat.end === "after" ? v.repeat.count : null,
@@ -126,7 +128,7 @@ export function fromEvent(e: EventDetail, date: string = e.start_date, exception
   const endTime = e.all_day || duration == null ? "" : addMinutes(startTime, duration);
   return {
     title: exception?.title ?? e.title, notes: exception?.notes ?? e.notes ?? "", icon: e.icon ?? "", color: e.color ?? "",
-    allDay: e.all_day, date, startTime, endTime, people: e.people, clientId: e.client_id ?? null, repeat,
+    allDay: e.all_day, date, startTime, endTime, people: e.people, clientId: e.client_id ?? null, propertyId: e.property_id ?? null, repeat,
     reminders: e.reminders.map((r) => ({ amount: r.amount, unit: r.unit })),
   };
 }

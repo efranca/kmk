@@ -67,6 +67,7 @@ export default function InviteDialog({
             <option value="fr-CA">Français (CA)</option>
             <option value="en">English</option>
             <option value="pt-BR">Português (BR)</option>
+            <option value="es">Español</option>
           </select>
         </label>
         {viewerRole === "superadmin" && (

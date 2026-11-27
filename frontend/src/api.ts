@@ -6,7 +6,7 @@ export type User = {
   name: string | null;
   email: string;
   role: "user" | "admin" | "superadmin";
-  locale: "fr-CA" | "en" | "pt-BR";
+  locale: "fr-CA" | "en" | "pt-BR" | "es";
   avatar_url?: string | null;
 };
 
@@ -212,7 +212,7 @@ export type AdminUser = {
   name: string | null;
   email: string;
   role: "user" | "admin" | "superadmin";
-  locale: "fr-CA" | "en" | "pt-BR";
+  locale: "fr-CA" | "en" | "pt-BR" | "es";
   status: "invited" | "active" | "disabled" | "deleted";
   mfaEnabled: boolean;
   createdAt: string;

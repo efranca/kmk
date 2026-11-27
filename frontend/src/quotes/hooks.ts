@@ -2,8 +2,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useSession } from "../session";
-import { addMessage, deleteQuote, getQuote, listQuotes, patchQuote, retryMessage } from "./api";
-import type { MessageInput, QuoteDetail, QuoteFilter, QuotePatch } from "./types";
+import { addMessage, createQuote, deleteQuote, getQuote, listQuotes, patchQuote, retryMessage } from "./api";
+import type { ManualQuoteInput, MessageInput, QuoteDetail, QuoteFilter, QuotePatch } from "./types";
 
 export const quoteKeys = {
   all: ["quotes"] as const,
@@ -50,5 +50,15 @@ export function useDeleteQuote(id: number) {
       client.removeQueries({ queryKey: quoteKeys.detail(id) });
       void client.invalidateQueries({ queryKey: quoteKeys.all });
     },
+  });
+}
+
+/** Enters a quote by hand (a phone call). */
+export function useCreateQuote() {
+  const { csrfToken } = useSession();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ManualQuoteInput) => createQuote(input, csrfToken),
+    onSuccess: () => client.invalidateQueries({ queryKey: quoteKeys.all }),
   });
 }

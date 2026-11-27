@@ -16,7 +16,7 @@ import { DOCUMENT_ACCEPT, formatSize, levelsFor, prepareDocument } from "./prepa
 const LEVEL_KEYS = { everyone: "docLevelEveryone", admins: "docLevelAdmins", superadmin: "docLevelSuperadmin" } as const;
 
 /** One document: its details and file (everyone who can see it), and for administrators the form to add, change, replace or delete. */
-export function DocumentDialog({ document, categories, onClose }: { document: DocumentItem | null; categories: DocumentCategory[]; onClose: () => void }) {
+export function DocumentDialog({ document, categories, onClose, defaultClientId = null }: { document: DocumentItem | null; categories: DocumentCategory[]; onClose: () => void; defaultClientId?: number | null }) {
   const { t } = useTranslation();
   const { user } = useSession();
   const canManage = user.role !== "user";
@@ -27,7 +27,7 @@ export function DocumentDialog({ document, categories, onClose }: { document: Do
   const [title, setTitle] = useState(document?.title ?? "");
   const [note, setNote] = useState(document?.note ?? "");
   const [categoryId, setCategoryId] = useState<number | null>(document?.category_id ?? null);
-  const [clientId, setClientId] = useState<number | null>(document?.client_id ?? null);
+  const [clientId, setClientId] = useState<number | null>(document ? (document.client_id ?? null) : defaultClientId);
   const [visibility, setVisibility] = useState<Visibility>(document?.visibility ?? "admins");
   const [chosen, setChosen] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);

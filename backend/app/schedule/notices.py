@@ -14,8 +14,9 @@ _TEXT = {
     "fr-CA": ("Vous avez été ajouté(e) à un événement : {title}", "Date : {when}", "Voir la journée : {link}"),
     "en": ("You were added to an event: {title}", "When: {when}", "Open the day: {link}"),
     "pt-BR": ("Você foi adicionado(a) a um evento: {title}", "Quando: {when}", "Ver o dia: {link}"),
+    "es": ("Te agregaron a un evento: {title}", "Cuándo: {when}", "Ver el día: {link}"),
 }
-_ALL_DAY = {"fr-CA": "toute la journée", "en": "all day", "pt-BR": "o dia todo"}
+_ALL_DAY = {"fr-CA": "toute la journée", "en": "all day", "pt-BR": "o dia todo", "es": "todo el día"}
 
 
 def _message(event: Event, user: User, base_url: str) -> EmailMessage:

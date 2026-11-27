@@ -143,6 +143,101 @@ class QuoteIn(BaseModel):
         return out
 
 
+class ManualQuoteIn(BaseModel):
+    """A quote an admin enters by hand (a phone call, a visit): only the name and phone are needed, the rest is as much as is known."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    phone: str
+    email: str | None = None
+    locale: Literal["fr-CA", "en-CA", "pt-BR"] = "fr-CA"  # the language to answer the customer in
+    kind: Literal["airbnb", "commercial", "post_construction"]
+    city: str = ""
+    address: str = ""
+    property: str | None = None
+    frequency: str | None = None
+    bedrooms: int | None = Field(default=None, ge=0, le=20)
+    bathrooms: float | None = Field(default=None, ge=0, le=20)
+    area_sqft: int | None = Field(default=None, ge=1, le=1_000_000)
+    message: str | None = None
+    listing_url: str | None = None
+    client_id: int | None = Field(default=None, ge=1, le=1_000_000_000_000)
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str) -> str:
+        return _text(v, 1, 100, "name")
+
+    @field_validator("city")
+    @classmethod
+    def _city(cls, v: str) -> str:
+        return _text(v, 0, 60, "city") if v.strip() else ""
+
+    @field_validator("address")
+    @classmethod
+    def _address(cls, v: str) -> str:
+        return _text(v, 0, 200, "address") if v.strip() else ""
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str | None) -> str | None:
+        return clean_email(v) if v and v.strip() else None
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, v: str) -> str:
+        v = v.strip()
+        if not PHONE_RE.match(v):
+            raise ValueError("phone")
+        return v
+
+    @field_validator("bathrooms")
+    @classmethod
+    def _halves(cls, v: float | None) -> float | None:
+        if v is not None and (v * 2) % 1 != 0:
+            raise ValueError("bathrooms come in steps of 0.5")
+        return v
+
+    @field_validator("message")
+    @classmethod
+    def _message(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = _no_controls(v.replace("\r\n", "\n").strip())
+        if len(v) > limits.MAX_CHARS or len(v.split()) > limits.MAX_WORDS:
+            raise ValueError("too_long")
+        return v or None
+
+    @field_validator("listing_url")
+    @classmethod
+    def _listing_url(cls, v: str | None) -> str | None:
+        if v is None or not v.strip():
+            return None
+        v = _text(v, 1, 300, "listing_url")
+        if not re.match(r"^https?://[^\s/]+\.[^\s/]+", v, re.IGNORECASE):
+            raise ValueError("listing_url")
+        return v
+
+    @model_validator(mode="after")
+    def _per_kind(self) -> "ManualQuoteIn":
+        allowed = {"airbnb": (AIRBNB_PROPERTY, AIRBNB_FREQUENCY), "commercial": (COMMERCIAL_PROPERTY, COMMERCIAL_FREQUENCY), "post_construction": (POST_CONSTRUCTION_PROPERTY, POST_CONSTRUCTION_FREQUENCY)}[self.kind]
+        if self.property is not None and self.property not in allowed[0]:
+            raise ValueError("property")
+        if self.frequency is not None and self.frequency not in allowed[1]:
+            raise ValueError("frequency")
+        if self.kind != "airbnb" and (self.bedrooms is not None or self.bathrooms is not None or self.listing_url):
+            raise ValueError("bedrooms, bathrooms and a listing link are for Airbnb")
+        return self
+
+    def details(self) -> dict:
+        out = {"city": self.city, "address": self.address}
+        for key in ("property", "frequency", "bedrooms", "bathrooms", "area_sqft", "listing_url"):
+            if getattr(self, key) is not None:
+                out[key] = getattr(self, key)
+        return out
+
+
 STATUSES = ("new", "replied", "customer_replied", "won", "lost")
 NOTE_MAX = 5000
 BODY_MAX = 20_000

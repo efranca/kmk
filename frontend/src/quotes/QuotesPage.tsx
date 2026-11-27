@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useRoute } from "../route";
+import { IconButton } from "../ui/Button";
 import { EmptyArt } from "../ui/EmptyArt";
 import { EmptyState, ErrorNotice, Loading } from "../ui/Feedback";
 import { PageHeader } from "../ui/PageHeader";
 import { Segmented } from "../ui/Segmented";
 import { fold } from "../person";
 import { useQuotes } from "./hooks";
+import { ManualQuoteDialog } from "./ManualQuoteDialog";
 import { KIND_KEYS, STATUS_KEYS, TAB_KEYS, TABS } from "./labels";
 import type { QuoteFilter, QuoteSummary } from "./types";
 
@@ -25,6 +27,7 @@ export function QuotesPage() {
     return TABS.find((value) => value === asked) ?? "new";
   });
   const [text, setText] = useState("");
+  const [entering, setEntering] = useState(false);
   const searching = text.trim().length > 0;
   const result = useQuotes(searching ? "all" : tab); // a search looks through every status
   const when = (iso: string) => new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
@@ -32,7 +35,7 @@ export function QuotesPage() {
 
   return (
     <>
-      <PageHeader title={t("quoteTitle")} />
+      <PageHeader title={t("quoteTitle")} actions={<IconButton icon="plus" variant="primary" label={t("quoteManualNew")} onClick={() => setEntering(true)} />} />
       <div className="quotes-toolbar">
         <div className="quotes-tabs">
           <Segmented label={t("quoteTabs")} value={tab} onChange={setTab} options={TABS.map((value) => ({ value, label: t(TAB_KEYS[value]) }))} />
@@ -63,6 +66,7 @@ export function QuotesPage() {
           ))}
         </ul>
       )}
+      {entering && <ManualQuoteDialog onClose={() => setEntering(false)} onCreated={(id) => navigate(`/quotes/${id}`)} />}
     </>
   );
 }

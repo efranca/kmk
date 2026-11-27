@@ -7,7 +7,7 @@ from app.auth.deps import get_db, get_settings_dep
 from app.auth.guard import guard
 from app.auth.routes import request_ip
 from app.clients import service
-from app.clients.schemas import ClientIn
+from app.clients.schemas import ClientIn, PropertyIn
 from app.config import Settings
 from app.models import User, UserSession
 from app.schedule.schemas import MAX_ID
@@ -45,5 +45,31 @@ def change_client(client_id: ClientId, body: ClientIn, request: Request, auth: t
 @router.delete("/{client_id}", status_code=204)
 def remove_client(client_id: ClientId, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
     service.delete_client(db, auth[0], client_id, request_ip(request, settings))
+    db.commit()
+    return Response(status_code=204)
+
+
+@router.post("/{client_id}/properties", status_code=201)
+def add_property(client_id: ClientId, body: PropertyIn, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    prop = service.add_property(db, auth[0], client_id, body, request_ip(request, settings))
+    payload = service.property_payload(prop)
+    db.commit()
+    return {"property": payload}
+
+
+properties_router = APIRouter(prefix="/api/properties")
+
+
+@properties_router.patch("/{property_id}")
+def change_property(property_id: ClientId, body: PropertyIn, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    prop = service.update_property(db, auth[0], property_id, body, request_ip(request, settings))
+    payload = service.property_payload(prop)
+    db.commit()
+    return {"property": payload}
+
+
+@properties_router.delete("/{property_id}", status_code=204)
+def remove_property(property_id: ClientId, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    service.delete_property(db, auth[0], property_id, request_ip(request, settings))
     db.commit()
     return Response(status_code=204)

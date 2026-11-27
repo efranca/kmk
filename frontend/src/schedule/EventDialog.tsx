@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import { useSession } from "../session";
 import { ClientPicker } from "../clients/ClientPicker";
+import { EventPlace } from "../clients/EventPlace";
+import { PropertyPicker } from "../clients/PropertyPicker";
 import { AvatarFilter } from "../ui/AvatarFilter";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
@@ -153,6 +155,7 @@ function EventForm({ event, item, date, time, onClose }: EventFormProps) {
           onChoose={(scope) => swallow(asking === "save" ? persist(scope) : doDelete(scope))}
         />
       )}
+      {event?.client_id != null && <EventPlace clientId={event.client_id} propertyId={event.property_id ?? null} onNavigate={onClose} />}
       {!editable && <p className="notice" role="note">{t("schViewOnly")}</p>}
       <form id={formId} hidden={asking !== null} onSubmit={(e) => swallow(submit(e))} noValidate>
         <fieldset className="sched-form" disabled={!editable}>
@@ -198,7 +201,8 @@ function EventForm({ event, item, date, time, onClose }: EventFormProps) {
             <p className="field__hint">{t("schFormPeopleHint")}</p>
           </div>
 
-          <ClientPicker value={values.clientId} onChange={(id) => set("clientId", id)} />
+          <ClientPicker value={values.clientId} onChange={(id) => setValues({ ...values, clientId: id, propertyId: id === values.clientId ? values.propertyId : null })} />
+          <PropertyPicker clientId={values.clientId} value={values.propertyId} onChange={(id) => set("propertyId", id)} />
 
           <RecurrenceFields values={values} errors={errors} locale={locale} onChange={(repeat) => set("repeat", repeat)} />
           <ReminderFields values={values.reminders} error={errors.reminders && t(errors.reminders)} onChange={(r) => set("reminders", r)} />

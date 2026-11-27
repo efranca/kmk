@@ -72,7 +72,13 @@ export function Conversation({ quote }: { quote: QuoteDetail }) {
         </ol>
       )}
 
-      <form className="quote-reply" onSubmit={(e) => swallow(reply(e))}>
+      {!quote.email && (
+        <div className="quote-reply">
+          <p className="status">{t("quoteNoEmailReply")}</p>
+          <div className="quote-reply__actions"><Button onClick={() => { send.reset(); setPasting(true); }}>{t("quotePaste")}</Button></div>
+        </div>
+      )}
+      <form className="quote-reply" hidden={!quote.email} onSubmit={(e) => swallow(reply(e))}>
         <h3>{t("quoteReplyTitle")}</h3>
         <TextField label={t("quoteSubject")} value={subject ?? quote.default_subject} maxLength={200} onChange={(e) => setSubject(e.target.value)} />
         <TextAreaField label={t("quoteBody")} value={body} maxLength={20000} rows={6} onChange={(e) => setBody(e.target.value)} />

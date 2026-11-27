@@ -45,6 +45,7 @@ _NOTICE = {
     "fr-CA": ("Nouvelle demande de soumission {ref}.", "Type : {kind}", "Nom : {name}", "Ville / quartier : {city}", "À voir : {link}"),
     "en": ("New quote request {ref}.", "Type: {kind}", "Name: {name}", "City / neighbourhood: {city}", "Open it: {link}"),
     "pt-BR": ("Novo pedido de orçamento {ref}.", "Tipo: {kind}", "Nome: {name}", "Cidade / bairro: {city}", "Abrir: {link}"),
+    "es": ("Nueva solicitud de cotización {ref}.", "Tipo: {kind}", "Nombre: {name}", "Ciudad / barrio: {city}", "Abrir: {link}"),
 }
 
 
