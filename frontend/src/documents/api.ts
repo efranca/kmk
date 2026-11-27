@@ -7,6 +7,7 @@ export type DocumentItem = {
   title: string;
   note: string | null;
   category_id: number | null;
+  client_id?: number | null;
   visibility: Visibility;
   file_name: string | null;
   content_type: string | null;
@@ -18,7 +19,7 @@ export type DocumentItem = {
   updated_at: string;
 };
 export type DocumentCategory = { id: number; name: string; icon: string | null };
-export type DocumentInput = { title: string; note: string | null; category_id: number | null; visibility: Visibility };
+export type DocumentInput = { title: string; note: string | null; category_id: number | null; client_id: number | null; visibility: Visibility };
 
 export const previewUrl = (id: number, version: string) => `/api/documents/${id}/preview?v=${encodeURIComponent(version)}`;
 

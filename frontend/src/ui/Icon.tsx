@@ -21,6 +21,7 @@ const PATHS = {
   tasks: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 9.5 1.5 1.5 3-3M8 16h8"/>',
   settings: '<path d="M5 8h14M5 16h14"/><circle cx="9" cy="8" r="2.2"/><circle cx="15" cy="16" r="2.2"/>',
   devices: '<rect x="3" y="5" width="14" height="10" rx="2"/><path d="M7 19h6M10 15v4"/><rect x="17" y="9" width="4" height="9" rx="1.2"/>',
+  clients: '<rect x="4" y="8" width="16" height="11" rx="2"/><path d="M9 8V6.5A1.5 1.5 0 0 1 10.5 5h3A1.5 1.5 0 0 1 15 6.5V8M4 13h16"/>',
   document: '<path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5V8h4M9 12.5h6M9 16h6"/>',
   tag: '<path d="M4 12V5.5A1.5 1.5 0 0 1 5.5 4H12l8 8-7.5 7.5a1.5 1.5 0 0 1-2.1 0z"/><circle cx="8.5" cy="8.5" r="1.2"/>',
   quote: '<path d="M5 4.5h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-4.5 3.5v-3.5H5a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"/><path d="M8 9h8M8 12.5h5"/>',

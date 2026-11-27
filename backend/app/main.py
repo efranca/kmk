@@ -13,6 +13,7 @@ from app.auth.errors import ApiError
 from app.auth.mfa_routes import router as mfa_router
 from app.auth.routes import router as auth_router
 from app.db import make_engine
+from app.clients.routes import router as clients_router
 from app.documents.routes import router as documents_router
 from app.preferences import router as preferences_router
 from app.push.routes import router as push_router
@@ -60,6 +61,7 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
     app.include_router(preferences_router)
     app.include_router(version_router)
     app.include_router(documents_router)
+    app.include_router(clients_router)
     app.include_router(system_settings_router)
     app.include_router(quotes_public_router)
     app.include_router(push_router)

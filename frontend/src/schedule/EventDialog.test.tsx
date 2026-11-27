@@ -56,7 +56,7 @@ describe("EventDialog: new event", () => {
     expect(bodyOf(api, "POST")).toEqual({
       title: "Swimming", notes: null, icon: null, color: null, all_day: false, start_date: "2026-11-05", start_time: "18:00",
       duration_minutes: null, people: [], recurrence: { freq: "weekly", interval: 1, weekdays: ["THU"], month_day: null, nth_weekdays: [] },
-      ends_on: null, max_count: null, reminders: [{ amount: 1, unit: "days" }, { amount: 2, unit: "hours" }],
+      ends_on: null, max_count: null, client_id: null, reminders: [{ amount: 1, unit: "days" }, { amount: 2, unit: "hours" }],
     });
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });

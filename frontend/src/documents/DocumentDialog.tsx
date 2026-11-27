@@ -6,6 +6,7 @@ import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
 import { ErrorNotice } from "../ui/Feedback";
 import { SelectField, TextAreaField, TextField } from "../ui/Field";
+import { ClientPicker } from "../clients/ClientPicker";
 import { FALLBACK_CATEGORY_ICON } from "../tasks/CategoryChips";
 import { fileUrl, previewUrl, type DocumentCategory, type DocumentItem, type Visibility } from "./api";
 import { useDeleteDocument, useSaveDocument } from "./hooks";
@@ -26,6 +27,7 @@ export function DocumentDialog({ document, categories, onClose }: { document: Do
   const [title, setTitle] = useState(document?.title ?? "");
   const [note, setNote] = useState(document?.note ?? "");
   const [categoryId, setCategoryId] = useState<number | null>(document?.category_id ?? null);
+  const [clientId, setClientId] = useState<number | null>(document?.client_id ?? null);
   const [visibility, setVisibility] = useState<Visibility>(document?.visibility ?? "admins");
   const [chosen, setChosen] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -55,7 +57,7 @@ export function DocumentDialog({ document, categories, onClose }: { document: Do
     try {
       await save.mutateAsync({
         id: document?.id,
-        input: { title: title.trim(), note: note.trim() || null, category_id: categoryId, visibility },
+        input: { title: title.trim(), note: note.trim() || null, category_id: categoryId, client_id: clientId, visibility },
         file: chosen ? { blob: chosen, name: chosen.name } : undefined,
         onProgress: setProgress,
       });
@@ -101,6 +103,7 @@ export function DocumentDialog({ document, categories, onClose }: { document: Do
             <option value="">{t("docNoCategory")}</option>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.icon ?? FALLBACK_CATEGORY_ICON} {c.name}</option>)}
           </SelectField>
+          <ClientPicker value={clientId} onChange={setClientId} />
           <SelectField label={t("docFieldVisibility")} hint={t("docVisibilityHint")} value={visibility} onChange={(e) => setVisibility(e.target.value as Visibility)}>
             {levels.map((l) => <option key={l} value={l}>{t(LEVEL_KEYS[l])}</option>)}
           </SelectField>

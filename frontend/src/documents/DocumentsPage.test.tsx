@@ -228,7 +228,7 @@ describe("Documents page", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: en.save }));
     await waitFor(() => expect(sent).toHaveLength(1));
     const post = JSON.parse(String((calls("POST /api/documents")[0][1] as RequestInit).body));
-    expect(post).toEqual({ title: "Lease 2026", note: null, category_id: null, visibility: "admins" }); // fails closed
+    expect(post).toEqual({ title: "Lease 2026", note: null, category_id: null, client_id: null, visibility: "admins" }); // fails closed
     expect(sent[0].url).toBe("/api/documents/99/file");
     expect(decodeURIComponent(sent[0].headers["X-File-Name"])).toBe("Lease 2026.pdf");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());

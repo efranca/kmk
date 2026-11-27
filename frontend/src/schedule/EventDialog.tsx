@@ -2,6 +2,7 @@ import { useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useSession } from "../session";
+import { ClientPicker } from "../clients/ClientPicker";
 import { AvatarFilter } from "../ui/AvatarFilter";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
@@ -196,6 +197,8 @@ function EventForm({ event, item, date, time, onClose }: EventFormProps) {
             />
             <p className="field__hint">{t("schFormPeopleHint")}</p>
           </div>
+
+          <ClientPicker value={values.clientId} onChange={(id) => set("clientId", id)} />
 
           <RecurrenceFields values={values} errors={errors} locale={locale} onChange={(repeat) => set("repeat", repeat)} />
           <ReminderFields values={values.reminders} error={errors.reminders && t(errors.reminders)} onChange={(r) => set("reminders", r)} />

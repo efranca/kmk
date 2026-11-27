@@ -9,6 +9,7 @@ export type Task = {
   description: string | null;
   icon: string | null;
   category_id: number | null;
+  client_id?: number | null;
   people: number[];
   status: TaskStatus;
   due_date: string | null;
@@ -27,6 +28,7 @@ export type TaskInput = {
   description: string | null;
   icon: string | null;
   category_id: number | null;
+  client_id: number | null;
   people: number[];
   due_date: string | null;
   show_on_dashboard: boolean;

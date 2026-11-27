@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ClientDialog } from "../clients/ClientDialog";
+import { ClientPicker } from "../clients/ClientPicker";
 import { useRoute } from "../route";
 import { useSession } from "../session";
 import { Button } from "../ui/Button";
@@ -83,6 +85,7 @@ function Handling({ quote }: { quote: QuoteDetail }) {
   const remove = useDeleteQuote(quote.id);
   const [note, setNote] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [creating, setCreating] = useState(false);
   const shownNote = note ?? quote.internal_note ?? "";
 
   async function saveNote() {
@@ -105,6 +108,17 @@ function Handling({ quote }: { quote: QuoteDetail }) {
           {STATUSES.map((s) => <option key={s} value={s}>{t(STATUS_KEYS[s])}</option>)}
         </select>
       </div>
+      <ClientPicker value={quote.client?.id ?? null} onChange={(id) => swallow(update.mutateAsync({ client_id: id }))} />
+      <p className="quote-links">
+        {quote.client && <a href={`/clients/${quote.client.id}`} onClick={(e) => { e.preventDefault(); navigate(`/clients/${quote.client!.id}`); }}>{t("clientOpen", { name: quote.client.name })}</a>}
+        {!quote.client && quote.status === "won" && <Button icon="plus" onClick={() => setCreating(true)}>{t("clientCreateFromQuote")}</Button>}
+      </p>
+      {creating && (
+        <ClientDialog
+          client={null} quoteId={quote.id} onClose={() => setCreating(false)}
+          prefill={{ name: quote.name, kind: quote.kind, email: quote.email, phone: quote.phone, address: quote.details.address ?? null, city: quote.details.city ?? null }}
+        />
+      )}
       <TextAreaField label={t("quoteNote")} hint={t("quoteNoteHint")} rows={3} maxLength={5000} value={shownNote} onChange={(e) => setNote(e.target.value)} onBlur={() => swallow(saveNote())} />
       {update.error && <ErrorNotice error={update.error} />}
       <p className="quote-links">

@@ -153,6 +153,7 @@ class QuotePatch(BaseModel):
 
     status: Literal["new", "replied", "customer_replied", "won", "lost"] | None = None
     internal_note: str | None = Field(default=None, max_length=NOTE_MAX)
+    client_id: int | None = Field(default=None, ge=1, le=1_000_000_000_000)  # null unlinks
 
     @field_validator("internal_note")
     @classmethod

@@ -6,6 +6,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.clients.service import check_client
 from app.auth import audit, policy
 from app.auth.errors import ApiError
 from app.documents import limits
@@ -116,6 +117,7 @@ def document_payloads(db: Session, documents: list[Document]) -> list[dict]:
             "title": d.title,
             "note": d.note,
             "category_id": d.category_id,
+            "client_id": d.client_id,
             "visibility": d.visibility,
             "file_name": d.file_name,
             "content_type": d.content_type,
@@ -152,10 +154,11 @@ def create_document(db: Session, actor: User, data: DocumentIn, ip: str) -> Docu
     _check_level(actor, data.visibility)
     if data.category_id is not None:
         get_category(db, data.category_id)
+    check_client(db, data.client_id)
     purge_pending(db)
     if (db.scalar(select(func.count(Document.id))) or 0) >= limits.MAX_DOCUMENTS:
         raise ApiError(422, "too_many_documents")
-    document = Document(title=data.title, note=data.note, category_id=data.category_id, visibility=data.visibility, created_by=actor.id, updated_by=actor.id)
+    document = Document(title=data.title, note=data.note, category_id=data.category_id, client_id=data.client_id, visibility=data.visibility, created_by=actor.id, updated_by=actor.id)
     db.add(document)
     db.flush()
     audit.log(db, "document_added", actor_user_id=actor.id, ip=ip, details={"document_id": document.id})
@@ -170,8 +173,10 @@ def update_document(db: Session, actor: User, document_id: int, data: DocumentPa
         _check_level(actor, data.visibility)
     if "category_id" in sent and data.category_id is not None:
         get_category(db, data.category_id)
+    if "client_id" in sent:
+        check_client(db, data.client_id)
     changed = []
-    for field in ("title", "note", "category_id", "visibility"):
+    for field in ("title", "note", "category_id", "client_id", "visibility"):
         if field in sent and getattr(document, field) != getattr(data, field):
             changed.append(field)
     old_visibility = document.visibility

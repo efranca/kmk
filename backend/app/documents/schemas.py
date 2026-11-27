@@ -37,6 +37,7 @@ class DocumentIn(BaseModel):
     title: str
     note: str | None = None
     category_id: CategoryRef | None = None
+    client_id: CategoryRef | None = None
     visibility: Visibility = "admins"  # fail closed
 
     _t = field_validator("title")(_title)
@@ -51,6 +52,7 @@ class DocumentPatch(BaseModel):
     title: str | None = None
     note: str | None = None
     category_id: CategoryRef | None = None
+    client_id: CategoryRef | None = None
     visibility: Visibility | None = None
 
     @field_validator("title")
