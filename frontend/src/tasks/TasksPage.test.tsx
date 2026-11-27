@@ -39,6 +39,12 @@ function api(tasks: Task[], extra: Record<string, unknown> = {}) {
 beforeEach(async () => { await useEnglish(); });
 afterEach(async () => { vi.unstubAllGlobals(); await resetLanguage(); });
 
+/** The category and people switches live in the gear menu: opens it when it is closed. */
+const menuToggle = (name: string) => {
+  if (!screen.queryByRole("menu")) fireEvent.click(screen.getByRole("button", { name: "View and categories" }));
+  return screen.getByRole("menuitemcheckbox", { name });
+};
+
 const page = (show = false) => renderWithProviders(<TasksPage />, { route: "/tasks", preferences: { ...DEFAULT_PREFERENCES, show_task_categories: show } });
 
 describe("TasksPage", () => {
@@ -180,18 +186,18 @@ describe("TasksPage", () => {
       page();
       await screen.findByText("In office");
       expect(screen.queryByRole("group", { name: "Category" })).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Show category chips" })).toHaveAttribute("aria-pressed", "false");
+      expect(menuToggle("Show category chips")).toHaveAttribute("aria-checked", "false");
     });
 
     it("turns the chips on and off, and saves the choice to the account", async () => {
       const { calls } = withCategories();
       page();
       await screen.findByText("In office");
-      fireEvent.click(screen.getByRole("button", { name: "Show category chips" }));
+      fireEvent.click(menuToggle("Show category chips"));
       expect(await screen.findByRole("button", { name: "🏢 Office 1" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Show category chips" })).toHaveAttribute("aria-pressed", "true");
+      expect(menuToggle("Show category chips")).toHaveAttribute("aria-checked", "true");
       await waitFor(() => expect(calls.some((c) => c.method === "PATCH" && JSON.stringify(c.body) === JSON.stringify({ show_task_categories: true }))).toBe(true));
-      fireEvent.click(screen.getByRole("button", { name: "Show category chips" }));
+      fireEvent.click(menuToggle("Show category chips"));
       expect(screen.queryByRole("button", { name: "🏢 Office 1" })).not.toBeInTheDocument();
     });
 
@@ -201,7 +207,7 @@ describe("TasksPage", () => {
       await screen.findByText("In office");
       fireEvent.click(screen.getByRole("button", { name: "🏢 Office 1" }));
       expect(screen.queryByText("In shop")).not.toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: "Show category chips" }));
+      fireEvent.click(menuToggle("Show category chips"));
       expect(screen.getByText("In shop")).toBeInTheDocument();
     });
   });
@@ -225,12 +231,12 @@ describe("TasksPage", () => {
       const { calls } = api([task({ title: "Open one" })]);
       page();
       await screen.findByText("Open one");
-      const button = screen.getByRole("button", { name: "Show people filter" });
-      expect(button).toHaveAttribute("aria-pressed", "true");
+      const button = menuToggle("Show people filter");
+      expect(button).toHaveAttribute("aria-checked", "true");
       expect(screen.getByRole("group", { name: "Show" })).toBeInTheDocument();
       fireEvent.click(button);
       expect(screen.queryByRole("group", { name: "Show" })).not.toBeInTheDocument();
-      expect(button).toHaveAttribute("aria-pressed", "false");
+      expect(button).toHaveAttribute("aria-checked", "false");
       await waitFor(() => expect(calls.some((c) => c.method === "PATCH" && JSON.stringify(c.body) === JSON.stringify({ show_task_people: false }))).toBe(true));
     });
 

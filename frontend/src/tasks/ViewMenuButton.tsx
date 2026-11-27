@@ -4,9 +4,11 @@ import { useTranslation } from "react-i18next";
 import { IconButton } from "../ui/Button";
 import type { TasksView } from "./useTasksView";
 
-const ITEMS = '[role="menuitem"], [role="menuitemradio"]';
+const ITEMS = '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]';
 
 export type ViewOption<V extends string> = { id: V; label: string };
+/** An on/off switch inside the menu (e.g. "Show category chips"). */
+export type MenuToggle = { id: string; label: string; checked: boolean; onChange: (checked: boolean) => void };
 
 /**
  * The gear next to "+": how the items are shown (tasks: list or board; documents: list or tiles) and the categories.
@@ -22,6 +24,7 @@ export function ViewMenuButton<V extends string = TasksView>({
   menuLabel,
   heading,
   onClear,
+  toggles,
 }: {
   view: V;
   onView: (view: V) => void;
@@ -35,6 +38,8 @@ export function ViewMenuButton<V extends string = TasksView>({
   heading?: string;
   /** "Clear completed", shown under the categories entry; left out when there is nothing to clear. */
   onClear?: () => void;
+  /** Switches shown under the views; choosing one changes it and leaves the menu open. */
+  toggles?: MenuToggle[];
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -100,6 +105,16 @@ export function ViewMenuButton<V extends string = TasksView>({
               {v.label}
             </button>
           ))}
+          {toggles && toggles.length > 0 && (
+            <>
+              <hr />
+              {toggles.map((x) => (
+                <button key={x.id} type="button" role="menuitemcheckbox" aria-checked={x.checked} className="viewmenu__item viewmenu__toggle" onClick={() => x.onChange(!x.checked)}>
+                  {x.label}
+                </button>
+              ))}
+            </>
+          )}
           {canManage && (
             <>
               <hr />

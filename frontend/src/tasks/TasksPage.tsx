@@ -131,9 +131,11 @@ export function TasksPage() {
         actions={
           <>
             <IconButton icon="search" label={t("taskSearchLabel")} aria-pressed={searchOpen} onClick={() => { setManaging(false); if (searchOpen) setText(""); setSearchOpen(!searchOpen); }} />
-            <IconButton icon="users" label={t("taskShowPeople")} aria-pressed={showPeople} onClick={() => update({ show_task_people: !showPeople })} />
-            <IconButton icon="tag" label={t("taskShowCategories")} aria-pressed={showChips} onClick={() => update({ show_task_categories: !showChips })} />
-            <ViewMenuButton view={view} onView={setView} canManage={canManageCategories(user)} managing={managing} onManage={() => { setSearchOpen(false); setText(""); setManaging(!managing); }}
+            <ViewMenuButton view={view} onView={setView} canManage={canManageCategories(user)}
+              toggles={[
+                { id: "categories", label: t("taskShowCategories"), checked: showChips, onChange: (on) => update({ show_task_categories: on }) },
+                { id: "people", label: t("taskShowPeople"), checked: showPeople, onChange: (on) => update({ show_task_people: on }) },
+              ]} managing={managing} onManage={() => { setSearchOpen(false); setText(""); setManaging(!managing); }}
               onClear={clearable > 0 && (view === "board" || status === "completed") && !searching ? () => setClearing(true) : undefined} />
             <IconButton icon="plus" variant="primary" label={t("taskNew")} onClick={() => setEditing("new")} />
           </>

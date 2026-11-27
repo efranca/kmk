@@ -37,6 +37,17 @@ describe("ViewMenuButton", () => {
     expect(screen.queryByRole("menuitem", { name: "Manage categories" })).toBeNull();
   });
 
+  it("lists switches as checkable items that report the change and keep the menu open", () => {
+    const onChange = vi.fn();
+    setup({ toggles: [{ id: "cats", label: "Show category chips", checked: false, onChange }, { id: "people", label: "Show people filter", checked: true, onChange: vi.fn() }] });
+    fireEvent.click(screen.getByRole("button", { name: "View and categories" }));
+    expect(screen.getByRole("menuitemcheckbox", { name: "Show category chips" })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("menuitemcheckbox", { name: "Show people filter" })).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Show category chips" }));
+    expect(onChange).toHaveBeenCalledWith(true);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
+
   it("Manage categories reports it", () => {
     const p = setup();
     fireEvent.click(screen.getByRole("button", { name: "View and categories" }));
