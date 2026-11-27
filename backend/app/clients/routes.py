@@ -23,7 +23,7 @@ def list_clients(q: Annotated[str | None, Query(max_length=100)] = None, auth: t
 
 @router.get("/{client_id}")
 def read_client(client_id: ClientId, auth: tuple[User, UserSession] = Depends(guard(csrf=False)), db: Session = Depends(get_db)):
-    return {"client": service.detail_payload(db, auth[0], service.get_client(db, client_id))}
+    return {"client": service.detail_payload(db, auth[0], service.get_client(db, auth[0], client_id))}
 
 
 @router.post("", status_code=201)

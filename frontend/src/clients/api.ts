@@ -12,16 +12,18 @@ export type Client = {
   phone: string | null;
   address: string | null;
   city: string | null;
-  notes: string | null;
+  /** Administrators only: Staff never get the notes. */
+  notes?: string | null;
   created_at: string;
   updated_at: string;
 };
 
+/** Staff get only `events` (their own), and no `notes`. */
 export type ClientDetail = Client & {
-  tasks: { id: number; title: string; status: "pending" | "in_progress" | "completed"; due_date: string | null }[];
-  events: { id: number; title: string; start_date: string; start_time: string | null }[];
-  documents: { id: number; title: string; content_type: string | null }[];
-  quotes: { id: number; reference: string; status: string; kind: string; submitted_at: string | null }[];
+  tasks?: { id: number; title: string; status: "pending" | "in_progress" | "completed"; due_date: string | null }[];
+  events?: { id: number; title: string; start_date: string; start_time: string | null }[];
+  documents?: { id: number; title: string; content_type: string | null }[];
+  quotes?: { id: number; reference: string; status: string; kind: string; submitted_at: string | null }[];
 };
 
 /** The body of POST and PATCH /api/clients. `quote_id` (create only) links the quote this client comes from. */

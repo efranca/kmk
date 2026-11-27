@@ -267,7 +267,7 @@ def _replace_links(db: Session, event_id: int, people: set[int], reminders: list
 
 def create_event(db: Session, actor: User, data: EventIn, ip: str) -> Event:
     people = _checked_people(db, data.people)
-    check_client(db, data.client_id)
+    check_client(db, actor, data.client_id)
     reminders = _checked_reminders(data)
     first = _first_date(data, snap=True)
     event = Event(created_by=actor.id, updated_by=actor.id)
@@ -331,7 +331,7 @@ def update_event(db: Session, actor: User, event_id: int, data: EventIn, ip: str
     policy.check_event(actor, event.created_by, old_people)
     scope = _effective_scope(event, data.scope, data.occurrence_date)
     people = _checked_people(db, data.people, keep=old_people)
-    check_client(db, data.client_id)
+    check_client(db, actor, data.client_id, event.client_id)
     reminders = _checked_reminders(data)
     old_reminders = _reminder_pairs(db, event.id)
     details = {"event_id": event.id, "scope": scope}

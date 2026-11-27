@@ -71,8 +71,8 @@ function pageFor(path: string, state: State): Page {
   if (path === "/schedule") return "schedule";
   if (path === "/tasks") return "tasks";
   if (path === "/documents") return "documents";
-  if (path === "/clients") return state.session.user.role !== "user" ? "clients" : "welcome"; // admins and the super admin only (for now)
-  if (/^\/clients\/\d+$/.test(path)) return state.session.user.role !== "user" ? "clientDetail" : "welcome";
+  if (path === "/clients") return "clients"; // Staff see the clients they are scheduled for
+  if (/^\/clients\/\d+$/.test(path)) return "clientDetail";
   if (path === "/quotes") return state.session.user.role !== "user" ? "quotes" : "welcome"; // admins and the super admin only
   if (/^\/quotes\/\d+$/.test(path)) return state.session.user.role !== "user" ? "quoteDetail" : "welcome";
   if (path === "/account") return "account";

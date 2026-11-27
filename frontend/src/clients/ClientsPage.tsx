@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useRoute } from "../route";
+import { useSession } from "../session";
 import { IconButton } from "../ui/Button";
 import { EmptyArt } from "../ui/EmptyArt";
 import { EmptyState, ErrorNotice, Loading } from "../ui/Feedback";
@@ -14,6 +15,7 @@ import { useClients } from "./hooks";
 export function ClientsPage() {
   const { t } = useTranslation();
   const { navigate } = useRoute();
+  const canManage = useSession().user.role !== "user";
   const { data, isPending, isError, error, refetch } = useClients();
   const [searchOpen, setSearchOpen] = useState(false);
   const [text, setText] = useState("");
@@ -29,7 +31,7 @@ export function ClientsPage() {
         actions={
           <>
             <IconButton icon="search" label={t("clientSearchLabel")} aria-pressed={searchOpen} onClick={() => { if (searchOpen) setText(""); setSearchOpen(!searchOpen); }} />
-            <IconButton icon="plus" variant="primary" label={t("clientNew")} onClick={() => setAdding(true)} />
+            {canManage && <IconButton icon="plus" variant="primary" label={t("clientNew")} onClick={() => setAdding(true)} />}
           </>
         }
       />
@@ -41,7 +43,7 @@ export function ClientsPage() {
       )}
       {isPending ? <Loading />
         : isError ? <ErrorNotice error={error} onRetry={() => void refetch()} />
-        : clients.length === 0 ? <EmptyArt art="tasks" title={t("clientEmpty")} hint={t("clientEmptyHint")} />
+        : clients.length === 0 ? <EmptyArt art="tasks" title={t("clientEmpty")} hint={canManage ? t("clientEmptyHint") : t("clientEmptyStaff")} />
         : visible.length === 0 ? <EmptyState>{t("clientNoResults", { q: text.trim() })}</EmptyState>
         : (
           <ul className="clients">

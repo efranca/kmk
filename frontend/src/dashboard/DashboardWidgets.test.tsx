@@ -1,4 +1,4 @@
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { DEFAULT_PREFERENCES } from "../preferences";
@@ -11,6 +11,7 @@ function setup(widgets: Partial<typeof DEFAULT_PREFERENCES.dashboard_widgets>, r
     "GET /api/schedule/events": () => ({ occurrences: [] }),
     "GET /api/schedule/people": () => ({ people: [] }),
     "GET /api/tasks": () => ({ tasks: [] }),
+    "GET /api/clients": () => ({ clients: [{ id: 5, name: "Chantal Roy", kind: "airbnb", contact_name: null, email: "c@example.com", phone: "418-555-0101", address: "12 rue Saint-Jean", city: "Québec", created_at: "", updated_at: "" }] }),
     "GET /api/tasks/categories": () => ({ categories: [] }),
   });
   const user = { ...testUser, role };
@@ -40,7 +41,7 @@ describe("Dashboard widget switches", () => {
   });
 
   it("says so, with a link to Settings, when every card is off", async () => {
-    setup({ my_events: false, all_events: false, my_tasks: false });
+    setup({ my_events: false, all_events: false, my_tasks: false, my_clients: false });
     expect(await screen.findByText(/All Dashboard cards are hidden/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
   });
@@ -64,8 +65,20 @@ describe("Dashboard widget switches", () => {
     expect(api.calls.some((c) => c.path === "/api/quotes")).toBe(false);
   });
 
+  it("shows Staff the clients they are scheduled for, with how to reach them, and never to admins", async () => {
+    setup({}, "user");
+    const card = await screen.findByRole("region", { name: "My clients" });
+    expect(await within(card).findByText("Chantal Roy")).toBeInTheDocument();
+    expect(within(card).getByText("12 rue Saint-Jean, Québec")).toBeInTheDocument();
+    expect(within(card).getByText("418-555-0101")).toBeInTheDocument();
+    cleanup();
+    setup({}, "admin");
+    await screen.findByRole("region", { name: "My events" });
+    expect(screen.queryByRole("region", { name: "My clients" })).toBeNull();
+  });
+
   it("says every card is hidden for a regular user whose classic cards are off", async () => {
-    setup({ my_events: false, all_events: false, my_tasks: false }, "user");
+    setup({ my_events: false, all_events: false, my_tasks: false, my_clients: false }, "user");
     expect(await screen.findByText(/All Dashboard cards are hidden/)).toBeInTheDocument();
   });
 });

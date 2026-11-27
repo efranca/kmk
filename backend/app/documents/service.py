@@ -154,7 +154,7 @@ def create_document(db: Session, actor: User, data: DocumentIn, ip: str) -> Docu
     _check_level(actor, data.visibility)
     if data.category_id is not None:
         get_category(db, data.category_id)
-    check_client(db, data.client_id)
+    check_client(db, actor, data.client_id)
     purge_pending(db)
     if (db.scalar(select(func.count(Document.id))) or 0) >= limits.MAX_DOCUMENTS:
         raise ApiError(422, "too_many_documents")
@@ -174,7 +174,7 @@ def update_document(db: Session, actor: User, document_id: int, data: DocumentPa
     if "category_id" in sent and data.category_id is not None:
         get_category(db, data.category_id)
     if "client_id" in sent:
-        check_client(db, data.client_id)
+        check_client(db, actor, data.client_id)
     changed = []
     for field in ("title", "note", "category_id", "client_id", "visibility"):
         if field in sent and getattr(document, field) != getattr(data, field):
