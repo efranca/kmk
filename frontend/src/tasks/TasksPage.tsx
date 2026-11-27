@@ -113,7 +113,8 @@ export function TasksPage() {
           <>
             <IconButton icon="search" label={t("taskSearchLabel")} aria-pressed={searchOpen} onClick={() => { setManaging(false); if (searchOpen) setText(""); setSearchOpen(!searchOpen); }} />
             <IconButton icon="tag" label={t("taskShowCategories")} aria-pressed={showChips} onClick={() => update({ show_task_categories: !showChips })} />
-            <ViewMenuButton view={view} onView={setView} managing={managing} onManage={() => { setSearchOpen(false); setText(""); setManaging(!managing); }} />
+            <ViewMenuButton view={view} onView={setView} managing={managing} onManage={() => { setSearchOpen(false); setText(""); setManaging(!managing); }}
+              onClear={clearable > 0 && (view === "board" || status === "completed") && !searching ? () => setClearing(true) : undefined} />
             <IconButton icon="plus" variant="primary" label={t("taskNew")} onClick={() => setEditing("new")} />
           </>
         }
@@ -133,7 +134,7 @@ export function TasksPage() {
               </label>
             )}
             <AvatarFilter people={selectable} selected={picked} onChange={setPicked} label={t("schWho")} everyoneLabel={t("everyone")}
-              moreLabel={(count) => t("schWhoMore", { count })} max={narrow ? 2 : 6} size={narrow ? "sm" : "md"} />
+              moreLabel={(count) => t("schWhoMore", { count })} max={selectable.length} size={narrow ? "sm" : "md"} />
           </div>
           {pickedPeople.length > 0 && all.data && (
             <section className="tasks-summary" aria-label={summaryTitle}>
@@ -169,9 +170,6 @@ export function TasksPage() {
                 ))}
               </div>
               ))}
-          {clearable > 0 && (view === "board" || status === "completed") && !searching && (
-            <Button variant="ghost" icon="trash" className="tasks-clear" onClick={() => setClearing(true)}>{t("taskClearCompleted")}</Button>
-          )}
         </>
       )}
       {clearing && (

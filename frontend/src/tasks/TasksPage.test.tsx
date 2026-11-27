@@ -118,7 +118,8 @@ describe("TasksPage", () => {
     page();
     await screen.findByText("Still open");
     fireEvent.click(screen.getByRole("radio", { name: "Done" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Clear completed" }));
+    fireEvent.click(screen.getByRole("button", { name: "View and categories" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Clear completed" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("1 completed task will be deleted.")).toBeInTheDocument();
   });

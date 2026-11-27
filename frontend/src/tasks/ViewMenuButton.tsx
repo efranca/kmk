@@ -20,6 +20,7 @@ export function ViewMenuButton<V extends string = TasksView>({
   views,
   menuLabel,
   heading,
+  onClear,
 }: {
   view: V;
   onView: (view: V) => void;
@@ -29,6 +30,8 @@ export function ViewMenuButton<V extends string = TasksView>({
   views?: ViewOption<V>[];
   menuLabel?: string;
   heading?: string;
+  /** "Clear completed", shown under the categories entry; left out when there is nothing to clear. */
+  onClear?: () => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -98,6 +101,11 @@ export function ViewMenuButton<V extends string = TasksView>({
           <button type="button" role="menuitem" className="viewmenu__item" onClick={() => { close(false); onManage(); }}>
             {t("taskCatManage")}
           </button>
+          {onClear && (
+            <button type="button" role="menuitem" className="viewmenu__item" onClick={() => { close(false); onClear(); }}>
+              {t("taskClearCompleted")}
+            </button>
+          )}
         </div>
       )}
     </span>

@@ -58,7 +58,7 @@ export function ScheduleToolbar({ view, date, people, everyone, label, onView, o
             label={t("schWho")}
             everyoneLabel={t("everyone")}
             moreLabel={(count) => t("schWhoMore", { count })}
-            max={narrow ? 2 : 6}
+            max={everyone.length}
             size={narrow ? "sm" : "md"}
           />
         </div>

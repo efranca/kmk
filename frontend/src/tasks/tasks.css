@@ -23,7 +23,7 @@
 .task__category { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); font-size: 0.85rem; flex: none; }
 .task--done .task__title { text-decoration: line-through; color: var(--text-muted); }
 .task--done .task__icon { opacity: 0.6; }
-.tasks-clear { margin-top: 12px; }
+.tasks-toolbar > .avatarfilter { margin-left: auto; justify-content: flex-end; }
 @media (max-width: 640px) { .tasks-summary__meter { width: 56px; } }
 .task-fields { display: grid; gap: 14px; }
 .task-fields__title { display: flex; align-items: flex-end; gap: 10px; }
