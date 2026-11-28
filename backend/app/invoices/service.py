@@ -7,9 +7,13 @@ from sqlalchemy import Text, cast, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app import system_settings
 from app.auth import audit, policy
 from app.auth.errors import ApiError
+from app.config import Settings
+from app.emails import sender
 from app.invoices import billing, money, pdf
+from app.invoices.emails import invoice_email
 from app.invoices.schemas import InvoiceIn
 from app.models import Client, Document, DocumentCategory, DocumentFile, Event, Invoice, InvoiceLine, User
 
@@ -196,3 +200,23 @@ def pdf_bytes(db: Session, invoice: Invoice) -> bytes:
     """The copy stored when the invoice was created; drawn again from the snapshot if that document was deleted."""
     stored = db.get(DocumentFile, invoice.document_id) if invoice.document_id else None
     return stored.data if stored is not None else pdf.render(pdf_snapshot(db, invoice))
+
+
+def send_invoice(db: Session, actor: User, invoice_id: int, to: str, settings: Settings, ip: str) -> Invoice:
+    """Emails the stored PDF now. A failure changes nothing (the caller sees 502); the audit row keeps only the address's domain."""
+    invoice = get_invoice(db, actor, invoice_id)
+    if invoice.status == "cancelled":
+        raise ApiError(422, "bad_status")
+    message = invoice_email(invoice, to, pdf_bytes(db, invoice), system_settings.get(db, "quote_from") or None, system_settings.get(db, "quote_reply_to") or None)
+    try:
+        sent = sender.send_email(message, settings)
+    except Exception:
+        sent = False
+    if not sent:
+        raise ApiError(502, "email_failed")
+    invoice.sent_at = func.now()
+    _touch(invoice, actor)
+    db.flush()
+    db.refresh(invoice)
+    audit.log(db, "invoice_sent", actor_user_id=actor.id, ip=ip, details={"invoice_id": invoice.id, "number": invoice.number, "to_domain": to.rsplit("@", 1)[-1]})
+    return invoice

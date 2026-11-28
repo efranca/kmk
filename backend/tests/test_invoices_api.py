@@ -270,6 +270,46 @@ def test_snapshot_survives_client_changes(boss):
     assert c.post(f"/api/invoices/{inv['id']}/cancel", headers=h).status_code == 200  # still works without its document
 
 
+def test_send_by_email(boss, owner_engine, caplog):
+    import logging
+
+    c, h = boss
+    cid = add(c, h).json()["client"]["id"]
+    inv = manual(c, h, cid, "205.50")
+    sql(owner_engine, "INSERT INTO app_settings (key, value) VALUES ('quote_from', 'KMK <devis@mail.example>'), ('quote_reply_to', 'kmk@gmail.com')")
+    with caplog.at_level(logging.INFO, logger="kmk.email"):
+        r = c.post(f"/api/invoices/{inv['id']}/send", json={"to": "Client@Example.com"}, headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["invoice"]["sent_at"]
+    assert "Facture N° 007 - KMK Entretien ménager" in caplog.text and "205,50 $" in caplog.text and "Facture-007.pdf" in caplog.text
+    assert "devis@mail.example" in caplog.text and "kmk@gmail.com" in caplog.text
+    details = str(sql(owner_engine, "SELECT details FROM audit_log WHERE action = 'invoice_sent'")[0][0])
+    assert "example.com" in details and "client@" not in details.lower()
+    for bad in ("nope", "", "a@b"):
+        assert c.post(f"/api/invoices/{inv['id']}/send", json={"to": bad}, headers=h).status_code == 422, bad
+    c.post(f"/api/invoices/{inv['id']}/cancel", headers=h)
+    gone = c.post(f"/api/invoices/{inv['id']}/send", json={"to": "client@example.com"}, headers=h)
+    assert (gone.status_code, gone.json()) == (422, {"error": "bad_status"})
+
+
+def test_send_failure_changes_nothing(boss, monkeypatch):
+    from app.emails import sender
+
+    monkeypatch.setattr(sender, "send_email", lambda *a, **k: False)
+    c, h = boss
+    cid = add(c, h).json()["client"]["id"]
+    inv = manual(c, h, cid)
+    r = c.post(f"/api/invoices/{inv['id']}/send", json={"to": "client@example.com"}, headers=h)
+    assert (r.status_code, r.json()) == (502, {"error": "email_failed"})
+    assert c.get(f"/api/invoices/{inv['id']}").json()["invoice"]["sent_at"] is None
+
+    def boom(*a, **k):
+        raise RuntimeError("provider exploded")
+
+    monkeypatch.setattr(sender, "send_email", boom)
+    assert c.post(f"/api/invoices/{inv['id']}/send", json={"to": "client@example.com"}, headers=h).json() == {"error": "email_failed"}
+
+
 def test_staff_forbidden_on_payment_cancel_and_pdf(boss, staff):
     c, h = boss
     cid = add(c, h).json()["client"]["id"]

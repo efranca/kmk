@@ -12,6 +12,7 @@ class EmailMessage:
     html: str
     sender: str | None = None  # the From; None = the application's EMAIL_FROM
     reply_to: str | None = None
+    attachments: tuple[tuple[str, bytes], ...] = ()  # (file name, bytes)
 
 
 # Greeting per locale: with a name, and without one.

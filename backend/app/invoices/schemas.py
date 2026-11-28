@@ -6,6 +6,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.auth.admin import clean_email
 from app.clients.schemas import _clean
 from app.invoices.money import parse_amount
 from app.schedule.schemas import MAX_ID
@@ -48,6 +49,17 @@ class PaymentIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     paid_on: date
+
+
+class SendIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    to: str
+
+    @field_validator("to")
+    @classmethod
+    def _to(cls, v: str) -> str:
+        return clean_email(v)
 
 
 class InvoiceIn(BaseModel):

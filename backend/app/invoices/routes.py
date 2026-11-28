@@ -12,7 +12,7 @@ from app.auth.routes import request_ip
 from app.clients import service as clients
 from app.config import Settings
 from app.invoices import billing, service
-from app.invoices.schemas import InvoiceIn, PaymentIn
+from app.invoices.schemas import InvoiceIn, PaymentIn, SendIn
 from app.models import User, UserSession
 from app.schedule.recurrence import MAX_RANGE_DAYS
 from app.schedule.schemas import MAX_ID
@@ -96,3 +96,11 @@ def download_pdf(invoice_id: InvoiceId, auth: tuple[User, UserSession] = Depends
             "Cache-Control": "private, no-store",
         },
     )
+
+
+@router.post("/invoices/{invoice_id}/send")
+def send_invoice(invoice_id: InvoiceId, body: SendIn, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    invoice = service.send_invoice(db, auth[0], invoice_id, body.to, settings, request_ip(request, settings))
+    payload = service.invoice_payload(db, invoice)
+    db.commit()
+    return {"invoice": payload}

@@ -206,3 +206,26 @@ def test_log_backend_prints_sender_and_reply_to(caplog):
     with caplog.at_level(logging.INFO, logger="kmk.email"):
         send_email(msg, make_settings(email_backend="log"))
     assert "devis@mail.example" in caplog.text and "kmk@gmail.com" in caplog.text
+
+
+def test_resend_sends_attachments_and_only_then():
+    import base64
+
+    seen = []
+
+    def handler(request):
+        seen.append(json.loads(request.content))
+        return httpx.Response(200, json={"id": "x"})
+
+    transport = httpx.MockTransport(handler)
+    with_pdf = EmailMessage(to="c@example.com", subject="S", text="t", html="<p>t</p>", attachments=(("Facture-007.pdf", b"%PDF-x"),))
+    assert send_email(with_pdf, resend_settings(), transport=transport) and send_email(message(), resend_settings(), transport=transport)
+    assert seen[0]["attachments"] == [{"filename": "Facture-007.pdf", "content": base64.b64encode(b"%PDF-x").decode()}]
+    assert "attachments" not in seen[1]
+
+
+def test_log_backend_names_attachments_without_printing_them(caplog):
+    msg = EmailMessage(to="c@example.com", subject="S", text="t", html="<p>t</p>", attachments=(("Facture-007.pdf", b"%PDF-secret-bytes"),))
+    with caplog.at_level(logging.INFO, logger="kmk.email"):
+        send_email(msg, make_settings(email_backend="log"))
+    assert "Facture-007.pdf" in caplog.text and "17 bytes" in caplog.text and "secret-bytes" not in caplog.text
