@@ -125,6 +125,50 @@ def test_person_detail_lists_markers(team):
     assert (second["photos"], second["corrected"], second["without_photos"]) == (0, False, False)
 
 
+def detail(t, name):
+    r = t.boss[0].get(f"/api/visits/report/{t.ids[name]}", params=RANGE)
+    assert r.status_code == 200, r.text
+    return r.json()["visits"]
+
+
+def test_person_detail_says_exactly_who_checked_in_by_ids_not_names(team):
+    make_visit(team, "2026-11-03", ["ana"])  # ana checks herself in, then is renamed
+    sql(team.owner, "UPDATE users SET name = 'Ana Lima' WHERE id = :u", u=team.ids["ana"])
+    (own,) = detail(team, "ana")
+    assert (own["self"], own["checked_in_by_name"]) == (True, "Ana Lima")  # the names differ, the ids do not
+    # two people with the same display name: bruno marks carla
+    sql(team.owner, "UPDATE users SET name = 'Sam' WHERE id IN (:b, :c)", b=team.ids["bruno"], c=team.ids["carla"])
+    v, _ = make_visit(team, "2026-11-04")
+    add_person(team, v, "carla", by="bruno")
+    add_person(team, v, "bruno")
+    sql(team.owner, "UPDATE visit_people SET user_name = 'Sam' WHERE visit_id = :v", v=v)
+    (marked,) = detail(team, "carla")
+    assert (marked["self"], marked["checked_in_by_name"]) == (False, "Sam")
+    (himself,) = detail(team, "bruno")
+    assert himself["self"] is True
+    # the detail agrees with the summary
+    people = {p["user_id"]: p["visits"] for p in report(team).json()["people"]}
+    assert people == {team.ids["ana"]: 1, team.ids["bruno"]: 1, team.ids["carla"]: 1}
+
+
+def test_person_detail_when_the_checker_account_was_deleted(team):
+    v, _ = make_visit(team, "2026-11-03")
+    add_person(team, v, "carla", by="bruno")
+    sql(team.owner, "DELETE FROM users WHERE id = :u", u=team.ids["bruno"])
+    assert sql(team.owner, "SELECT checked_in_by FROM visit_people WHERE visit_id = :v", v=v)[0] == (None,)
+    (line,) = detail(team, "carla")
+    assert (line["self"], line["checked_in_by_name"]) == (False, None)
+    assert by_name(report(team))["Carla"]["visits"] == 1
+
+
+def test_csv_columns_unchanged_by_the_self_flag(team):
+    make_visit(team, "2026-11-03", ["ana"])
+    rows = list(csv.reader(io.StringIO(team.boss[0].get("/api/visits/report.csv", params=RANGE).content.decode("utf-8-sig"))))
+    assert rows[0] == ["date", "person", "client", "property", "check_in", "check_out", "photos", "closed_without_photos", "corrected", "checked_in_by"]
+    assert len(rows[1]) == 10
+    assert "self" not in report(team).json()["people"][0]
+
+
 def test_person_detail_keeps_a_visit_whose_event_was_deleted(team):
     v, eid = make_visit(team, "2026-11-03", ["ana"], client_name="Gone Inc", prop="Old house")
     sql(team.owner, "DELETE FROM events WHERE id = :e", e=eid)

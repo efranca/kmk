@@ -108,6 +108,8 @@ export type ReportLine = {
   without_photos: boolean;
   corrected: boolean;
   checked_in_by_name: string | null;
+  /** The person recorded their own check-in (decided by ids on the server; never inferred from names). */
+  self: boolean;
 };
 
 const range = (from: string, to: string) => new URLSearchParams({ from, to }).toString();

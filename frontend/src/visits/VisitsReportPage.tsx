@@ -50,7 +50,7 @@ function PersonVisits({ person, from, to, onClose }: { person: { id: number; nam
   useEffect(() => heading.current?.focus(), [person.id]);
 
   const proof = (line: ReportLine) =>
-    [line.checked_in_at && t("visReportIn", { time: line.checked_in_at }), line.closed_at && t("visReportOut", { time: line.closed_at }), line.checked_in_by_name && line.checked_in_by_name !== person.name && t("visReportMarkedBy", { name: line.checked_in_by_name })]
+    [line.checked_in_at && t("visReportIn", { time: line.checked_in_at }), line.closed_at && t("visReportOut", { time: line.closed_at }), line.self === false && line.checked_in_by_name && t("visReportMarkedBy", { name: line.checked_in_by_name })]
       .filter(Boolean)
       .join(" · ");
 

@@ -76,6 +76,9 @@ def _line(visit: Visit, person: VisitPerson, photos: dict[int, int], corrected: 
         "without_photos": bool(visit.closed_without_photos),
         "corrected": visit.id in corrected,
         "checked_in_by_name": by_names.get(by) if by is not None else None,
+        # who recorded the check-in, by ids (as the visit payload does): names can change or be shared; an account or
+        # checker that no longer exists (NULL) is never "self"
+        "self": by is not None and person.user_id is not None and by == person.user_id,
     }
 
 

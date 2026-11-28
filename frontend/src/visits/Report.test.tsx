@@ -21,8 +21,11 @@ const SUMMARY = {
 };
 const DETAIL = {
   visits: [
-    { event_id: 3, occurrence_date: "2026-11-18", date: "2026-11-18", client_name: "Chantal Roy", property_name: "Beach house", checked_in_at: "08:02", closed_at: "11:15", photos: 6, without_photos: false, corrected: true, checked_in_by_name: "Bruno" },
-    { event_id: null, occurrence_date: "2026-11-19", date: "2026-11-19", client_name: "Marc Gagnon", property_name: "Office", checked_in_at: "13:00", closed_at: "14:30", photos: 0, without_photos: true, corrected: false, checked_in_by_name: "Carla" },
+    { event_id: 3, occurrence_date: "2026-11-18", date: "2026-11-18", client_name: "Chantal Roy", property_name: "Beach house", checked_in_at: "08:02", closed_at: "11:15", photos: 6, without_photos: false, corrected: true, checked_in_by_name: "Bruno", self: false },
+    // checked in by herself, renamed since: the current name differs from the copy, yet it is her own check-in
+    { event_id: null, occurrence_date: "2026-11-19", date: "2026-11-19", client_name: "Marc Gagnon", property_name: "Office", checked_in_at: "13:00", closed_at: "14:30", photos: 0, without_photos: true, corrected: false, checked_in_by_name: "Carla Lima", self: true },
+    // marked by a colleague who has the same display name
+    { event_id: 9, occurrence_date: "2026-11-20", date: "2026-11-20", client_name: "Marc Gagnon", property_name: "Office", checked_in_at: "09:00", closed_at: "10:00", photos: 2, without_photos: false, corrected: false, checked_in_by_name: "Carla", self: false },
   ],
 };
 
@@ -110,7 +113,7 @@ describe("the Visits done report", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Carla" }));
     const detail = within(await screen.findByRole("region", { name: "Visits of Carla" }));
     const items = await detail.findAllByRole("listitem");
-    expect(items).toHaveLength(2);
+    expect(items).toHaveLength(3);
     const call = api.calls.find((c) => c.path === "/api/visits/report/4")!;
     expect(call.query).toBe(`?from=${addDays(today(), -13)}&to=${today()}`);
     expect(items[0]).toHaveTextContent("Nov 18, 2026");
@@ -123,8 +126,10 @@ describe("the Visits done report", () => {
     expect(items[0]).not.toHaveTextContent("Closed without photos");
     expect(items[1]).toHaveTextContent("Closed without photos");
     expect(items[1]).toHaveTextContent("0 photos");
-    expect(items[1]).not.toHaveTextContent("marked by"); // checked in by herself
-    expect(detail.getByRole("link", { name: /Open check-in/ })).toHaveAttribute("href", "/visits?event=3&date=2026-11-18");
+    expect(items[1]).not.toHaveTextContent("marked by"); // her own check-in, though her name changed since
+    expect(items[2]).toHaveTextContent("marked by Carla"); // someone else with the same name
+    const links = detail.getAllByRole("link", { name: /Open check-in/ });
+    expect(links.map((l) => l.getAttribute("href"))).toEqual(["/visits?event=3&date=2026-11-18", "/visits?event=9&date=2026-11-20"]);
     // proof only: never a duration or a total of hours
     expect(document.body.textContent).not.toMatch(/hour|\bh\b|3:13|1:30/i);
   });
