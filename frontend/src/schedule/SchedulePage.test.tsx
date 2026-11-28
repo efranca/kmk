@@ -126,7 +126,33 @@ async function menuSwitch(name: string) {
   return screen.findByRole("menuitemcheckbox", { name });
 }
 
+describe("SchedulePage faces for Staff", () => {
+  const mia = person(3, "Mia Gagnon", "blue");
+  const run = (role: "user" | "admin") => {
+    mockApi({
+      "GET /api/schedule/events": () => ({ occurrences: [occurrence({ title: "Shared visit", people: [1, 2] })] }),
+      "GET /api/schedule/people": () => ({ people: [alice, leo, mia] }),
+    });
+    renderWithProviders(<SchedulePage />, { route: "/schedule?view=week&date=2026-11-12", session: { user: { id: 1, username: "a", name: "Alice Roy", email: "a@x.ca", role, locale: "en" } } });
+  };
+
+  it("show Staff only themself and the people who share an event with them", async () => {
+    run("user");
+    await screen.findByText("Shared visit");
+    const faces = await screen.findByRole("group", { name: "Show" });
+    expect(within(faces).getByRole("button", { name: "Leo Tremblay" })).toBeInTheDocument();
+    expect(within(faces).queryByRole("button", { name: "Mia Gagnon" })).not.toBeInTheDocument();
+  });
+
+  it("show an admin everyone", async () => {
+    run("admin");
+    await screen.findByText("Shared visit");
+    expect(within(await screen.findByRole("group", { name: "Show" })).getByRole("button", { name: "Mia Gagnon" })).toBeInTheDocument();
+  });
+});
+
 describe("SchedulePage people filter", () => {
+  const shared = { ...swimming, people: [1, 2] }; // Staff can only pick people they share an event with
   it("the gear menu hides the faces and saves the choice to the account", async () => {
     const { api } = setup([swimming]);
     await screen.findByText("Swimming");
@@ -150,7 +176,7 @@ describe("SchedulePage people filter", () => {
   });
 
   it("picking a person asks for that person's events and puts it in the URL", async () => {
-    const { api } = setup([swimming]);
+    const { api } = setup([shared]);
     await screen.findByText("Swimming");
     const faces = await screen.findByRole("group", { name: "Show" });
     expect(within(faces).getByRole("button", { name: "Everyone" })).toHaveAttribute("aria-pressed", "true");
@@ -161,7 +187,7 @@ describe("SchedulePage people filter", () => {
   });
 
   it("several people go together, and Everyone clears them", async () => {
-    const { api } = setup([swimming]);
+    const { api } = setup([shared]);
     await screen.findByText("Swimming");
     const faces = await screen.findByRole("group", { name: "Show" });
     await userEvent.click(within(faces).getByRole("button", { name: "Leo Tremblay" }));

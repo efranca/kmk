@@ -13,12 +13,13 @@ export const keys = {
   reminders: ["schedule", "reminders"] as const,
 };
 
-export function useOccurrences(from: string, to: string, opts: { q?: string; people?: number[] } = {}) {
+export function useOccurrences(from: string, to: string, opts: { q?: string; people?: number[]; enabled?: boolean } = {}) {
   const q = opts.q?.trim() ?? "";
   const people = opts.people ?? [];
   return useQuery({
     queryKey: keys.occurrences(from, to, q, people),
     queryFn: () => listOccurrences(from, to, { q, people }),
+    enabled: opts.enabled ?? true,
     placeholderData: keepPreviousData, // moving to the next week keeps the old one on screen until the new one arrives
   });
 }

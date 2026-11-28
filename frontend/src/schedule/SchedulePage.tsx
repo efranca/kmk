@@ -5,6 +5,7 @@ import { IconButton } from "../ui/Button";
 import { EventDialog, type EventDialogTarget } from "./EventDialog";
 import { ErrorNotice, Loading } from "../ui/Feedback";
 import { PageHeader } from "../ui/PageHeader";
+import { peopleInCommon } from "../ui/peopleInCommon";
 import { usePreferences } from "../preferences";
 import { useSession } from "../session";
 import { ViewMenuButton } from "../tasks/ViewMenuButton";
@@ -58,6 +59,10 @@ export function SchedulePage() {
 
   const [from, to] = visibleRange(view, date, firstDay, narrow);
   const range = useOccurrences(from, to, { people });
+  // Staff only get the faces of the people they share an event with: read from the range without the people filter, so picking a face does not shrink the list.
+  const isStaff = user.role === "user";
+  const unfiltered = useOccurrences(from, to, { enabled: isStaff });
+  const faces = (everyone.data ?? []).filter((p) => p.active !== false);
   // Tasks with a due date are only asked for, and drawn, while the switch is on.
   const [showTasks, setShowTasks] = useShowTasks();
   const allTasks = useTasks("all", undefined, showTasks);
@@ -111,7 +116,7 @@ export function SchedulePage() {
         view={view}
         date={date}
         people={people}
-        everyone={(everyone.data ?? []).filter((p) => p.active !== false)}
+        everyone={isStaff ? peopleInCommon(faces, (unfiltered.data ?? []).map((o) => o.people), user.id, pickedInUrl) : faces}
         label={rangeLabel(view, date, view === "week" ? [from, to] : gridDays, locale)}
         onView={(next) => set({ view: next })}
         onDate={(next) => set({ date: next })}

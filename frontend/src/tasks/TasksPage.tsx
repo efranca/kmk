@@ -7,6 +7,7 @@ import { COMPANY_TIME_ZONE, todayIn } from "../schedule/scheduleDates";
 import { useNarrow } from "../schedule/useNarrow";
 import { usePeople } from "../schedule/hooks";
 import { Avatar } from "../ui/Avatar";
+import { peopleInCommon } from "../ui/peopleInCommon";
 import { AvatarFilter } from "../ui/AvatarFilter";
 import { Button, IconButton } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
@@ -69,7 +70,9 @@ export function TasksPage() {
 
   const members: Person[] = everyone.data ?? [];
   const byId = new Map(members.map((p) => [p.id, p]));
-  const selectable = members.filter((p) => p.active !== false);
+  const active = members.filter((p) => p.active !== false);
+  // Staff only get the faces of the people they share a task with (the server already sends them only their own tasks).
+  const selectable = user.role === "user" ? peopleInCommon(active, (all.data ?? []).map((x) => x.people), user.id, pickedInUrl) : active;
   const categoryById = new Map((categories.data ?? []).map((c) => [c.id, c]));
   const ofPicked = (tasks: Task[]) => (picked.length > 0 ? tasks.filter((x) => x.people.some((id) => picked.includes(id))) : tasks);
 

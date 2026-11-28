@@ -226,6 +226,30 @@ describe("TasksPage", () => {
     expect(screen.getByRole("menuitem", { name: "Manage categories" })).toBeInTheDocument();
   });
 
+  describe("faces for Staff", () => {
+    const FOUR = [...PEOPLE, { id: 3, name: "Carol Gagnon", color: "red", active: true }, { id: 4, name: "Dave Lavoie", color: "green", active: true }];
+    const tasksOf = () => [task({ title: "Shared", people: [1, 2] }), task({ title: "Mine", people: [1] })];
+
+    it("show only the people who share a task with the person, and themself", async () => {
+      api(tasksOf(), { "GET /api/schedule/people": { people: FOUR } });
+      page();
+      await screen.findByText("Shared");
+      const faces = screen.getByRole("group", { name: "Show" });
+      expect(within(faces).getByRole("button", { name: "Alice Roy" })).toBeInTheDocument();
+      expect(within(faces).getByRole("button", { name: "Bob Tremblay" })).toBeInTheDocument();
+      expect(within(faces).queryByRole("button", { name: "Carol Gagnon" })).not.toBeInTheDocument();
+      expect(within(faces).queryByRole("button", { name: "Dave Lavoie" })).not.toBeInTheDocument();
+    });
+
+    it("show everyone to an admin", async () => {
+      api(tasksOf(), { "GET /api/schedule/people": { people: FOUR } });
+      renderWithProviders(<TasksPage />, { route: "/tasks", session: { user: { id: 1, username: "a", name: "A", email: "a@x.ca", role: "admin", locale: "en" } } });
+      await screen.findByText("Shared");
+      const faces = screen.getByRole("group", { name: "Show" });
+      expect(within(faces).getByRole("button", { name: "Dave Lavoie" })).toBeInTheDocument();
+    });
+  });
+
   describe("people filter button", () => {
     it("shows the faces by default; the button hides them and saves the choice to the account", async () => {
       const { calls } = api([task({ title: "Open one" })]);
