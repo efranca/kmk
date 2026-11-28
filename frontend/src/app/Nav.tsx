@@ -5,11 +5,12 @@ import { Icon, type IconName } from "../ui/Icon";
 import MoreSheet from "./MoreSheet";
 import { fitTabs, MIN_TAB_PX } from "./navFit";
 
-export type NavId = "dashboard" | "schedule" | "tasks" | "documents" | "clients" | "quotes" | "invoices" | "admin" | "devices";
+export type NavId = "dashboard" | "visits" | "schedule" | "tasks" | "documents" | "clients" | "quotes" | "invoices" | "admin" | "devices";
 type NavItem = { id: NavId; to: string; labelKey: string; icon: IconName; adminOnly?: boolean; superAdminOnly?: boolean; staffWithClients?: boolean };
 
 const ITEMS: NavItem[] = [
   { id: "dashboard", to: "/", labelKey: "navDashboard", icon: "home" },
+  { id: "visits", to: "/visits", labelKey: "visTitle", icon: "check" },
   { id: "schedule", to: "/schedule", labelKey: "schTitle", icon: "calendar" },
   { id: "tasks", to: "/tasks", labelKey: "taskTitle", icon: "tasks" },
   { id: "documents", to: "/documents", labelKey: "navDocuments", icon: "document" },

@@ -73,6 +73,24 @@ describe("the navigation on a phone", () => {
 });
 
 
+describe("the Visits entry", () => {
+  beforeEach(() => phone(900));
+  it("is for everyone, right after the Dashboard", () => {
+    for (const roles of [{ isAdmin: false, isSuperAdmin: false }, { isAdmin: true, isSuperAdmin: false }, { isAdmin: true, isSuperAdmin: true }]) {
+      const { unmount } = render(nav(roles));
+      const link = screen.getByRole("link", { name: en.visTitle });
+      expect(link).toHaveAttribute("href", "/visits");
+      const names = screen.getAllByRole("link").map((l) => l.textContent ?? "");
+      expect(names.indexOf(en.visTitle)).toBe(names.indexOf(en.navDashboard) + 1);
+      unmount();
+    }
+  });
+  it("is marked as the current page", () => {
+    render(nav({ active: "visits" }));
+    expect(screen.getByRole("link", { name: en.visTitle })).toHaveAttribute("aria-current", "page");
+  });
+});
+
 describe("the Invoices entry", () => {
   beforeEach(() => phone(900));
   it("is for admins and the super admin, after Quotes", () => {
@@ -102,7 +120,7 @@ describe("the Quotes entry", () => {
   });
   it("gives Staff the working pages, and Clients only once they have one", () => {
     const { rerender } = render(nav({ isAdmin: false, isSuperAdmin: false }));
-    for (const name of ["Dashboard", "Schedule", "Tasks", "Documents"]) expect(screen.getByRole("link", { name })).toBeInTheDocument();
+    for (const name of ["Dashboard", "Visits", "Schedule", "Tasks", "Documents"]) expect(screen.getByRole("link", { name })).toBeInTheDocument();
     for (const name of ["Clients", "Quotes", "Users", "Devices"]) expect(screen.queryByRole("link", { name })).toBeNull();
     rerender(nav({ isAdmin: false, isSuperAdmin: false, hasClients: true }));
     expect(screen.getByRole("link", { name: "Clients" })).toBeInTheDocument();

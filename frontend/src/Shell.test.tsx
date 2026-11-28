@@ -253,6 +253,24 @@ describe("navigation by role", () => {
     expect(screen.getByRole("link", { name: frCA.invTitle })).toHaveAttribute("aria-current", "page");
   });
 
+  it("opens today's visits for Staff from the nav, with Visits marked as the current page", async () => {
+    const fn = mockApi({ "GET /api/auth/me": signedIn("user"), "GET /api/visits/today": () => res(200, { visits: [] }) });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("link", { name: frCA.visTitle }));
+    expect(await screen.findByRole("heading", { level: 1, name: frCA.visTitle })).toBeInTheDocument();
+    expect(await screen.findByText(frCA.visNone)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: frCA.visTitle })).toHaveAttribute("aria-current", "page");
+    expect(calls(fn, "GET /api/visits/today")).toHaveLength(1);
+    expect(document.title).toContain(frCA.visTitle);
+  });
+
+  it("sends someone who is not signed in from /visits to the sign-in page", async () => {
+    visit("/visits");
+    mockApi({});
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Connexion");
+  });
+
   it("opens the admin page for an admin from the nav", async () => {
     const fn = mockApi({ "GET /api/auth/me": signedIn("admin") });
     render(<App />);

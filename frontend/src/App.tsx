@@ -31,10 +31,11 @@ import { DocumentsPage } from "./documents/DocumentsPage";
 import { ClientPage } from "./clients/ClientPage";
 import { ClientsPage } from "./clients/ClientsPage";
 import DevicesPage from "./devices/DevicesPage";
+import { VisitsTodayPage } from "./visits/VisitsTodayPage";
 import Shell, { type ShellPage } from "./Shell";
 
 type State = { kind: "checking" } | { kind: "anon" } | { kind: "auth"; session: Session };
-type Page = "checking" | "signin" | "forgot" | "setpw" | "verify" | "setup" | "welcome" | "schedule" | "tasks" | "documents" | "clients" | "clientDetail" | "quotes" | "quoteDetail" | "invoices" | "invoiceDetail" | "account" | "settings" | "admin" | "devices" | "notfound";
+type Page = "checking" | "signin" | "forgot" | "setpw" | "verify" | "setup" | "welcome" | "visits" | "schedule" | "tasks" | "documents" | "clients" | "clientDetail" | "quotes" | "quoteDetail" | "invoices" | "invoiceDetail" | "account" | "settings" | "admin" | "devices" | "notfound";
 
 const BRAND = "KMK Entretien Ménager";
 const TITLE_KEYS: Record<Page, string | null> = {
@@ -45,6 +46,7 @@ const TITLE_KEYS: Record<Page, string | null> = {
   verify: "mfaCodeTitle",
   setup: "mfaSetupTitle",
   welcome: "navDashboard",
+  visits: "visTitle",
   schedule: "schTitle",
   tasks: "taskTitle",
   documents: "docTitle",
@@ -72,10 +74,11 @@ function pageFor(path: string, state: State): Page {
   if (state.kind === "anon") {
     if (/^\/(quotes|clients|invoices)\/\d+$/.test(path)) return "signin";
   }
-  if (state.kind === "anon") return ["/", "/schedule", "/tasks", "/documents", "/clients", "/quotes", "/invoices", "/account", "/settings", "/admin", "/devices"].includes(path) ? "signin" : "notfound";
+  if (state.kind === "anon") return ["/", "/visits", "/schedule", "/tasks", "/documents", "/clients", "/quotes", "/invoices", "/account", "/settings", "/admin", "/devices"].includes(path) ? "signin" : "notfound";
   if (state.session.mfa === "verify") return "verify";
   if (state.session.mfa === "setup") return "setup";
   if (path === "/") return "welcome";
+  if (path === "/visits") return "visits"; // everyone: the visits of the day that list them
   if (path === "/schedule") return "schedule";
   if (path === "/tasks") return "tasks";
   if (path === "/documents") return "documents";
@@ -218,7 +221,7 @@ function AppContent() {
 
   if (state.kind !== "auth") return null;
   const { session } = state;
-  const shellPage: ShellPage = page === "welcome" || page === "schedule" || page === "tasks" || page === "documents" || page === "account" || page === "settings" || page === "admin" || page === "devices" ? page : page === "clients" || page === "clientDetail" ? "clients" : page === "quotes" || page === "quoteDetail" ? "quotes" : page === "invoices" || page === "invoiceDetail" ? "invoices" : "notfound";
+  const shellPage: ShellPage = page === "welcome" || page === "visits" || page === "schedule" || page === "tasks" || page === "documents" || page === "account" || page === "settings" || page === "admin" || page === "devices" ? page : page === "clients" || page === "clientDetail" ? "clients" : page === "quotes" || page === "quoteDetail" ? "quotes" : page === "invoices" || page === "invoiceDetail" ? "invoices" : "notfound";
 
   return (
     <SessionProvider value={{ user: session.user, csrfToken: session.csrfToken }}>
@@ -229,7 +232,7 @@ function AppContent() {
       active={shellPage}
       onNavigate={navigate}
       onSignOut={signOut}
-      bare={page === "schedule" || page === "welcome" || page === "tasks" || page === "documents" || page === "clients" || page === "clientDetail" || page === "quotes" || page === "quoteDetail" || page === "invoices" || page === "invoiceDetail" || page === "admin" || page === "devices" || page === "settings"}
+      bare={page === "schedule" || page === "welcome" || page === "visits" || page === "tasks" || page === "documents" || page === "clients" || page === "clientDetail" || page === "quotes" || page === "quoteDetail" || page === "invoices" || page === "invoiceDetail" || page === "admin" || page === "devices" || page === "settings"}
     >
       {page === "welcome" && <DashboardPage user={session.user} mfaEnabled={session.mfaEnabled} recoveryCodesLeft={recoveryCodesLeft} />}
       {page === "account" && (
@@ -245,6 +248,7 @@ function AppContent() {
       {page === "settings" && <SettingsPage onLanguageChanged={(user) => updateSession({ user })} />}
       {page === "admin" && <UsersPage session={session} />}
       {page === "devices" && <DevicesPage />}
+      {page === "visits" && <VisitsTodayPage />}
       {page === "schedule" && <SchedulePage />}
       {page === "tasks" && <TasksPage />}
       {page === "documents" && <DocumentsPage />}

@@ -39,6 +39,8 @@ const PATHS = {
   invoice: '<path d="M6 3.5h12a1 1 0 0 1 1 1V21l-3-2-3 2-3-2-3 2V4.5a1 1 0 0 1 1-1z"/><path d="M9 8h6M9 11.5h6M9 15h3"/>',
   send: '<path d="m4 11.5 16-7-6 15-2.5-6z"/><path d="m11.5 13.5 3-3"/>',
   download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>',
+  camera: '<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.5l1.5-2.5h5L16 7h2.5A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="13" r="3.5"/>',
+  image: '<rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4.5 17.5 5-5 3.5 3.5 2.5-2.5 4 4"/>',
 } as const;
 
 export type IconName = keyof typeof PATHS;
