@@ -11,6 +11,10 @@ export async function createQuote(input: ManualQuoteInput, csrf: string): Promis
   return (await request<{ quote: QuoteDetail }>("POST", BASE, csrf, input)).quote;
 }
 
+export async function editQuote(id: number, input: Omit<ManualQuoteInput, "client_id">, csrf: string): Promise<QuoteDetail> {
+  return (await request<{ quote: QuoteDetail }>("PUT", `${BASE}/${id}/request`, csrf, input)).quote;
+}
+
 export async function getQuote(id: number): Promise<QuoteDetail> {
   return (await request<{ quote: QuoteDetail }>("GET", `${BASE}/${id}`)).quote;
 }

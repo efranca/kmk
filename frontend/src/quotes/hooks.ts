@@ -2,7 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useSession } from "../session";
-import { addMessage, createQuote, deleteQuote, getQuote, listQuotes, patchQuote, retryMessage } from "./api";
+import { addMessage, createQuote, editQuote, deleteQuote, getQuote, listQuotes, patchQuote, retryMessage } from "./api";
 import type { ManualQuoteInput, MessageInput, QuoteDetail, QuoteFilter, QuotePatch } from "./types";
 
 export const quoteKeys = {
@@ -38,6 +38,7 @@ function useChange<V>(id: number, send: (variables: V, csrf: string) => Promise<
 }
 
 export const useUpdateQuote = (id: number) => useChange<QuotePatch>(id, (patch, csrf) => patchQuote(id, patch, csrf));
+export const useEditQuote = (id: number) => useChange<Omit<ManualQuoteInput, "client_id">>(id, (input, csrf) => editQuote(id, input, csrf));
 export const useSendMessage = (id: number) => useChange<MessageInput>(id, (input, csrf) => addMessage(id, input, csrf));
 export const useRetryMessage = (id: number) => useChange<number>(id, (messageId, csrf) => retryMessage(id, messageId, csrf));
 

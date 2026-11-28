@@ -749,5 +749,9 @@
   "invDateField": "Data da fatura",
   "invCreate": "Criar a fatura",
   "invCreated": "Fatura {{ref}} criada.",
-  "invNothingToBill": "Nenhuma limpeza concluída para faturar neste período."
+  "invNothingToBill": "Nenhuma limpeza concluída para faturar neste período.",
+  "quoteEdit": "Editar",
+  "quoteEditTitle": "Editar o orçamento",
+  "quoteEditDone": "Orçamento atualizado",
+  "err_message_locked": "A descrição do cliente não pode ser alterada."
 }

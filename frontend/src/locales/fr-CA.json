@@ -749,5 +749,9 @@
   "invDateField": "Date de la facture",
   "invCreate": "Créer la facture",
   "invCreated": "Facture {{ref}} créée.",
-  "invNothingToBill": "Aucun ménage terminé à facturer pour cette période."
+  "invNothingToBill": "Aucun ménage terminé à facturer pour cette période.",
+  "quoteEdit": "Modifier",
+  "quoteEditTitle": "Modifier la soumission",
+  "quoteEditDone": "Soumission mise à jour",
+  "err_message_locked": "La description du client ne peut pas être modifiée."
 }

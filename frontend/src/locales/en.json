@@ -749,5 +749,9 @@
   "invDateField": "Invoice date",
   "invCreate": "Create the invoice",
   "invCreated": "Invoice {{ref}} created.",
-  "invNothingToBill": "No finished cleaning to bill in this period."
+  "invNothingToBill": "No finished cleaning to bill in this period.",
+  "quoteEdit": "Edit",
+  "quoteEditTitle": "Edit the quote",
+  "quoteEditDone": "Quote updated",
+  "err_message_locked": "The customer's description cannot be changed."
 }

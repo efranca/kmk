@@ -48,3 +48,6 @@
 
 .quote-photo-open { display: block; margin: 0; padding: 0; border: 0; background: none; cursor: zoom-in; line-height: 0; }
 .quote-photo-open:hover:not(:disabled) { background: none; }
+
+.quote-card__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.quote-card__head h2 { margin: 0; }

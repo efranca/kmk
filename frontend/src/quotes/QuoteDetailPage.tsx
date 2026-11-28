@@ -14,6 +14,7 @@ import { useToast } from "../ui/toastContext";
 import { isInstalledApp } from "../documents/saveFile";
 import { photoUrl } from "./api";
 import { Conversation } from "./Conversation";
+import { ManualQuoteDialog } from "./ManualQuoteDialog";
 import { useDeleteQuote, useQuote, useUpdateQuote } from "./hooks";
 import { FREQUENCY_KEYS, KIND_KEYS, LOCALE_NAMES, PROPERTY_KEYS, STATUS_KEYS } from "./labels";
 import type { QuoteDetail, QuoteStatus } from "./types";
@@ -32,10 +33,15 @@ function Request({ quote }: { quote: QuoteDetail }) {
   const place = [quote.geo_city, quote.geo_country].filter(Boolean).join(", ");
   const installed = isInstalledApp();
   const [viewing, setViewing] = useState<number | null>(null);
+  const [editing, setEditing] = useState(false);
   const viewed = viewing !== null ? quote.photos[viewing] : undefined;
   return (
     <section className="section quote-card">
-      <h2>{t("quoteRequest")}</h2>
+      <div className="quote-card__head">
+        <h2>{t("quoteRequest")}</h2>
+        <Button variant="ghost" icon="pencil" onClick={() => setEditing(true)}>{t("quoteEdit")}</Button>
+      </div>
+      {editing && <ManualQuoteDialog quote={quote} onClose={() => setEditing(false)} />}
       <dl className="quote-facts">
         {quote.email && <Row label={t("quoteEmail")}><a href={`mailto:${quote.email}`}>{quote.email}</a></Row>}
         <Row label={t("quotePhone")}><a href={`tel:${quote.phone.replace(/[^\d+]/g, "")}`}>{quote.phone}</a></Row>

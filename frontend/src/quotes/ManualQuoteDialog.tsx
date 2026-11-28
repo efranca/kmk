@@ -7,9 +7,9 @@ import { Dialog } from "../ui/Dialog";
 import { ErrorNotice } from "../ui/Feedback";
 import { SelectField, TextAreaField, TextField } from "../ui/Field";
 import { useToast } from "../ui/toastContext";
-import { useCreateQuote } from "./hooks";
+import { useCreateQuote, useEditQuote } from "./hooks";
 import { FREQUENCY_KEYS, KIND_KEYS, LOCALE_NAMES, PROPERTY_KEYS } from "./labels";
-import type { QuoteKind } from "./types";
+import type { QuoteDetail, QuoteKind } from "./types";
 
 const KINDS: QuoteKind[] = ["airbnb", "commercial", "post_construction"];
 const PROPERTIES = { airbnb: ["house", "apartment", "condo", "other"], commercial: ["office", "clinic", "shop", "restaurant", "industrial", "other"], post_construction: ["house", "apartment", "condo", "office", "shop", "industrial", "other"] } as const;
@@ -18,26 +18,36 @@ const LOCALES = ["fr-CA", "en-CA", "pt-BR"] as const;
 const PHONE = /^[0-9 +().\-]{7,30}$/;
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-/** An administrator writes down a quote that did not come from the form (a phone call, a visit). Name, phone and type are enough. */
-export function ManualQuoteDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (id: number) => void }) {
+const text = (v: unknown) => (v === undefined || v === null ? "" : String(v));
+
+/**
+ * An administrator writes down a quote that did not come from the form (a phone call, a visit): name, phone and type are enough.
+ * With `quote` it is the same form to complete a saved one (no client picker; the customer's own description of a web quote stays as sent).
+ */
+export function ManualQuoteDialog({ onClose, onCreated, quote }: { onClose: () => void; onCreated?: (id: number) => void; quote?: QuoteDetail }) {
   const { t } = useTranslation();
   const toast = useToast();
   const create = useCreateQuote();
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [locale, setLocale] = useState<(typeof LOCALES)[number]>("fr-CA");
-  const [kind, setKind] = useState<QuoteKind>("airbnb");
-  const [city, setCity] = useState("");
-  const [address, setAddress] = useState("");
-  const [property, setProperty] = useState("");
-  const [frequency, setFrequency] = useState("");
-  const [bedrooms, setBedrooms] = useState("");
-  const [bathrooms, setBathrooms] = useState("");
-  const [area, setArea] = useState("");
-  const [listing, setListing] = useState("");
-  const [message, setMessage] = useState("");
+  const edit = useEditQuote(quote?.id ?? 0);
+  const d = quote?.details;
+  const locked = quote !== undefined && quote.source !== "manual"; // a web quote's description is the record of the request
+  const [name, setName] = useState(quote?.name ?? "");
+  const [phone, setPhone] = useState(quote?.phone ?? "");
+  const [email, setEmail] = useState(quote?.email ?? "");
+  const [locale, setLocale] = useState<(typeof LOCALES)[number]>((LOCALES as readonly string[]).includes(quote?.locale ?? "") ? (quote!.locale as (typeof LOCALES)[number]) : "fr-CA");
+  const [kind, setKind] = useState<QuoteKind>(quote?.kind ?? "airbnb");
+  const [city, setCity] = useState(text(d?.city));
+  const [address, setAddress] = useState(text(d?.address));
+  const [property, setProperty] = useState(text(d?.property));
+  const [frequency, setFrequency] = useState(text(d?.frequency));
+  const [bedrooms, setBedrooms] = useState(text(d?.bedrooms));
+  const [bathrooms, setBathrooms] = useState(text(d?.bathrooms));
+  const [area, setArea] = useState(text(d?.area_sqft));
+  const [listing, setListing] = useState(text(d?.listing_url));
+  const [message, setMessage] = useState(quote?.message ?? "");
   const [clientId, setClientId] = useState<number | null>(null);
+  const pending = create.isPending || edit.isPending;
+  const failure = create.error ?? edit.error;
   const [tried, setTried] = useState(false);
 
   const errors = {
@@ -59,16 +69,23 @@ export function ManualQuoteDialog({ onClose, onCreated }: { onClose: () => void;
     e.preventDefault();
     setTried(true);
     if (invalid) return;
+    const fields = {
+      name: name.trim(), phone: phone.trim(), email: email.trim() || null, locale, kind, city: city.trim(), address: address.trim(),
+      property: property || null, frequency: frequency || null,
+      ...(kind === "airbnb" ? { bedrooms: num(bedrooms), bathrooms: num(bathrooms), ...(listing.trim() ? { listing_url: listing.trim() } : {}) } : {}),
+      ...(num(area) !== undefined ? { area_sqft: num(area) } : {}),
+    };
     try {
-      const made = await create.mutateAsync({
-        name: name.trim(), phone: phone.trim(), email: email.trim() || null, locale, kind, city: city.trim(), address: address.trim(),
-        property: property || null, frequency: frequency || null, message: message.trim() || null, client_id: clientId,
-        ...(kind === "airbnb" ? { bedrooms: num(bedrooms), bathrooms: num(bathrooms), ...(listing.trim() ? { listing_url: listing.trim() } : {}) } : {}),
-        ...(num(area) !== undefined ? { area_sqft: num(area) } : {}),
-      });
+      if (quote) {
+        await edit.mutateAsync({ ...fields, message: locked ? undefined : message.trim() || null } as Parameters<typeof edit.mutateAsync>[0]);
+        toast(t("quoteEditDone"));
+        onClose();
+        return;
+      }
+      const made = await create.mutateAsync({ ...fields, message: message.trim() || null, client_id: clientId });
       toast(t("quoteManualCreated"));
       onClose();
-      onCreated(made.id);
+      onCreated?.(made.id);
     } catch {
       // shown from the mutation's error
     }
@@ -78,14 +95,14 @@ export function ManualQuoteDialog({ onClose, onCreated }: { onClose: () => void;
   const footer = (
     <>
       <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
-      <Button type="submit" form="quote-manual-form" variant="primary" busy={create.isPending}>{t("save")}</Button>
+      <Button type="submit" form="quote-manual-form" variant="primary" busy={pending}>{t("save")}</Button>
     </>
   );
 
   return (
-    <Dialog open title={t("quoteManualTitle")} onClose={onClose} footer={footer}>
+    <Dialog open title={quote ? t("quoteEditTitle") : t("quoteManualTitle")} onClose={onClose} footer={footer}>
       <form id="quote-manual-form" className="doc-form" onSubmit={(e) => void submit(e)} noValidate>
-        <p className="status">{t("quoteManualHint")}</p>
+        {!quote && <p className="status">{t("quoteManualHint")}</p>}
         <TextField label={t("clientFieldName")} value={name} maxLength={100} autoFocus error={shown("name")} onChange={(e) => setName(e.target.value)} />
         <div className="client-f2">
           <TextField label={t("clientFieldPhone")} type="tel" value={phone} maxLength={30} error={shown("phone")} onChange={(e) => setPhone(e.target.value)} />
@@ -121,10 +138,17 @@ export function ManualQuoteDialog({ onClose, onCreated }: { onClose: () => void;
         )}
         <TextField label={t("quoteArea")} type="number" inputMode="numeric" min={1} max={1000000} value={area} onChange={(e) => setArea(e.target.value)} />
         {kind === "airbnb" && <TextField label={t("propFieldListing")} type="url" inputMode="url" value={listing} maxLength={300} error={shown("listing")} onChange={(e) => setListing(e.target.value)} />}
-        <TextAreaField label={t("quoteManualNotes")} rows={5} value={message} maxLength={12000} onChange={(e) => setMessage(e.target.value)} />
-        <ClientPicker value={clientId} onChange={setClientId} />
+        {locked ? (
+          <div className="field">
+            <span className="field__label">{t("quoteManualNotes")}</span>
+            <p className="quote-body">{message || t("quoteNoDescription")}</p>
+          </div>
+        ) : (
+          <TextAreaField label={t("quoteManualNotes")} rows={5} value={message} maxLength={12000} onChange={(e) => setMessage(e.target.value)} />
+        )}
+        {!quote && <ClientPicker value={clientId} onChange={setClientId} />}
       </form>
-      {create.error && <ErrorNotice error={create.error} />}
+      {failure && <ErrorNotice error={failure} />}
     </Dialog>
   );
 }
