@@ -127,6 +127,22 @@ def vapid_keys() -> int:
     return 0
 
 
+def purge_visit_photos() -> int:
+    """Deletes visit photos older than 6 months (rows stay) and files no row knows. Prints counts only, never ids or paths."""
+    from datetime import datetime
+    from pathlib import Path
+
+    from app.schedule.service import COMPANY_TZ
+    from app.visits import purge
+
+    settings = get_settings()
+    engine = make_engine(settings.database_url)
+    with Session(engine) as db:
+        result = purge.run(db, Path(settings.visit_photos_dir), datetime.now(COMPANY_TZ).date())
+    print(f"purged={result['purged']} orphans={result['orphans']}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="app.cli")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -141,7 +157,10 @@ def main(argv: list[str] | None = None) -> int:
     r = sub.add_parser("reset-mfa", help="remove a user's two-step verification (lost phone)")
     r.add_argument("--username", required=True)
     sub.add_parser("vapid-keys", help="print a new pair of Web Push keys for deploy/.env")
+    sub.add_parser("purge-visit-photos", help="delete visit photos older than 6 months and files with no row")
     args = parser.parse_args(argv)
+    if args.command == "purge-visit-photos":
+        return purge_visit_photos()
     if args.command == "vapid-keys":
         return vapid_keys()
     if args.command == "reset-mfa":

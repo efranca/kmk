@@ -81,6 +81,8 @@ docker compose exec api python -m app.cli set-name --username NAME --name "Full 
 docker compose exec api python -m app.cli vapid-keys
 # lost phone: remove someone's two-step verification, recovery codes and sessions
 docker compose exec api python -m app.cli reset-mfa --username NAME
+# visit photos: delete the files of visits older than 6 months (rows stay) and files no row knows; prints purged=N orphans=M (run it daily)
+docker compose exec api python -m app.cli purge-visit-photos
 ```
 
 `create-superadmin` refuses if a super admin already exists. `reset-mfa` is audited (`mfa_reset`, via `cli`); the user then signs in with the password alone and can enroll again.
