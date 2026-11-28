@@ -120,7 +120,7 @@ export function TasksPage() {
   const categoryOptions = (categories.data ?? []).filter((c) => (countOf.get(c.id) ?? 0) > 0 || c.id === selected);
   const categoryMenu = showChips && shown.data && (categories.data ?? []).length > 0 && (
     <Segmented dropdown label={t("taskCatFilter")} value={selected === null ? "all" : String(selected)} onChange={(v) => setPick(v === "all" ? null : Number(v))}
-      options={[{ value: "all", label: `${t("taskCatAll")} ${loaded.length}` }, ...categoryOptions.map((c) => ({ value: String(c.id), label: `${c.icon ?? FALLBACK_CATEGORY_ICON} ${c.name} ${countOf.get(c.id) ?? 0}` }))]} />
+      options={[{ value: "all", label: t("taskCatAll") }, ...categoryOptions.map((c) => ({ value: String(c.id), label: `${c.icon ?? FALLBACK_CATEGORY_ICON} ${c.name}` }))]} />
   );
 
   const row = (task: Task) => (
@@ -154,9 +154,8 @@ export function TasksPage() {
           <div className="tasks-toolbar">
             {narrow && searchBox}
             {!searching && view === "list" && <Segmented label={t("taskStatusLabel")} value={status} onChange={setStatus} options={STATUSES.map((s) => ({ value: s, label: t(STATUS_KEYS[s]) }))} />}
-            {!narrow && searchBox}
             {narrow && (categoryMenu || faces) && <div className="tasks-toolbar__row">{categoryMenu}{faces}</div>}
-            {!narrow && faces}
+            {!narrow && (searchBox || faces) && <div className="tasks-toolbar__find">{searchBox}{faces}</div>}
           </div>
           {pickedPeople.length > 0 && all.data && (
             <section className="tasks-summary" aria-label={summaryTitle}>

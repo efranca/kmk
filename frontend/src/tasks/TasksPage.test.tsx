@@ -297,8 +297,8 @@ describe("TasksPage", () => {
       phone();
       await screen.findByText("In office");
       expect(screen.queryByRole("group", { name: "Filter by category" })).not.toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: /^Filter by category: All 2/ }));
-      fireEvent.click(screen.getByRole("menuitemradio", { name: "🏢 Office 1" }));
+      fireEvent.click(screen.getByRole("button", { name: "Filter by category: All" }));
+      fireEvent.click(screen.getByRole("menuitemradio", { name: "🏢 Office" }));
       expect(screen.queryByText("In shop")).not.toBeInTheDocument();
       expect(screen.getByText("In office")).toBeInTheDocument();
     });
@@ -312,6 +312,18 @@ describe("TasksPage", () => {
       const status = screen.getByRole("radiogroup", { name: "Which tasks" });
       expect(search.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
+  });
+
+  it("on a wide screen the search box opens right beside the faces, search first", async () => {
+    api([task({ title: "Open one" })]);
+    page();
+    await screen.findByText("Open one");
+    fireEvent.click(screen.getByRole("button", { name: "Search tasks" }));
+    const group = screen.getByRole("searchbox").closest(".tasks-toolbar__find");
+    expect(group).not.toBeNull();
+    const faces = screen.getByRole("group", { name: "Show" });
+    expect(group!.contains(faces)).toBe(true);
+    expect(screen.getByRole("searchbox").compareDocumentPosition(faces) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("keeps the chips and the search box beside the status switch on a wide screen", async () => {

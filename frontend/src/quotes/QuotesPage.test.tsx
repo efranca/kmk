@@ -58,6 +58,16 @@ describe("QuotesPage", () => {
     expect(await screen.findByRole("link", { name: /Maria Silva/ })).toBeInTheDocument();
   });
 
+  it("opens the search box in the same toolbar row as the tabs, like Users", async () => {
+    api();
+    renderWithProviders(<QuotesPage />);
+    await screen.findByRole("link", { name: /Maria Silva/ });
+    fireEvent.click(screen.getByRole("button", { name: "Search quotes" }));
+    const toolbar = screen.getByRole("searchbox").closest(".quotes-toolbar");
+    expect(toolbar).not.toBeNull();
+    expect(toolbar!.querySelector(".quotes-tabs")).not.toBeNull();
+  });
+
   it("searches name, address, phone and reference ignoring case and accents", async () => {
     api();
     renderWithProviders(<QuotesPage />);

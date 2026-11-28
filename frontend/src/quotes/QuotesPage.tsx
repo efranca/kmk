@@ -44,16 +44,16 @@ export function QuotesPage() {
           <IconButton icon="plus" variant="primary" label={t("quoteManualNew")} onClick={() => setEntering(true)} />
         </>
       } />
-      {searchOpen && (
-        <label className="tasks-toolbar__search quotes-searchbox">
-          <span className="visually-hidden">{t("quoteSearch")}</span>
-          <input type="search" value={text} autoFocus placeholder={t("quoteSearchPlaceholder")} onChange={(e) => setText(e.target.value)} />
-        </label>
-      )}
       <div className="quotes-toolbar">
         <div className="quotes-tabs">
           <Segmented dropdown={narrow} label={t("quoteTabs")} value={tab} onChange={setTab} options={TABS.map((value) => ({ value, label: t(TAB_KEYS[value]) }))} />
         </div>
+        {searchOpen && (
+          <label className="tasks-toolbar__search quotes-searchbox">
+            <span className="visually-hidden">{t("quoteSearch")}</span>
+            <input type="search" value={text} autoFocus placeholder={t("quoteSearchPlaceholder")} onChange={(e) => setText(e.target.value)} />
+          </label>
+        )}
       </div>
       {result.isPending ? <Loading /> : result.isError ? <ErrorNotice error={result.error} onRetry={() => void result.refetch()} /> : rows.length === 0 ? (
         searching ? <EmptyState>{t("quoteNoResults")}</EmptyState>
