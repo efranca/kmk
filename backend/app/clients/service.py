@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.auth import audit, policy
 from app.auth.errors import ApiError
 from app.clients.schemas import ClientIn, PropertyIn
+from app.invoices import money
 from app.models import Client, Document, Event, EventPerson, Property, Quote, Task, User
 
 FIELDS = ("name", "kinds", "contact_name", "email", "phone", "address", "city", "notes")
@@ -58,15 +59,21 @@ def list_clients(db: Session, actor: User, q: str | None) -> list[dict]:
     return [client_payload(c, actor) for c in db.scalars(query.order_by(func.lower(Client.name), Client.id).limit(LIST_LIMIT))]
 
 
-PROPERTY_FIELDS = ("name", "kind", "address", "city", "listing_url", "access_notes")
+PROPERTY_FIELDS = ("name", "kind", "address", "city", "listing_url", "access_notes", "visit_price")
 
 
-def property_payload(p: Property) -> dict:
-    return {**{f: getattr(p, f) for f in PROPERTY_FIELDS}, "id": p.id, "client_id": p.client_id}
+def property_payload(p: Property, actor: User | None = None) -> dict:
+    """The price per visit is for administrators only (`actor=None` means the caller already checked)."""
+    out = {**{f: getattr(p, f) for f in PROPERTY_FIELDS}, "id": p.id, "client_id": p.client_id}
+    if actor is None or policy.can_manage_clients(actor):
+        out["visit_price"] = money.as_json(p.visit_price)
+    else:
+        del out["visit_price"]
+    return out
 
 
-def _properties_of(db: Session, client_id: int) -> list[dict]:
-    return [property_payload(p) for p in db.scalars(select(Property).where(Property.client_id == client_id).order_by(Property.id))]
+def _properties_of(db: Session, client_id: int, actor: User | None = None) -> list[dict]:
+    return [property_payload(p, actor) for p in db.scalars(select(Property).where(Property.client_id == client_id).order_by(Property.id))]
 
 
 def check_property(db: Session, actor: User, property_id: int | None, client_id: int | None) -> None:
@@ -120,14 +127,14 @@ def detail_payload(db: Session, actor: User, client: Client) -> dict:
             select(Event.id, Event.title, Event.start_date, Event.start_time).join(EventPerson, EventPerson.event_id == Event.id)
             .where(Event.client_id == client.id, EventPerson.user_id == actor.id).order_by(Event.start_date.desc(), Event.id.desc()).limit(LINKED_LIMIT)
         ).all()
-        return {**client_payload(client, actor), "properties": _properties_of(db, client.id), "events": [{"id": i, "title": t, "start_date": _iso(d), "start_time": s.strftime("%H:%M") if s else None} for i, t, d, s in mine]}
+        return {**client_payload(client, actor), "properties": _properties_of(db, client.id, actor), "events": [{"id": i, "title": t, "start_date": _iso(d), "start_time": s.strftime("%H:%M") if s else None} for i, t, d, s in mine]}
     tasks = db.execute(select(Task.id, Task.title, Task.status, Task.due_date).where(Task.client_id == client.id).order_by(Task.due_date.desc().nulls_last(), Task.id.desc()).limit(LINKED_LIMIT)).all()
     events = db.execute(select(Event.id, Event.title, Event.start_date, Event.start_time).where(Event.client_id == client.id).order_by(Event.start_date.desc(), Event.id.desc()).limit(LINKED_LIMIT)).all()
     documents = db.execute(select(Document.id, Document.title, Document.content_type).where(Document.client_id == client.id, Document.size_bytes.is_not(None)).order_by(Document.created_at.desc()).limit(LINKED_LIMIT)).all()
     quotes = db.execute(select(Quote.id, Quote.status, Quote.kind, Quote.submitted_at).where(Quote.client_id == client.id).order_by(Quote.id.desc()).limit(LINKED_LIMIT)).all()
     return {
         **client_payload(client),
-        "properties": _properties_of(db, client.id),
+        "properties": _properties_of(db, client.id, actor),
         "tasks": [{"id": i, "title": t, "status": s, "due_date": _iso(d)} for i, t, s, d in tasks],
         "events": [{"id": i, "title": t, "start_date": _iso(d), "start_time": s.strftime("%H:%M") if s else None} for i, t, d, s in events],
         "documents": [{"id": i, "title": t, "content_type": ct} for i, t, ct in documents],

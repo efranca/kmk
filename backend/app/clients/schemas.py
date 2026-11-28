@@ -2,11 +2,13 @@
 
 import re
 import unicodedata
+from decimal import Decimal
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.auth.admin import clean_email
+from app.invoices.money import parse_amount
 from app.quotes.schemas import PHONE_RE
 from app.schedule.schemas import MAX_ID
 
@@ -102,6 +104,12 @@ class PropertyIn(BaseModel):
     city: str | None = None
     listing_url: str | None = None
     access_notes: str | None = None
+    visit_price: Decimal | None = None
+
+    @field_validator("visit_price", mode="before")
+    @classmethod
+    def _price(cls, v: object) -> Decimal | None:
+        return None if v is None else parse_amount(v)
 
     @field_validator("name")
     @classmethod
