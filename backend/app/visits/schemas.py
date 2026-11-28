@@ -3,7 +3,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schedule.schemas import MAX_ID
-from app.visits.limits import CHECKIN_PEOPLE_MAX
+from app.visits.limits import CHECKIN_PEOPLE_MAX, REASON_MAX
 
 
 class CheckInIn(BaseModel):
@@ -20,3 +20,12 @@ class CheckOutIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     confirm_no_photos: bool = False
+
+
+class SkipIn(BaseModel):
+    """A room left without photos, with the reason (trimmed and checked by the service)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    room_id: int = Field(ge=1, le=MAX_ID)
+    reason: str = Field(max_length=REASON_MAX * 4)

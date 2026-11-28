@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     vapid_public_key: str | None = None  # Web Push (python -m app.cli vapid-keys); without them nothing is pushed
     vapid_private_key: str | None = None
     vapid_subject: str = "mailto:admin@kmk-entretien.ca"
+    visit_photos_dir: str = "/data/visit-photos"  # where the photos of visits live (a mounted volume; never served as static files)
     api_host: str = "127.0.0.1"
     api_port: int = 8001
 

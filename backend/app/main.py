@@ -25,6 +25,7 @@ from app.schedule.routes import router as schedule_router
 from app.tasks.routes import router as tasks_router
 from app.system_settings import router as system_settings_router
 from app.version import router as version_router
+from app.visits.routes import photo_router as visit_photos_router
 from app.visits.routes import router as visits_router
 
 log = logging.getLogger("kmk")
@@ -71,6 +72,7 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
     app.include_router(quotes_router)
     app.include_router(invoices_router)
     app.include_router(visits_router)
+    app.include_router(visit_photos_router)
 
     @app.exception_handler(ApiError)
     async def api_error(request, exc: ApiError):

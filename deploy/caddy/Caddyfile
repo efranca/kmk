@@ -79,6 +79,18 @@ http://app.kmk-entretien.ca:8081 {
 		import api_proxy
 	}
 
+	# One photo of a visit goes up as the raw body (the API accepts at most 600 KiB).
+	@visitphoto {
+		method PUT
+		path_regexp ^/api/visits/[0-9]+/[0-9-]+/photos$
+	}
+	handle @visitphoto {
+		request_body {
+			max_size 768KB
+		}
+		import api_proxy
+	}
+
 	handle /api/* {
 		# Every other API request body is tiny JSON: refuse anything bigger before it reaches the application.
 		request_body {

@@ -98,6 +98,26 @@ def test_quote_routes_have_their_own_body_caps():
     assert text.count("max_size 64KB") == 1 and text.count("max_size 51MiB") == 1 and text.count("max_size 128KB") == 1
 
 
+def test_visit_photos_have_their_own_body_cap():
+    text = CADDYFILE.read_text()
+    assert text.count("\n\t@visitphoto {") == 1 and text.count("max_size 768KB") == 1
+    block = text[text.index("\t@visitphoto {"):text.index("handle /api/*")]
+    assert "method PUT" in block and "path_regexp ^/api/visits/[0-9]+/[0-9-]+/photos$" in block and "max_size 768KB" in block
+    from app.visits.limits import MAX_PHOTO_BYTES
+
+    assert MAX_PHOTO_BYTES < 768 * 1000
+    # the other counted caps are unchanged
+    assert text.count("max_size 64KB") == 1 and text.count("max_size 51MiB") == 1 and text.count("max_size 128KB") == 1
+
+
+def test_visit_photos_volume_and_setting_are_on_the_api_only(compose):
+    assert compose["api"]["environment"]["VISIT_PHOTOS_DIR"] == "/data/visit-photos"
+    assert "/data/visit-photos" in [v["target"] for v in compose["api"].get("volumes", [])]
+    for name, svc in compose.items():
+        if name != "api":
+            assert all(v["target"] != "/data/visit-photos" for v in svc.get("volumes", [])), name
+
+
 def test_devis_serves_the_quote_page():
     text = CADDYFILE.read_text()
     block = text[text.index("@devis path"):text.index("handle /assets/*")]

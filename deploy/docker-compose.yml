@@ -53,6 +53,9 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@kmk-entretien.ca}
+      VISIT_PHOTOS_DIR: /data/visit-photos
+    volumes:
+      - ./data/visit-photos:/data/visit-photos   # the photos of visits; the folder must be owned by uid 10001 (docs/operations)
     mem_limit: 1536m       # Argon2 uses 64 MiB per call (at most 4 at once); a 50 MB document upload holds a few copies (at most 2 at once)
     pids_limit: 256
     cap_drop: [ALL]

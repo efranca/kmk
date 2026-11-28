@@ -111,6 +111,21 @@ def _names(db: Session, ids: set[int]) -> dict[int, User]:
     return {u.id: u for u in db.scalars(select(User).where(User.id.in_(ids)))} if ids else {}
 
 
+def _photos_and_skips(db: Session, visit: Visit) -> tuple[list[dict], int, list[dict]]:
+    """The photos still there (removed and purged ones are left out), how many were ever taken, and the room skips."""
+    all_photos = list(db.scalars(select(VisitPhoto).where(VisitPhoto.visit_id == visit.id).order_by(VisitPhoto.uploaded_at, VisitPhoto.id)))
+    skip_rows = list(db.scalars(select(VisitRoomSkip).where(VisitRoomSkip.visit_id == visit.id).order_by(VisitRoomSkip.skipped_at, VisitRoomSkip.id)))
+    users = _names(db, {p.uploaded_by for p in all_photos if p.uploaded_by is not None} | {k.skipped_by for k in skip_rows if k.skipped_by is not None})
+    name_of = lambda user_id: display_name(users[user_id]) if user_id in users else None  # noqa: E731
+    photos = [
+        {"id": p.id, "room_id": p.room_id, "room_name": p.room_name, "uploaded_by_name": name_of(p.uploaded_by), "uploaded_at": _iso(p.uploaded_at), "url": f"/api/visit-photos/{p.id}"}
+        for p in all_photos
+        if p.deleted_at is None and p.purged_at is None
+    ]
+    skips = [{"id": k.id, "room_id": k.room_id, "room_name": k.room_name, "reason": k.reason, "skipped_by_name": name_of(k.skipped_by), "skipped_at": _iso(k.skipped_at)} for k in skip_rows]
+    return photos, len(all_photos), skips
+
+
 def visit_payload(db: Session, actor: User, event: Event | None, occurrence: Occurrence | None, visit: Visit | None, listed: frozenset[int], occurrence_date: date) -> dict:
     """One visit as the pages show it. Before the first check-in it is the occurrence with `"id": None`."""
     property_id = visit.property_id if visit is not None else event.property_id
@@ -127,6 +142,7 @@ def visit_payload(db: Session, actor: User, event: Event | None, occurrence: Occ
     name_of = lambda user_id: display_name(users[user_id]) if user_id in users else None  # noqa: E731
     listed_users = sorted((users[i] for i in listed if i in users), key=lambda u: names.sort_key(u.name, u.username))
 
+    photos, photo_total, skips = _photos_and_skips(db, visit) if visit is not None else ([], 0, [])
     state = "not_started" if visit is None else "closed" if visit.closed_at is not None else "in_progress"
     return {
         "id": visit.id if visit is not None else None,
@@ -155,8 +171,9 @@ def visit_payload(db: Session, actor: User, event: Event | None, occurrence: Occ
         "closed_by_name": name_of(visit.closed_by) if visit is not None and visit.closed_by is not None else None,
         "closed_without_photos": bool(visit.closed_without_photos) if visit is not None else False,
         "corrected": False,  # Task 5
-        "photos": [],  # Task 4
-        "skips": [],  # Task 4
+        "photos": photos,
+        "photo_count_total": photo_total,
+        "skips": skips,
         "corrections": [],  # Task 5
         "can_correct_until": None,  # Task 5
     }
@@ -164,6 +181,11 @@ def visit_payload(db: Session, actor: User, event: Event | None, occurrence: Occ
 
 def _found_payload(db: Session, actor: User, found: Found, visit: Visit | None = None) -> dict:
     return visit_payload(db, actor, found.event, found.occurrence, visit if visit is not None else found.visit, found.listed, found.occurrence_date)
+
+
+def visit_payload_of(db: Session, actor: User, event_id: int, occurrence_date: date) -> dict:
+    """The visit as the pages show it now (after a change in the same transaction)."""
+    return _found_payload(db, actor, find_visit(db, actor, event_id, occurrence_date))
 
 
 # ---- reading ----------------------------------------------------------------------------------------------------
