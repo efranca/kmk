@@ -184,3 +184,16 @@ def can_manage_invoices(actor: User) -> bool:
 def check_invoices(actor: User) -> None:
     if not can_manage_invoices(actor):
         raise ApiError(403, "forbidden")
+
+
+def can_see_visit(actor: User, listed_ids: frozenset[int], checked_in_ids: frozenset[int]) -> bool:
+    """Who sees a visit (an Agenda occurrence with a property) and its check-ins: admins and the super admin see all;
+    anyone else only when the occurrence lists them, or when they have a check-in on it (so a person taken off the
+    Agenda item still sees the record of what they did). Unlike `can_see_item`, having made the event is not enough."""
+    return actor.role in PRIVILEGED or actor.id in listed_ids or actor.id in checked_in_ids
+
+
+def check_visit_admin(actor: User) -> None:
+    """The "Visits done" report and anything about every visit at once: admins and the super admin."""
+    if actor.role not in PRIVILEGED:
+        raise ApiError(403, "forbidden")
