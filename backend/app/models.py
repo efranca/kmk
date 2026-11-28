@@ -1,7 +1,8 @@
 import uuid
 from datetime import date, datetime, time
+from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Identity, Integer, LargeBinary, String, Text, Time, Uuid, func, text
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Identity, Integer, LargeBinary, Numeric, String, Text, Time, Uuid, func, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -228,6 +229,7 @@ class Property(Base):
     city: Mapped[str | None] = mapped_column(Text, nullable=True)
     listing_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     access_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    visit_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)  # admins only
     created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
@@ -416,3 +418,47 @@ class PushSubscription(Base):
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Invoice(Base):
+    """A numbered invoice. The billed-to data is a snapshot, so later edits of the client do not change it."""
+
+    __tablename__ = "invoices"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    number: Mapped[int] = mapped_column(Integer, unique=True)
+    client_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("clients.id", ondelete="SET NULL"), nullable=True)
+    bill_name: Mapped[str] = mapped_column(Text)
+    bill_address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bill_city: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bill_phone: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bill_email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    issued_on: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(Text, default="unpaid")  # unpaid | paid | cancelled
+    paid_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    subtotal: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    tax: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
+    extra: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
+    total: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    document_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
+    created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class InvoiceLine(Base):
+    """One line of an invoice: an Agenda occurrence (event_id + its original date) or a manual line."""
+
+    __tablename__ = "invoice_lines"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    invoice_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("invoices.id", ondelete="CASCADE"))
+    position: Mapped[int] = mapped_column(Integer)
+    description: Mapped[str] = mapped_column(Text)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    event_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("events.id", ondelete="SET NULL"), nullable=True)
+    occurrence_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    live: Mapped[bool] = mapped_column(Boolean, default=True)  # false once the invoice is cancelled
