@@ -171,6 +171,15 @@ The schedule added `python-dateutil` (backend) and `react-router`, `@tanstack/re
 - **Customer replies** arrive in the team's Gmail (through the Reply-To), not in the app: paste them with "Add customer reply" on the quote so the history stays complete. There is no inbound email.
 - **Troubleshooting:** no push after turning it on → check `VAPID_*` are in the API's environment (`docker compose exec api env | grep VAPID`) and that the browser allowed notifications; a reply marked "Not sent" → the sender's domain is not verified in Resend, or the provider is down (use "Try again").
 
+## Invoices
+
+- **Numbering:** the company's own invoices reached 006 outside the app, so the first invoice made here is **007**. The number is `max(number) + 1` (or 7 when there are none), taken under an advisory lock, so numbers are gap-free and two admins billing at once cannot collide. A cancelled invoice keeps its number; invoices are never deleted. To start from another number, insert one row with the number just below it (a cancelled invoice with no lines does it), or change `FIRST_NUMBER` in `backend/app/invoices/service.py`.
+- **Where the company block and logo live:** `backend/app/invoices/pdf.py` (name, Lévis, phone, email, site, NEQ, the thank-you line) and `backend/app/invoices/assets/` (`logo.png`, a copy of `frontend/public/logo-horizontal.png`, and the three Liberation Sans fonts with their licence). Change them there and redeploy; nothing is set in Settings. The PDF is French only.
+- **Stored PDF:** each invoice's PDF is generated once, when it is created, and kept as a Document (visibility "admins", linked to the client, category "Factures", file `Facture-007.pdf`). It follows the library's backups and limits. If someone deletes that document, the invoice still downloads (drawn again from its snapshot).
+- **Prices:** the price of one visit is set on the property (client page, Properties). No tax is calculated: the TVA line prints 0,00 $.
+- **Email:** the invoice email uses the quote sender settings (Settings > Company settings: sender and Reply-To) and the normal email backend; the PDF travels as an attachment. A failed send changes nothing and can be tried again.
+- **Dependency:** the PDF is drawn with `fpdf2` (and Pillow); `scripts/audit-deps.sh` covers them.
+
 ## Email: switching from `log` to Resend
 
 1. Resend: create the account, add the domain `mail.kmk-entretien.ca`, add the DNS records it shows in Cloudflare as **DNS only**, verify, add a DMARC record (`_dmarc`, start with `p=none`), create an API key restricted to sending for that domain.
