@@ -5,7 +5,7 @@ import { Icon, type IconName } from "../ui/Icon";
 import MoreSheet from "./MoreSheet";
 import { fitTabs, MIN_TAB_PX } from "./navFit";
 
-export type NavId = "dashboard" | "schedule" | "tasks" | "documents" | "clients" | "quotes" | "admin" | "devices";
+export type NavId = "dashboard" | "schedule" | "tasks" | "documents" | "clients" | "quotes" | "invoices" | "admin" | "devices";
 type NavItem = { id: NavId; to: string; labelKey: string; icon: IconName; adminOnly?: boolean; superAdminOnly?: boolean; staffWithClients?: boolean };
 
 const ITEMS: NavItem[] = [
@@ -15,6 +15,7 @@ const ITEMS: NavItem[] = [
   { id: "documents", to: "/documents", labelKey: "navDocuments", icon: "document" },
   { id: "clients", to: "/clients", labelKey: "clientsTitle", icon: "clients", staffWithClients: true },
   { id: "quotes", to: "/quotes", labelKey: "quoteTitle", icon: "quote", adminOnly: true },
+  { id: "invoices", to: "/invoices", labelKey: "invTitle", icon: "invoice", adminOnly: true },
   { id: "admin", to: "/admin", labelKey: "navUsers", icon: "users", adminOnly: true },
   { id: "devices", to: "/devices", labelKey: "navDevices", icon: "devices", superAdminOnly: true },
 ];
