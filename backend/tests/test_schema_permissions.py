@@ -32,6 +32,19 @@ def test_app_role_has_full_dml_on_other_tables(owner_engine, app_engine):
         c.execute(text("DELETE FROM users WHERE username = 'alice'"))
 
 
+def test_app_role_cannot_change_visit_corrections(owner_engine, app_engine):
+    with app_engine.begin() as c:
+        vid = c.execute(
+            text("INSERT INTO visits (occurrence_date, visit_date, property_name) VALUES ('2026-11-05', '2026-11-05', 'X') RETURNING id")
+        ).scalar()
+        c.execute(text("INSERT INTO visit_corrections (visit_id, kind, reason) VALUES (:v, 'close', 'forgot')"), dict(v=vid))
+        assert c.execute(text("SELECT count(*) FROM visit_corrections")).scalar() == 1
+    for sql in ("UPDATE visit_corrections SET reason = 'y'", "DELETE FROM visit_corrections"):
+        with pytest.raises(ProgrammingError):
+            with app_engine.begin() as c:
+                c.execute(text(sql))
+
+
 def test_only_one_superadmin(owner_engine):
     with pytest.raises(IntegrityError):
         with owner_engine.begin() as c:

@@ -230,6 +230,7 @@ class Property(Base):
     listing_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     access_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     visit_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)  # admins only
+    photos_required: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -462,3 +463,96 @@ class InvoiceLine(Base):
     event_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("events.id", ondelete="SET NULL"), nullable=True)
     occurrence_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     live: Mapped[bool] = mapped_column(Boolean, default=True)  # false once the invoice is cancelled
+
+
+class PropertyRoom(Base):
+    """A named room of a property, in display order (the photo checklist)."""
+
+    __tablename__ = "property_rooms"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    property_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("properties.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column(Integer)
+
+
+class Visit(Base):
+    """One cleaning (an Agenda occurrence) as it actually happened. Names are snapshots so it outlives the event and property."""
+
+    __tablename__ = "visits"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    event_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("events.id", ondelete="SET NULL"), nullable=True)
+    occurrence_date: Mapped[date] = mapped_column(Date)  # the original date of the occurrence
+    visit_date: Mapped[date] = mapped_column(Date)  # the day it took place
+    client_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("clients.id", ondelete="SET NULL"), nullable=True)
+    property_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("properties.id", ondelete="SET NULL"), nullable=True)
+    client_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    property_name: Mapped[str] = mapped_column(Text)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    closed_without_photos: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class VisitPerson(Base):
+    """Someone checked in to a visit; withdrawn_at is set when they are taken off it."""
+
+    __tablename__ = "visit_people"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    visit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("visits.id", ondelete="CASCADE"))
+    user_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_name: Mapped[str] = mapped_column(Text)
+    checked_in_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    checked_in_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    withdrawn_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+
+class VisitPhoto(Base):
+    """A photo taken during a visit; the bytes live in the file store under file_id."""
+
+    __tablename__ = "visit_photos"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    visit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("visits.id", ondelete="CASCADE"))
+    file_id: Mapped[str] = mapped_column(Text, unique=True)
+    room_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("property_rooms.id", ondelete="SET NULL"), nullable=True)
+    room_name: Mapped[str] = mapped_column(Text)
+    content_type: Mapped[str] = mapped_column(Text)  # image/webp | image/jpeg
+    size: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(Text)
+    uploaded_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class VisitRoomSkip(Base):
+    """A room left without photos, with the reason given."""
+
+    __tablename__ = "visit_room_skips"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    visit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("visits.id", ondelete="CASCADE"))
+    room_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("property_rooms.id", ondelete="SET NULL"), nullable=True)
+    room_name: Mapped[str] = mapped_column(Text)
+    reason: Mapped[str] = mapped_column(Text)
+    skipped_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    skipped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class VisitCorrection(Base):
+    """Append-only record of a change made to a visit after the fact (the app role cannot update or delete it)."""
+
+    __tablename__ = "visit_corrections"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    visit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("visits.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(Text)  # close | withdraw | add_person | add_photo | remove_photo | skip_room | reopen
+    actor_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reason: Mapped[str] = mapped_column(Text)
+    details: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
