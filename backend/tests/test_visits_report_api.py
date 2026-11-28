@@ -233,6 +233,113 @@ def test_bad_dates_and_reversed_range(team):
     assert team.boss[0].get("/api/visits/report", params={"to": "2026-11-01"}).status_code == 422
 
 
+# ---- edge cases the pay depends on ----------------------------------------------------------------------------------
+
+
+def csv_rows(t, **params):
+    r = t.boss[0].get("/api/visits/report.csv", params={**RANGE, **params})
+    assert r.status_code == 200, r.text
+    return parse(r)[1:]
+
+
+def test_visits_exactly_on_the_range_ends_count_and_one_day_outside_does_not(team):
+    narrow = {"from": "2026-11-10", "to": "2026-11-20"}
+    for day in ("2026-11-09", "2026-11-10", "2026-11-20", "2026-11-21"):
+        make_visit(team, day, ["ana"])
+    assert by_name(report(team, **narrow))["Ana"]["visits"] == 2
+    assert [row[0] for row in csv_rows(team, **narrow)] == ["2026-11-10", "2026-11-20"]
+    r = team.boss[0].get(f"/api/visits/report/{team.ids['ana']}", params=narrow)
+    assert [line["date"] for line in r.json()["visits"]] == ["2026-11-10", "2026-11-20"]
+
+
+def test_a_deleted_account_still_counts_in_the_summary_and_the_csv(team):
+    make_visit(team, "2026-11-03", ["ana", "carla"])
+    make_visit(team, "2026-11-04", ["carla"])
+    carla = team.ids["carla"]
+    sql(team.owner, "DELETE FROM users WHERE id = :u", u=carla)
+    assert sql(team.owner, "SELECT count(*) FROM visit_people WHERE user_id IS NULL AND user_name = 'Carla'")[0][0] == 2
+    gone = by_name(report(team))["Carla"]
+    assert (gone["user_id"], gone["visits"]) == (None, 2)
+    assert [(row[0], row[1]) for row in csv_rows(team) if row[1] == "Carla"] == [("2026-11-03", "Carla"), ("2026-11-04", "Carla")]
+    r = team.boss[0].get(f"/api/visits/report/{carla}", params=RANGE)  # the old id has no detail: the CSV covers them
+    assert (r.status_code, r.json()["visits"]) == (200, [])
+
+
+def test_two_deleted_accounts_with_the_same_name_are_merged_by_name(team):
+    """Documented choice (report._key): a deleted account is known only by its name copy, so two deleted accounts with
+    the same name make one summary line; the CSV still has one row per visit and person."""
+    make_visit(team, "2026-11-03", ["bruno"])
+    make_visit(team, "2026-11-04", ["carla"])
+    sql(team.owner, "UPDATE visit_people SET user_name = 'Sam'")
+    sql(team.owner, "DELETE FROM users WHERE id IN (:b, :c)", b=team.ids["bruno"], c=team.ids["carla"])
+    assert [(p["name"], p["user_id"], p["visits"]) for p in report(team).json()["people"]] == [("Sam", None, 2)]
+    assert [row[1] for row in csv_rows(team)] == ["Sam", "Sam"]
+
+
+def test_the_same_person_on_two_visits_the_same_day_counts_two(team):
+    make_visit(team, "2026-11-03", ["ana"])
+    make_visit(team, "2026-11-03", ["ana"], prop="Studio")
+    assert by_name(report(team))["Ana"]["visits"] == 2
+    assert len(csv_rows(team)) == 2 and len(detail(team, "ana")) == 2
+
+
+def test_withdrawn_then_added_again_is_one_csv_row(team):
+    v, _ = make_visit(team, "2026-11-03", ["ana"])
+    sql(team.owner, "UPDATE visit_people SET withdrawn_at = now() WHERE visit_id = :v", v=v)
+    add_person(team, v, "ana")
+    assert by_name(report(team))["Ana"]["visits"] == 1
+    assert len(csv_rows(team)) == 1 and len(detail(team, "ana")) == 1
+
+
+def visit_at(t, day, checked_in_at, closed_at, name="ana"):
+    c, h = t.boss
+    eid = create(c, h, title="Ménage", start_date=day, client_id=t.cid, property_id=t.pid).json()["event"]["id"]
+    vid = sql(
+        t.owner,
+        "INSERT INTO visits (event_id, occurrence_date, visit_date, client_name, property_name, closed_at) VALUES (:e, :d, :d, 'Tremblay', 'Chalet', :c) RETURNING id",
+        e=eid, d=day, c=closed_at,
+    )[0][0]
+    sql(
+        t.owner,
+        "INSERT INTO visit_people (visit_id, user_id, user_name, checked_in_at, checked_in_by) VALUES (:v, :u, :n, :at, :u)",
+        v=vid, u=t.ids[name], n=name.capitalize(), at=checked_in_at,
+    )
+
+
+def test_the_dst_day_and_midnight_utc_count_by_the_visit_date_with_toronto_times(team):
+    # 2026-11-01: clocks go back at 02:00 EDT (06:00 UTC). One visit in the repeated hour, one around midnight UTC.
+    visit_at(team, "2026-11-01", "2026-11-01 05:30+00", "2026-11-01 06:45+00")  # 01:30 EDT -> 01:45 EST
+    visit_at(team, "2026-11-01", "2026-11-01 23:50+00", "2026-11-02 00:20+00")  # 18:50 -> 19:20 EST, next day in UTC
+    one_day = {"from": "2026-11-01", "to": "2026-11-01"}
+    assert by_name(report(team, **one_day))["Ana"]["visits"] == 2
+    assert report(team, **{"from": "2026-11-02", "to": "2026-11-02"}).json()["people"] == []
+    assert report(team, **{"from": "2026-10-31", "to": "2026-10-31"}).json()["people"] == []
+    assert sorted((row[0], row[4], row[5]) for row in csv_rows(team, **one_day)) == [("2026-11-01", "01:30", "01:45"), ("2026-11-01", "18:50", "19:20")]
+    assert sorted((line["checked_in_at"], line["closed_at"]) for line in detail(team, "ana")) == [("01:30", "01:45"), ("18:50", "19:20")]
+
+
+@pytest.mark.parametrize("lead", [" ", "\t", "\r", "\n", "\xa0", "\x0b", "\x0c", " ", "　", " \xa0\t"])
+@pytest.mark.parametrize("start", ["=", "+", "-", "@"])
+def test_the_formula_guard_skips_any_leading_whitespace(lead, start):
+    from app.visits.report import safe_cell
+
+    text = f"{lead}{start}SUM(A1)"
+    assert safe_cell(text) == "'" + text
+
+
+def test_the_formula_guard_leaves_plain_text_alone():
+    from app.visits.report import safe_cell
+
+    for text in ("Ana", "Café, \"bar\"", "\xa0Ana", "a=b", "", None, 3):
+        assert safe_cell(text) == ("" if text is None else str(text))
+
+
+def test_a_huge_person_id_is_refused(team):
+    for bad in ("99999999999999999999", "9223372036854775808", "0"):
+        r = team.boss[0].get(f"/api/visits/report/{bad}", params=RANGE)
+        assert r.status_code == 422, bad
+
+
 @pytest.mark.parametrize("path", ["/api/visits/report", "/api/visits/report.csv", "/api/visits/report/1"])
 def test_static_routes_are_not_swallowed_by_the_visit_route(team, path):
     r = team.boss[0].get(path, params=RANGE)

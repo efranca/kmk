@@ -25,7 +25,10 @@ def _hhmm(moment: datetime | None) -> str | None:
 
 
 def _key(person: VisitPerson) -> object:
-    return person.user_id if person.user_id is not None else ("name", person.user_name)  # a deleted account keeps its name copy
+    """Who a check-in counts for: the account, or, once the account was deleted (`user_id` NULL), its name copy. Two
+    deleted accounts with the same name are therefore merged into one summary line (and one visit counts once for
+    them): nothing else tells them apart any more. The CSV still lists every visit and person."""
+    return person.user_id if person.user_id is not None else ("name", person.user_name)
 
 
 def _done(db: Session, frm: date, to: date) -> list[tuple[Visit, VisitPerson]]:
@@ -127,9 +130,10 @@ def person(db: Session, user_id: int, frm: date, to: date) -> list[dict]:
 
 
 def safe_cell(value: object) -> str:
-    """A cell as text; one a spreadsheet could take for a formula (after any leading blanks, tab or CR) gets a leading `'`."""
+    """A cell as text; one a spreadsheet could take for a formula (after any leading whitespace, Unicode included: a
+    no-break space, a vertical tab...) gets a leading `'`."""
     text = "" if value is None else str(value)
-    if text.lstrip(" \t\r\n").startswith(_FORMULA_START):
+    if text.lstrip().startswith(_FORMULA_START):
         return "'" + text
     return text
 
