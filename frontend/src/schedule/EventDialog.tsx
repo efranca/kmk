@@ -185,7 +185,7 @@ function EventForm({ event, item, date, time, onClose }: EventFormProps) {
             )}
           </div>
 
-          <div className="field">
+          {(user.role !== "user" || event !== null) && <div className="field">
             <span className="field__label">{t("schFormPeople")}</span>
             <AvatarFilter
               people={people.filter((p) => p.active !== false || values.people.includes(p.id))}
@@ -199,7 +199,7 @@ function EventForm({ event, item, date, time, onClose }: EventFormProps) {
               disabled={!editable || user.role === "user"}
             />
             {user.role !== "user" && <p className="field__hint">{t("schFormPeopleHint")}</p>}
-          </div>
+          </div>}
 
           <ClientPicker value={values.clientId} onChange={(id) => setValues({ ...values, clientId: id, propertyId: id === values.clientId ? values.propertyId : null })} />
           <PropertyPicker clientId={values.clientId} value={values.propertyId} onChange={(id) => set("propertyId", id)} />

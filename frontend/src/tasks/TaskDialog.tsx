@@ -74,7 +74,7 @@ export function TaskDialog({ task, onClose, defaultPeople }: TaskDialogProps) {
       {!editable && <p className="notice" role="note">{t("taskViewOnly")}</p>}
       <form id={formId} onSubmit={(e) => swallow(submit(e))} noValidate>
         <fieldset className="sched-form" disabled={!editable}>
-          <TaskFields values={values} errors={errors} onChange={setValues} autoFocus={!task} autoIcon={!task} peopleLocked={user.role === "user"} />
+          <TaskFields values={values} errors={errors} onChange={setValues} autoFocus={!task} autoIcon={!task} peopleLocked={user.role === "user"} peopleHidden={user.role === "user" && !task} />
         </fieldset>
       </form>
       {task && (

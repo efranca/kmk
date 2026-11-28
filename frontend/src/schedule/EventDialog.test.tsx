@@ -44,12 +44,11 @@ const newSwimming: EventDialogTarget = { kind: "new", date: "2026-11-05", minute
 const bodyOf = (api: ReturnType<typeof setup>["api"], method: string) => api.calls.find((c) => c.method === method)?.body;
 
 describe("EventDialog for Staff", () => {
-  it("makes a new event for the person themself and locks the people", async () => {
+  it("makes a new event for the person themself, without offering the People field", async () => {
     const api = setup(newSwimming, {});
     fireEvent.change(await screen.findByLabelText(/^Title/), { target: { value: "Dentist" } });
-    expect(screen.getByRole("button", { name: "Alice" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Alice" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Leo" })).toBeDisabled();
+    expect(screen.queryByText("People")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Leo" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(bodyOf(api.api, "POST")).toBeDefined());
     expect((bodyOf(api.api, "POST") as { people: number[] }).people).toEqual([1]);
@@ -350,7 +349,7 @@ describe("EventDialog: a person whose account was disabled", () => {
   it("is not offered when adding a new event", async () => {
     const gone = { ...person(5, "Gaby Gone", "pink"), active: false };
     mockApi({ "GET /api/schedule/people": () => ({ people: [alice, leo, gone] }) });
-    renderWithProviders(<EventDialog target={newSwimming} onClose={vi.fn()} />);
+    renderWithProviders(<EventDialog target={newSwimming} onClose={vi.fn()} />, { session: adminSession });
     await screen.findByRole("button", { name: "Leo" });
     expect(screen.queryByRole("button", { name: "Gaby Gone" })).toBeNull();
   });

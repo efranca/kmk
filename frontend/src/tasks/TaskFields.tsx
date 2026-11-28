@@ -23,10 +23,12 @@ interface TaskFieldsProps {
   autoIcon?: boolean;
   /** Staff: a task is for themselves, so the people cannot be changed. */
   peopleLocked?: boolean;
+  /** Staff adding a task: it is for them, so the field is not shown at all. */
+  peopleHidden?: boolean;
 }
 
 /** The fields of a task, shared by every way of editing one. */
-export function TaskFields({ values, errors, onChange, autoFocus, autoIcon, peopleLocked }: TaskFieldsProps) {
+export function TaskFields({ values, errors, onChange, autoFocus, autoIcon, peopleLocked, peopleHidden }: TaskFieldsProps) {
   const { t } = useTranslation();
   const group = useId();
   const narrow = useNarrow();
@@ -56,7 +58,7 @@ export function TaskFields({ values, errors, onChange, autoFocus, autoIcon, peop
         />
       </div>
 
-      <div className="field">
+      {!peopleHidden && <div className="field">
         <span className="field__label">{t("taskFieldPeople")}</span>
         <AvatarFilter
           people={people.filter((p) => p.active !== false || values.people.includes(p.id))}
@@ -70,7 +72,7 @@ export function TaskFields({ values, errors, onChange, autoFocus, autoIcon, peop
           disabled={peopleLocked}
         />
         {!peopleLocked && <p className="field__hint">{t("taskFieldPeopleHint")}</p>}
-      </div>
+      </div>}
 
       <div className="field">
         <span className="field__label" id={`${group}-due`}>{t("taskFieldDue")} ({t("optional")})</span>

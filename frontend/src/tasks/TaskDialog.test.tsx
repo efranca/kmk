@@ -74,13 +74,15 @@ describe("TaskDialog", () => {
     expect(await screen.findByRole("button", { name: "Bob Tremblay" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("Staff make a task for themselves only: their own face is picked and the people cannot change", async () => {
-    api();
+  it("Staff make a task for themselves only: the People field is not offered, and the task is saved for them", async () => {
+    const { calls } = api({ "POST /api/tasks": { task: existing } });
     renderWithProviders(<TaskDialog task={null} defaultPeople={[2]} onClose={() => {}} />);
-    const bob = await screen.findByRole("button", { name: "Bob Tremblay" });
-    expect(bob).toHaveAttribute("aria-pressed", "false");
-    expect(bob).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Alice Roy" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.change(await screen.findByLabelText("Title"), { target: { value: "Mop the floor" } });
+    expect(screen.queryByText("People")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Bob Tremblay" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect((lastBody(calls, "POST") as { people: number[] }).people).toEqual([1]);
   });
 
   it("does not save a blank title and says why", async () => {
