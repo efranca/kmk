@@ -51,7 +51,7 @@ export function ClientPage({ id }: { id: number }) {
 
   return (
     <div className="page page--client">
-      <PageHeader title={<span className="clientpage__top">{back}{client.name}</span>} actions={canManage ? <Button icon="pencil" onClick={() => setEditing(true)}>{t("clientEdit")}</Button> : undefined} />
+      <PageHeader title={<span className="clientpage__top">{back}{client.name}</span>} actions={canManage ? (narrow ? <IconButton icon="pencil" label={t("clientEdit")} onClick={() => setEditing(true)} /> : <Button icon="pencil" onClick={() => setEditing(true)}>{t("clientEdit")}</Button>) : undefined} />
       <Segmented dropdown={narrow} label={t("clientTabs")} value={tab} onChange={setTab} options={tabs.map((x) => ({ value: x, label: counts[x] ? `${t(TAB_KEYS[x])} ${counts[x]}` : t(TAB_KEYS[x]) }))} />
       <section className="section client-card">
         {tab === "details" && (
