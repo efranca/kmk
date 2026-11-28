@@ -247,7 +247,7 @@ def has_photos(db: Session, visit_id: int) -> bool:
 
 
 def check_out(db: Session, actor: User, event_id: int, occurrence_date: date, confirm_no_photos: bool, now: datetime, ip: str) -> dict:
-    """Any person checked in closes the visit, for everyone checked in."""
+    """Any person checked in closes the visit, for everyone checked in, on the visit's own day (company time zone)."""
     found = find_visit(db, actor, event_id, occurrence_date)
     if found.visit is None:
         raise ApiError(403, "not_checked_in")
@@ -256,6 +256,8 @@ def check_out(db: Session, actor: User, event_id: int, occurrence_date: date, co
         raise ApiError(403, "not_checked_in")
     if visit.closed_at is not None:
         raise ApiError(409, "already_closed")
+    if company_date(now) > visit.visit_date:  # after the visit's day, a forgotten check-out is closed by a correction
+        raise ApiError(422, "not_today")
     missing = missing_rooms(db, visit)
     if missing:
         raise ApiError(409, "rooms_missing", {"rooms": missing})

@@ -242,6 +242,18 @@ def test_photos_required_blocks_checkout_with_missing_rooms(team, owner_engine):
     assert (v["state"], v["closed_without_photos"]) == ("closed", False)
 
 
+def test_checkout_the_day_after_is_refused(team, clock):
+    """After the visit's own day a forgotten check-out is closed only through a correction (spec sections 7 and 10)."""
+    ok(checkin(team.ana, team, [team.ids["ana"]]))
+    clock["now"] = datetime(2026, 11, 6, 4, 59, tzinfo=timezone.utc)  # 23:59 on the 5th in Toronto: still the visit's day
+    r = checkout(team.ana, team, False)
+    assert (r.status_code, r.json()) == (409, {"error": "no_photos"})
+    clock["now"] = datetime(2026, 11, 6, 5, 0, tzinfo=timezone.utc)  # 00:00 on the 6th in Toronto
+    r = checkout(team.ana, team, True)
+    assert (r.status_code, r.json()) == (422, {"error": "not_today"})
+    assert ok(read(team.ana, team))["state"] == "in_progress"
+
+
 def test_second_checkout_is_409(team):
     ok(checkin(team.ana, team, [team.ids["ana"], team.ids["bruno"]]))
     ok(checkout(team.ana, team, True))
