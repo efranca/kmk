@@ -77,9 +77,8 @@ def test_list_gate(make_client, add_user, add_mfa_user):
 
 # ---- the actions advertised by the list equal what the endpoints allow ----
 
-def scenario(owner_engine, add_user, add_mfa_user, actor_role, target, status, mfa):
-    with owner_engine.begin() as conn:
-        conn.execute(text("TRUNCATE users, sessions, login_attempts, audit_log, tokens, recovery_codes RESTART IDENTITY CASCADE"))
+def scenario(reset_db, add_user, add_mfa_user, actor_role, target, status, mfa):
+    reset_db()
     add_user("actor", "actor@example.com", role=actor_role)
     if target == "self":
         return "actor"
@@ -99,9 +98,9 @@ SCENARIOS = (
 
 
 @pytest.mark.parametrize("actor_role,target,status,mfa", SCENARIOS)
-def test_listed_actions_match_what_the_endpoints_allow(make_client, add_user, add_mfa_user, owner_engine, actor_role, target, status, mfa):
+def test_listed_actions_match_what_the_endpoints_allow(make_client, add_user, add_mfa_user, owner_engine, reset_db, actor_role, target, status, mfa):
     def build():
-        name = scenario(owner_engine, add_user, add_mfa_user, actor_role, target, status, mfa)
+        name = scenario(reset_db, add_user, add_mfa_user, actor_role, target, status, mfa)
         c = make_client()
         token = login(c, "actor").json()["csrf_token"]
         h = {**ORIGIN, "X-CSRF-Token": token}

@@ -59,15 +59,67 @@ def app_engine():
     engine.dispose()
 
 
+def _delete_plan(engine) -> tuple[list[str], str | None]:
+    """Every table except alembic_version, children before parents, plus one statement that rewinds the sequences.
+
+    Computed from the catalog so a new table is cleaned without touching this file. TRUNCATE ... RESTART IDENTITY takes
+    about 800 ms on this server (it rewrites every table's files), while DELETE on these tiny tables takes a few ms.
+    """
+    with engine.connect() as c:
+        tables = [r[0] for r in c.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'alembic_version'"))]
+        deps = {t: set() for t in tables}  # table -> tables that must be emptied before it (those that reference it)
+        for child, parent in c.execute(
+            text("SELECT conrelid::regclass::text, confrelid::regclass::text FROM pg_constraint WHERE contype = 'f'")
+        ):
+            if child != parent and child in deps and parent in deps:
+                deps[parent].add(child)
+        seqs = [r[0] for r in c.execute(text("SELECT quote_ident(schemaname) || '.' || quote_ident(sequencename) FROM pg_sequences WHERE schemaname = 'public'"))]
+    order: list[str] = []
+    done: set[str] = set()
+
+    def visit(t: str, stack: tuple[str, ...] = ()) -> None:
+        if t in done:
+            return
+        if t in stack:
+            raise RuntimeError(f"foreign key cycle through {t}: clean_db needs a different strategy")
+        for child in sorted(deps[t]):
+            visit(child, stack + (t,))
+        done.add(t)
+        order.append(t)
+
+    for t in sorted(tables):
+        visit(t)
+    rewind = "SELECT " + ", ".join(f"setval('{s}', 1, false)" for s in seqs) if seqs else None
+    return order, rewind
+
+
+_plans: dict[int, tuple[list[str], str | None]] = {}
+
+
+def _reset(engine) -> None:
+    if id(engine) not in _plans:
+        _plans[id(engine)] = _delete_plan(engine)
+    order, rewind = _plans[id(engine)]
+    with engine.begin() as c:
+        for table in order:
+            c.execute(text(f'DELETE FROM "{table}"'))
+        if rewind:
+            c.execute(text(rewind))
+
+
 @pytest.fixture(autouse=True)
 def clean_db(request):
     if "owner_engine" not in request.fixturenames:
         yield
         return
-    engine = request.getfixturevalue("owner_engine")
-    with engine.begin() as c:
-        c.execute(text("TRUNCATE users, sessions, login_attempts, audit_log, tokens, recovery_codes, events, event_people, event_exceptions, event_reminders, reminder_dismissals, task_categories, tasks, task_people, document_categories, documents, document_files, quotes, quote_photos, quote_messages, app_settings, push_subscriptions, calendar_feeds, invoices, invoice_lines RESTART IDENTITY CASCADE"))
+    _reset(request.getfixturevalue("owner_engine"))
     yield
+
+
+@pytest.fixture
+def reset_db(owner_engine):
+    """Empties the database again in the middle of a test (fast: see `_delete_plan`)."""
+    return lambda: _reset(owner_engine)
 
 
 @pytest.fixture
