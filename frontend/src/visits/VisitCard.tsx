@@ -98,11 +98,21 @@ export function VisitCard({ visit, showDate = false }: { visit: Visit; showDate?
         <section className="visit-corrections" aria-label={t("visCorrections")}>
           <h3>{t("visCorrections")}</h3>
           <ul>
-            {visit.corrections.map((c, i) => (
-              <li key={`${c.created_at}-${i}`}>
-                <b>{t(KIND_KEYS[c.kind] ?? "visCorrect")}</b> — {t("visCorrectionLine", { name: c.actor_name ?? "?", day: formatDay(companyDay(c.created_at), i18n.language), reason: c.reason })}
-              </li>
-            ))}
+            {visit.corrections.map((c, i) => {
+              // a photo removed by a correction keeps its file until the purge; admins can still open it (the server decides)
+              const removed = isAdmin && c.kind === "remove_photo" && typeof c.details.photo_id === "number" ? c.details.photo_id : null;
+              return (
+                <li key={`${c.created_at}-${i}`}>
+                  <b>{t(KIND_KEYS[c.kind] ?? "visCorrect")}</b> — {t("visCorrectionLine", { name: c.actor_name ?? "?", day: formatDay(companyDay(c.created_at), i18n.language), reason: c.reason })}
+                  {removed !== null && (
+                    <>
+                      {" "}
+                      <a href={`/api/visit-photos/${removed}`} target="_blank" rel="noopener noreferrer">{t("visViewRemovedPhoto")}</a>
+                    </>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

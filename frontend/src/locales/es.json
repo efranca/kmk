@@ -801,6 +801,7 @@
   "visCorrect": "Corregir",
   "visCorrections": "Correcciones",
   "visCorrectionLine": "corregido por {{name}} el {{day}}, motivo: {{reason}}",
+  "visViewRemovedPhoto": "Ver la foto quitada",
   "visCorrectionWhat": "¿Qué hay que corregir?",
   "visCorrectionReason": "Motivo de la corrección",
   "visCorrectionWhy": "Esta visita está terminada o su día ya pasó: el cambio queda registrado como una corrección, con su motivo.",

@@ -204,6 +204,12 @@ def can_correct_any_visit(actor: User) -> bool:
     return actor.role in PRIVILEGED
 
 
+def can_open_removed_visit_photo(actor: User) -> bool:
+    """A photo removed by a correction keeps its file until the 6-month purge (the original is never erased): admins and
+    the super admin can still open it by id; anyone else gets the same 404 as for a photo that does not exist."""
+    return actor.role in PRIVILEGED
+
+
 def can_correct_visit(actor: User, checked_in_ids: frozenset[int], within_window: bool) -> bool:
     """Who corrects a visit after the fact: admins always; anyone else only when they were checked in on it (active or
     withdrawn) and the correction window (`visits.corrections.window_end`) is not over."""

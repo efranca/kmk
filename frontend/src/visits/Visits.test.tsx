@@ -329,4 +329,21 @@ describe("corrections", () => {
     expect(c.getByText(en.visCorrected)).toBeInTheDocument();
     expect(c.getByText(/corrected by Alice Roy on .*, reason: forgot to check out/)).toBeInTheDocument();
   });
+
+  const removal = { kind: "remove_photo" as const, actor_name: "Alice Roy", reason: "wrong house", created_at: "2026-11-28T16:30:00+00:00", details: { photo_id: 42, room: "Kitchen" } };
+
+  it("lets admins open a photo removed by a correction", async () => {
+    page([closed({ corrected: true, corrections: [removal] })], {}, admin);
+    const c = await card();
+    const link = c.getByRole("link", { name: en.visViewRemovedPhoto });
+    expect(link).toHaveAttribute("href", "/api/visit-photos/42");
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("does not offer the removed photo to Staff", async () => {
+    page([closed({ corrected: true, corrections: [removal] })]);
+    const c = await card();
+    expect(c.getByText(/corrected by Alice Roy on .*, reason: wrong house/)).toBeInTheDocument();
+    expect(c.queryByRole("link", { name: en.visViewRemovedPhoto })).toBeNull();
+  });
 });

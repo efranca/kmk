@@ -97,7 +97,9 @@ def test_upload_view_and_delete_a_photo(team):
     d = team.ana[0].delete(p["url"], headers=team.ana[1])
     assert d.status_code == 200 and d.json()["visit"]["photos"] == [] and d.json()["visit"]["photo_count_total"] == 1
     assert team.ana[0].get(p["url"]).status_code == 404
-    assert storage.all_ids(team.root) == set()
+    assert storage.all_ids(team.root) == set()  # a plain removal on the visit's day (no correction) deletes the file now
+    g = team.boss[0].get(p["url"])
+    assert (g.status_code, g.json()) == (404, NOT_FOUND)  # so not even an admin can open it
 
 
 def test_jpeg_is_accepted(team):

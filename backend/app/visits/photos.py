@@ -9,8 +9,11 @@ The order of the conditions is the same for the upload (`precheck`, then `add`) 
 (with `_correction`, which the removal shares): no visit yet -> `403 not_checked_in`; closed or past its day -> `409`
 without a reason, else the correction authority; open on its day and the actor not active on it -> `403 not_checked_in`.
 
-Write order: file first, then the row (the file is deleted if the row cannot be saved). Delete order: the row is marked
-removed first, then the file is deleted (a leftover file is found by the cleanup, a row without a file never happens).
+Write order: file first, then the row (the file is deleted if the row cannot be saved). Removal: the row is marked
+removed first. A plain removal (open visit, its own day) then deletes the file (a leftover file is found by the
+cleanup). A removal that is a correction keeps the file until the 6-month purge (ruling R16: the original is never
+erased); admins can still open it by id (`policy.can_open_removed_visit_photo`), and the purge deletes it like any old
+photo (the row stays).
 """
 
 import hashlib
@@ -154,23 +157,26 @@ def add(db: Session, settings: Settings, actor: User, event_id: int, occurrence_
     return payload
 
 
-def _photo_row(db: Session, photo_id: int) -> VisitPhoto:
+def _photo_row(db: Session, photo_id: int, removed_ok: bool = False) -> VisitPhoto:
     photo = db.get(VisitPhoto, photo_id)
-    if photo is None or photo.deleted_at is not None or photo.purged_at is not None:
+    if photo is None or photo.purged_at is not None or (photo.deleted_at is not None and not removed_ok):
         raise ApiError(404, "not_found")
     return photo
 
 
-def visible_photo(db: Session, actor: User, photo_id: int) -> VisitPhoto:
-    """The photo, or `404 not_found` when it is unknown, removed, purged or on a visit the actor may not see."""
-    photo = _photo_row(db, photo_id)
+def visible_photo(db: Session, actor: User, photo_id: int, removed_ok: bool = False) -> VisitPhoto:
+    """The photo, or `404 not_found` when it is unknown, purged, removed (unless `removed_ok`) or on a visit the actor
+    may not see."""
+    photo = _photo_row(db, photo_id, removed_ok)
     visit = db.get(Visit, photo.visit_id)
     service.find_visit(db, actor, visit.event_id, visit.occurrence_date)  # raises the same 404 for a hidden visit
     return photo
 
 
 def read(db: Session, settings: Settings, actor: User, photo_id: int) -> tuple[VisitPhoto, bytes]:
-    photo = visible_photo(db, actor, photo_id)
+    """A removed photo whose file is still there (removed by a correction) opens for admins only; a plain removal
+    deleted the file, so it answers 404 to them too."""
+    photo = visible_photo(db, actor, photo_id, removed_ok=policy.can_open_removed_visit_photo(actor))
     try:
         return photo, storage.open_bytes(root_of(settings), photo.file_id)
     except (FileNotFoundError, ValueError):
@@ -178,8 +184,9 @@ def read(db: Session, settings: Settings, actor: User, photo_id: int) -> tuple[V
 
 
 def remove(db: Session, settings: Settings, actor: User, photo_id: int, now: datetime, ip: str, reason: str | None = None) -> dict:
-    """While the visit is open on its day, only who uploaded the photo removes it. Once closed, or after the visit's day,
-    it is a correction (`_correction`): Staff still remove only their own photos, admins any photo."""
+    """While the visit is open on its day, only who uploaded the photo removes it, and its file is deleted. Once closed,
+    or after the visit's day, it is a correction (`_correction`): Staff still remove only their own photos, admins any
+    photo, and the file stays until the purge (ruling R16)."""
     photo = visible_photo(db, actor, photo_id)
     visit = db.get(Visit, photo.visit_id)
     event_id, occurrence_date = visit.event_id, visit.occurrence_date
@@ -199,10 +206,11 @@ def remove(db: Session, settings: Settings, actor: User, photo_id: int, now: dat
     payload = service.visit_payload_of(db, actor, event_id, occurrence_date)
     file_id = photo.file_id
     db.commit()
-    try:
-        storage.delete(root_of(settings), file_id)
-    except OSError:
-        pass  # the row already says removed; the cleanup finds a file that is left
+    if correction is None:  # a correction keeps the original until the 6-month purge
+        try:
+            storage.delete(root_of(settings), file_id)
+        except OSError:
+            pass  # the row already says removed; the purge deletes the file with the visit's other photos
     return payload
 
 

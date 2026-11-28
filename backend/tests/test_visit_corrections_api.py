@@ -287,7 +287,35 @@ def test_photo_after_close_needs_reason_and_is_recorded(team, clock, owner_engin
     kinds = [k for k, *_ in corrections_rows(owner_engine)]
     assert kinds == ["add_photo", "remove_photo", "skip_room", "add_photo", "remove_photo"]
     assert sql(owner_engine, "SELECT count(*) FROM audit_log WHERE action = 'visit_corrected'")[0][0] == 5
-    assert len(storage.all_ids(team.root)) == 1  # only the photo the admin added is left
+    # nothing was erased: the two photos removed by corrections keep their files until the purge (ruling R16)
+    assert len(storage.all_ids(team.root)) == 3
+
+
+def test_a_photo_removed_by_a_correction_keeps_its_file_for_admins(team, clock, owner_engine):
+    """Ruling R16: the original is never erased. A correction marks the photo removed; its bytes stay until the 6-month
+    purge, admins can still open it by id, everyone else gets the same 404 as for a photo that does not exist."""
+    data = image(color=(10, 200, 10))
+    checkin(team.ana, team, [team.ids["ana"], team.ids["bruno"]])
+    first = upload(team.ana, team, data, room=team.rooms[0]["id"]).json()["visit"]["photos"][0]
+    checkout(team.ana, team)
+    clock["now"] = NEXT_DAY
+    r = remove(team.ana, first["url"], reason="wrong house")
+    assert r.status_code == 200, r.text
+    v = r.json()["visit"]
+    assert v["photos"] == [] and v["photo_count_total"] == 1
+    assert (v["corrections"][0]["kind"], v["corrections"][0]["details"]) == ("remove_photo", {"photo_id": first["id"], "room": "Kitchen"})
+    (file_id, deleted, by), = sql(owner_engine, "SELECT file_id, deleted_at IS NOT NULL, deleted_by FROM visit_photos WHERE id = :p", p=first["id"])
+    assert deleted and by == team.ids["ana"]
+    assert storage.all_ids(team.root) == {file_id}  # the bytes are still on disk
+    g = team.boss[0].get(first["url"])
+    assert g.status_code == 200 and g.content == data
+    assert g.headers["cache-control"] == "private, no-store" and g.headers["x-content-type-options"] == "nosniff"
+    for s in (team.ana, team.bruno, team.dan):
+        g = s[0].get(first["url"])
+        assert (g.status_code, g.json()) == (404, NOT_FOUND)
+    assert err(remove(team.boss, first["url"], reason="again")) == (404, NOT_FOUND)  # removed once only
+    sql(owner_engine, "UPDATE visit_photos SET purged_at = now() WHERE id = :p", p=first["id"])
+    assert team.boss[0].get(first["url"]).status_code == 404  # a purged photo is gone for everyone
 
 
 def test_someone_never_checked_in_cannot_correct(team, clock, owner_engine):

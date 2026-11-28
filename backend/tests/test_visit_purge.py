@@ -88,6 +88,22 @@ def test_old_photos_are_purged_and_the_row_stays(make_client, add_user, owner_en
     assert run(app_url, tmp_path) == {"purged": 0, "orphans": 0}  # safe to run twice
 
 
+def test_a_photo_removed_by_a_correction_leaves_with_the_purge(add_user, make_client, owner_engine, tmp_path, app_url):
+    """Ruling R16: a correction keeps the removed photo's file; the purge deletes it after the retention, the row stays."""
+    add_user("boss", "boss@example.com", role="admin")
+    c = make_client(visit_photos_dir=str(tmp_path))
+    h = {**ORIGIN, "X-CSRF-Token": login(c, "boss").json()["csrf_token"]}
+    eid = create(c, h, title="Menage", start_date=str(OLD)).json()["event"]["id"]
+    v = add_visit(owner_engine, OLD, eid)
+    removed, file_id = add_photo(owner_engine, tmp_path, v, deleted=True)
+    assert c.get(f"/api/visit-photos/{removed}").status_code == 200  # kept, and admins can open it
+    assert run(app_url, tmp_path) == {"purged": 1, "orphans": 0}
+    assert file_id not in storage.all_ids(tmp_path)
+    rows = sql(owner_engine, "SELECT deleted_at IS NOT NULL, purged_at IS NOT NULL FROM visit_photos WHERE id = :p", p=removed)
+    assert [tuple(r) for r in rows] == [(True, True)]
+    assert c.get(f"/api/visit-photos/{removed}").status_code == 404
+
+
 def test_recent_photos_stay(owner_engine, tmp_path, app_url):
     v = add_visit(owner_engine, EDGE)
     _, f = add_photo(owner_engine, tmp_path, v)
