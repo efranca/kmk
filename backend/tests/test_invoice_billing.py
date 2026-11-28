@@ -115,3 +115,13 @@ def test_the_route_lists_a_range_and_checks_it(boss):
         r = c.get(f"/api/clients/{cid}/billable", params=bad)
         assert (r.status_code, r.json()) == (422, {"error": "bad_range"})
     assert c.get("/api/clients/99999/billable", params={"from": "2025-11-01", "to": "2025-11-30"}).status_code == 404
+
+
+def test_billable_marks_visits_without_checkout(boss, owner_engine):
+    c, h = boss
+    cid = add(c, h).json()["client"]["id"]
+    eid = weekly_for(c, h, cid, priced_property(c, h, cid))
+    for day, closed in (("2025-11-06", "now()"), ("2025-11-13", "NULL")):  # closed, and started but never closed
+        sql(owner_engine, f"INSERT INTO visits (event_id, occurrence_date, visit_date, client_id, property_name, closed_at) VALUES (:e, :d, :d, :c, 'x', {closed})", e=eid, d=day, c=cid)
+    items = find(owner_engine, cid)
+    assert [(i["date"], i["checked_out"]) for i in items] == [("2025-11-06", True), ("2025-11-13", False), ("2025-11-20", False), ("2025-11-27", False)]

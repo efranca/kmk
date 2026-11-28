@@ -5,7 +5,7 @@ tries routes in order, and the parametrized one would answer 422 for them otherw
 """
 
 import asyncio
-from datetime import date
+from datetime import date, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Request
@@ -21,7 +21,8 @@ from app.models import User, UserSession
 from app.schedule.schemas import MAX_ID
 from app.auth.errors import ApiError
 from app.documents import uploads
-from app.visits import corrections, photos, service
+from app.auth import policy
+from app.visits import corrections, photos, report, service
 from app.visits.limits import MAX_PHOTO_BYTES, REASON_MAX, ROOM_NAME_MAX
 from app.visits.schemas import CheckInIn, CheckOutIn, CorrectionIn, PhotoRemoveIn, SkipIn
 
@@ -39,6 +40,41 @@ PhotoId = Annotated[int, Path(ge=1, le=MAX_ID)]
 @router.get("/today")
 def visits_today(auth: tuple[User, UserSession] = Depends(guard(csrf=False)), db: Session = Depends(get_db)):
     return {"visits": service.today(db, auth[0], service.now())}
+
+
+MAX_RANGE_DAYS = 366
+
+
+def _range(frm: date, to: date) -> tuple[date, date]:
+    if to < frm:
+        raise ApiError(422, "invalid_range")
+    if to - frm > timedelta(days=MAX_RANGE_DAYS - 1):
+        raise ApiError(422, "range_too_long")
+    return frm, to
+
+
+@router.get("/report")
+def visits_report(frm: date = Query(alias="from"), to: date = Query(), auth: tuple[User, UserSession] = Depends(guard(csrf=False)), db: Session = Depends(get_db)):
+    policy.check_visit_admin(auth[0])
+    return report.summary(db, *_range(frm, to))
+
+
+@router.get("/report.csv")
+def visits_report_csv(frm: date = Query(alias="from"), to: date = Query(), auth: tuple[User, UserSession] = Depends(guard(csrf=False)), db: Session = Depends(get_db)):
+    policy.check_visit_admin(auth[0])
+    frm, to = _range(frm, to)
+    body = "﻿" + report.csv_text(db, frm, to)
+    return Response(
+        body.encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="visites-{frm}-{to}.csv"', "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+    )
+
+
+@router.get("/report/{user_id}")
+def visits_report_person(user_id: EventId, frm: date = Query(alias="from"), to: date = Query(), auth: tuple[User, UserSession] = Depends(guard(csrf=False)), db: Session = Depends(get_db)):
+    policy.check_visit_admin(auth[0])
+    return {"visits": report.person(db, user_id, *_range(frm, to))}
 
 
 # ---- one visit --------------------------------------------------------------------------------------------------

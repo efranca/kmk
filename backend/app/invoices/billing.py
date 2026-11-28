@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.invoices import money
-from app.models import Event, EventException, InvoiceLine, Property
+from app.models import Event, EventException, InvoiceLine, Property, Visit
 from app.schedule.occurrences import Occurrence, expand, own_dates
 from app.schedule.service import COMPANY_TZ, event_data, exception_data
 
@@ -48,6 +48,7 @@ def billable(db: Session, client_id: int, from_: date, to: date, today: date) ->
     for x in db.scalars(select(EventException).where(EventException.event_id.in_(ids))):
         exceptions[x.event_id].append(exception_data(x))
     billed = set(db.execute(select(InvoiceLine.event_id, InvoiceLine.occurrence_date).where(InvoiceLine.live, InvoiceLine.event_id.in_(ids))).all())
+    closed = set(db.execute(select(Visit.event_id, Visit.occurrence_date).where(Visit.event_id.in_(ids), Visit.closed_at.is_not(None))).all())
     props = {p.id: p for p in db.scalars(select(Property).where(Property.client_id == client_id))}
 
     found: list[tuple[Occurrence, Event]] = []
@@ -67,6 +68,7 @@ def billable(db: Session, client_id: int, from_: date, to: date, today: date) ->
                 "title": o.title,
                 "property_id": prop.id if prop else None,
                 "property_name": prop.name if prop else None,
+                "checked_out": (event.id, o.original_date) in closed,
                 "price": money.as_json(prop.visit_price) if prop else None,
                 "description": default_description(prop.name if prop else None, o.title, o.date),
             }
