@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pip-audit>=2.7"]
+dev = ["pytest>=8", "pytest-testmon>=2.1", "pip-audit>=2.7"]
 
 [build-system]
 requires = ["setuptools>=68"]

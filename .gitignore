@@ -13,3 +13,6 @@ infrastructure/deployments/worktree/
 
 # Local database backups (plain, unencrypted dumps): never commit
 infrastructure/backups/
+
+# pytest-testmon: which tests touch which code (local cache)
+.testmondata*
