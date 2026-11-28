@@ -1,6 +1,8 @@
 """Visit photos: upload by room, view, delete and room skips (spec sections 8, 9, 14, 15)."""
 
 import io
+import threading
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -69,6 +71,11 @@ def upload(s, t, data, room=None, other=None):
     return s[0].put(purl(t), content=data, params=params, headers={**s[1], "Content-Type": "application/octet-stream"})
 
 
+def zeroed_after_header(data: bytes) -> bytes:
+    """A real picture whose header is intact and whose pixel data is gone (verify() accepts it, decoding does not)."""
+    return data[:200] + b"\x00" * (len(data) - 200)
+
+
 def started(t):
     return ok(checkin(t.ana, t, [t.ids["ana"], t.ids["bruno"]]))
 
@@ -113,7 +120,7 @@ def test_photo_is_filed_under_a_room_or_other(team, owner_engine):
 
 def test_not_an_image_is_refused_and_leaves_no_file(team):
     started(team)
-    for data in (b"%PDF-1.4\n" + b"x" * 500, b"RIFF\x10\x00\x00\x00WEBPjunkjunkjunk", b"\xff\xd8\xff\xe0 not really a jpeg", image("PNG")):
+    for data in (b"%PDF-1.4\n" + b"x" * 500, b"RIFF\x10\x00\x00\x00WEBPjunkjunkjunk", b"\xff\xd8\xff\xe0 not really a jpeg", image("PNG"), zeroed_after_header(image("JPEG", size=(300, 300))), zeroed_after_header(image("WEBP", size=(300, 300)))):
         r = upload(team.ana, team, data, room=team.rooms[0]["id"])
         assert (r.status_code, r.json()) == (422, {"error": "invalid_photo"})
     assert storage.all_ids(team.root) == set()
@@ -257,3 +264,31 @@ def test_storage_refuses_bad_ids_and_deletes_quietly(tmp_path):
     assert storage.open_bytes(tmp_path, fid) == b"abc" and storage.all_ids(tmp_path) == {fid}
     assert (tmp_path / fid[:2] / fid).stat().st_mode & 0o777 == 0o600
     assert not list(tmp_path.rglob("*.tmp"))
+
+
+def test_upload_waiting_for_the_visit_lock_does_not_block_the_event_loop(team, owner_engine):
+    started(team)
+    visit_id = sql(owner_engine, "SELECT id FROM visits")[0][0]
+    holder = owner_engine.connect()
+    holder.exec_driver_sql(f"SELECT id FROM visits WHERE id = {int(visit_id)} FOR UPDATE")
+    result = {}
+    client = team.ana[0]
+    with client:  # one shared event loop for every request of this app
+
+        def put():
+            result["r"] = upload(team.ana, team, image(), room=team.rooms[0]["id"])
+
+        thread = threading.Thread(target=put)
+        thread.start()
+        time.sleep(1.5)  # the upload is now waiting for the row lock
+        timer = threading.Timer(4, holder.rollback)
+        timer.start()
+        began = time.monotonic()
+        health = client.get("/api/health")
+        waited = time.monotonic() - began
+        timer.cancel()
+        holder.rollback()
+        thread.join(15)
+    holder.close()
+    assert health.status_code == 200 and waited < 3, "the loop was blocked by the upload waiting for the lock"
+    assert result["r"].status_code == 201, result["r"].text

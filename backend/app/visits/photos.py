@@ -55,6 +55,8 @@ def validate(data: bytes) -> str:
             if picture.format != fmt or picture.width * picture.height > MAX_PIXELS:
                 raise ApiError(422, "invalid_photo")
             picture.verify()
+        with Image.open(io.BytesIO(data)) as picture:  # verify() does not decode JPEG or WebP: really decode (size is capped above)
+            picture.load()
     except ApiError:
         raise
     except Exception:  # a damaged or hostile file: Pillow raises many kinds of errors
@@ -83,9 +85,9 @@ def _room(db: Session, visit: Visit, room_id: int) -> PropertyRoom:
 
 
 def add(db: Session, settings: Settings, actor: User, event_id: int, occurrence_date: date, data: bytes, room_id: int | None, other_name: str | None, now: datetime, ip: str) -> dict:
+    content_type = validate(data)  # decoding happens before the visit row is locked
     visit = _open_visit(db, actor, event_id, occurrence_date)
     ensure_space(settings)
-    content_type = validate(data)
     if room_id is not None:
         name = _room(db, visit, room_id).name
     else:
