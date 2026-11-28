@@ -26,6 +26,7 @@ The product plan is `scope.md`; what is actually built is described in `docs/`.
 
 ```bash
 cd backend && .venv/bin/pytest -q                      # all backend tests (uses the kmk_test database only)
+cd backend && .venv/bin/pytest -q -m "not slow"        # same without the backup-script tests (real pg_dump/gpg)
 cd backend && .venv/bin/alembic upgrade head           # migrate the database named by MIGRATION_DATABASE_URL
 cd frontend && npx vitest run && npm run build         # frontend tests and production build
 cd deploy && docker compose up -d --build              # rebuild and restart the stack (build the frontend first)

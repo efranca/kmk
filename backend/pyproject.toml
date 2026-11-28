@@ -33,3 +33,4 @@ app = ["invoices/assets/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: runs real pg_dump/gpg (backup scripts); skip with -m \"not slow\""]

@@ -21,9 +21,10 @@ def _postgres_running() -> bool:
     return r.stdout.strip() == "true"
 
 
-pytestmark = pytest.mark.skipif(
-    not (shutil.which("gpg") and _postgres_running()), reason="needs gpg and the shared postgres container"
-)
+pytestmark = [
+    pytest.mark.slow,  # real pg_dump + gpg per test: skip with `pytest -m "not slow"`
+    pytest.mark.skipif(not (shutil.which("gpg") and _postgres_running()), reason="needs gpg and the shared postgres container"),
+]
 
 SCRATCH = "kmk_backup_verify_test"
 
