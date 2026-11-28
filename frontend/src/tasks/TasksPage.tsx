@@ -123,6 +123,9 @@ export function TasksPage() {
       options={[{ value: "all", label: t("taskCatAll") }, ...categoryOptions.map((c) => ({ value: String(c.id), label: `${c.icon ?? FALLBACK_CATEGORY_ICON} ${c.name}` }))]} />
   );
 
+  // On a wide screen the category chips and the faces share a row (chips left, faces right); without the chips the faces stay in the toolbar.
+  const chipsRow = !narrow && showChips && shown.data !== undefined && (categories.data ?? []).length > 0;
+
   const row = (task: Task) => (
     <TaskRow key={task.id} task={task} people={byId} category={task.category_id ? categoryById.get(task.category_id) : undefined} today={today}
       canToggle={canSetTaskStatus(user, task)} onToggle={() => toggle.mutate(task)} onOpen={() => setEditing(task)} />
@@ -155,7 +158,7 @@ export function TasksPage() {
             {narrow && searchBox}
             {!searching && view === "list" && <Segmented label={t("taskStatusLabel")} value={status} onChange={setStatus} options={STATUSES.map((s) => ({ value: s, label: t(STATUS_KEYS[s]) }))} />}
             {narrow && (categoryMenu || faces) && <div className="tasks-toolbar__row">{categoryMenu}{faces}</div>}
-            {!narrow && (searchBox || faces) && <div className="tasks-toolbar__find">{searchBox}{faces}</div>}
+            {!narrow && (searchBox || (faces && !chipsRow)) && <div className="tasks-toolbar__find">{searchBox}{!chipsRow && faces}</div>}
           </div>
           {pickedPeople.length > 0 && all.data && (
             <section className="tasks-summary" aria-label={summaryTitle}>
@@ -167,10 +170,13 @@ export function TasksPage() {
               <span className="tasks-summary__meter" aria-hidden="true"><i style={{ width: `${total ? (doneCount / total) * 100 : 0}%` }} /></span>
             </section>
           )}
-          {!narrow && showChips && shown.data && (categories.data ?? []).length > 0 && (
-            <CategoryChips label={t("taskCatFilter")} allLabel={t("taskCatAll")} allCount={loaded.length}
-              options={(categories.data ?? []).map((c) => ({ id: c.id, name: c.name, icon: c.icon, count: countOf.get(c.id) ?? 0 }))}
-              selected={selected} onSelect={setPick} />
+          {chipsRow && (
+            <div className="tasks-filterrow">
+              <CategoryChips label={t("taskCatFilter")} allLabel={t("taskCatAll")} allCount={loaded.length}
+                options={(categories.data ?? []).map((c) => ({ id: c.id, name: c.name, icon: c.icon, count: countOf.get(c.id) ?? 0 }))}
+                selected={selected} onSelect={setPick} />
+              {faces}
+            </div>
           )}
           {shown.isPending ? <Loading />
             : shown.isError ? <ErrorNotice error={shown.error} onRetry={() => void shown.refetch()} />

@@ -13,7 +13,7 @@ const PATH = "/api/account/calendar-feed";
 type FeedInfo = { exists: boolean; created_at: string | null; last_used_at: string | null };
 type Confirm = "revoke" | "regenerate" | null;
 
-/** The personal .ics link for FamillAI, Google, Apple or Outlook. The link is shown once, right after it is created. */
+/** The personal .ics link for Google, Apple or Outlook. The link is shown once, right after it is created. */
 export function CalendarFeedCard({ csrfToken }: { csrfToken: string }) {
   const { t, i18n } = useTranslation();
   const toast = useToast();
@@ -81,8 +81,8 @@ export function CalendarFeedCard({ csrfToken }: { csrfToken: string }) {
           {!info.exists && <Button variant="primary" busy={busy} onClick={() => void create()}>{t("feedCreate")}</Button>}
           {info.exists && (
             <>
-              <Button busy={busy} onClick={() => setConfirm("regenerate")}>{t("feedRegenerate")}</Button>
-              <Button variant="ghost" busy={busy} onClick={() => setConfirm("revoke")}>{t("feedRevoke")}</Button>
+              <Button icon="repeat" busy={busy} onClick={() => setConfirm("regenerate")}>{t("feedRegenerate")}</Button>
+              <Button variant="danger" icon="trash" busy={busy} onClick={() => setConfirm("revoke")}>{t("feedRevoke")}</Button>
             </>
           )}
         </div>

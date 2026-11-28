@@ -314,6 +314,15 @@ describe("TasksPage", () => {
     });
   });
 
+  it("on a wide screen the category chips and the faces share one row", async () => {
+    api([task({ title: "In office", category_id: 1 })], { "GET /api/tasks/categories": { categories: [{ id: 1, name: "Office", icon: "🏢" }] } });
+    page(true);
+    await screen.findByText("In office");
+    const row = screen.getByRole("group", { name: "Filter by category" }).closest(".tasks-filterrow");
+    expect(row).not.toBeNull();
+    expect(row!.contains(screen.getByRole("group", { name: "Show" }))).toBe(true);
+  });
+
   it("on a wide screen the search box opens right beside the faces, search first", async () => {
     api([task({ title: "Open one" })]);
     page();

@@ -40,7 +40,7 @@ export default function AvatarPicker({ person, csrfToken, onChanged, heading }: 
           {t(person.avatar_url ? "avatarChange" : "avatarChoose")}
         </Button>
         {person.avatar_url && (
-          <Button variant="ghost" disabled={busy} onClick={() => void run(() => request("DELETE", "/api/me/avatar", csrfToken))}>
+          <Button variant="ghost" icon="trash" disabled={busy} onClick={() => void run(() => request("DELETE", "/api/me/avatar", csrfToken))}>
             {t("avatarRemove")}
           </Button>
         )}

@@ -74,7 +74,15 @@
 .feedcard__head { display: flex; gap: var(--space-3); align-items: flex-start; }
 .feedcard__icon { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--brand-tint); color: var(--brand); }
 .feedcard__state { margin-top: var(--space-4); display: grid; gap: 2px; }
-.feedcard .settings-actions { margin-top: var(--space-3); }
+/* the actions: equal-width buttons side by side (stacked when the card is narrow), same height and text alignment */
+.feedcard .settings-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--space-2); margin-top: var(--space-3); }
+.feedcard .settings-actions .btn { width: 100%; justify-content: center; text-align: center; }
 .feedcard__how { margin: var(--space-4) 0 0; font-size: 0.875rem; line-height: 1.5; color: var(--text-muted); }
 .feedcard__warn { display: flex; gap: 10px; align-items: flex-start; margin: var(--space-3) 0 0; padding: 10px 12px; border-radius: var(--radius-md); background: var(--surface-2); color: var(--text-muted); font-size: 0.8125rem; line-height: 1.45; }
 .feedcard__warn svg { flex: none; margin-top: 1px; color: var(--warning); }
+
+/* the photo buttons: one column, same width and height, text centred */
+.profile-card .avatar-picker__side { flex: 1; min-width: 0; }
+.profile-card .avatar-picker__actions { display: grid; grid-template-columns: 1fr; gap: var(--space-2); }
+.profile-card .avatar-picker__actions .btn { width: 100%; justify-content: center; text-align: center; }
+.profile-card .avatar-picker__actions .btn--ghost { border-color: var(--line); }

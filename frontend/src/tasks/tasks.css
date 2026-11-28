@@ -92,3 +92,8 @@
 
 /* Clients and Documents have no tabs: the search box gets its own row under the header, on the right (where Users has it) */
 .page > .tasks-toolbar__search { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+
+/* wide screens: the category chips on the left and the faces on the right, in one row */
+.tasks-filterrow { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.tasks-filterrow .catchips { flex: 1; min-width: 0; margin-bottom: 0; }
+.tasks-filterrow > .avatarfilter { flex: none; margin-left: auto; justify-content: flex-end; }
