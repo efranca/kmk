@@ -4,11 +4,13 @@ import { useTranslation } from "react-i18next";
 import { useSession } from "../session";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
+import { useToast } from "../ui/toastContext";
 import { ErrorNotice } from "../ui/Feedback";
 import { SelectField, TextAreaField, TextField } from "../ui/Field";
 import { ClientPicker } from "../clients/ClientPicker";
 import { FALLBACK_CATEGORY_ICON } from "../tasks/CategoryChips";
 import { PdfViewer, TextViewer } from "./DocumentViewer";
+import { isInstalledApp, saveFile } from "./saveFile";
 import { fileUrl, previewUrl, type DocumentCategory, type DocumentItem, type Visibility } from "./api";
 import { useDeleteDocument, useSaveDocument } from "./hooks";
 import { fileKind } from "./fileKind";
@@ -35,6 +37,8 @@ export function DocumentDialog({ document, categories, onClose, defaultClientId 
   const [progress, setProgress] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const kind = fileKind(document?.content_type ?? null, document?.file_name ?? null);
+  const toast = useToast();
+  const installed = isInstalledApp();
   const category = categories.find((c) => c.id === document?.category_id);
   const failure = save.error ?? remove.error;
 
@@ -92,10 +96,17 @@ export function DocumentDialog({ document, categories, onClose, defaultClientId 
             : document?.has_preview && <img className="doc-preview" src={previewUrl(document.id, document.updated_at)} alt="" loading="lazy" />}
       {document?.has_file && (
         <p className="doc-links">
-          {kind.inline && (
-            <><a className="btn btn--secondary" href={fileUrl(document.id)} target="_blank" rel="noopener noreferrer">{t("docOpen")}</a>{" "}</>
+          {/* Installed on a phone there is no back button: a link to the raw file would strand the person there. */}
+          {installed ? (
+            <Button onClick={() => void saveFile(fileUrl(document.id, true), document.file_name ?? "document").catch(() => toast(t("docDownloadFailed")))}>{t("docDownload")}</Button>
+          ) : (
+            <>
+              {kind.inline && (
+                <><a className="btn btn--secondary" href={fileUrl(document.id)} target="_blank" rel="noopener noreferrer">{t("docOpen")}</a>{" "}</>
+              )}
+              <a className="btn btn--secondary" href={fileUrl(document.id, true)}>{t("docDownload")}</a>
+            </>
           )}
-          <a className="btn btn--secondary" href={fileUrl(document.id, true)}>{t("docDownload")}</a>
           <span className="muted"> {document.file_name} · {formatSize(document.size_bytes ?? 0)}</span>
         </p>
       )}

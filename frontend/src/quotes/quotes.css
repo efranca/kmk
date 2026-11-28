@@ -45,3 +45,6 @@
 .quote-reply { display: grid; gap: 12px; }
 .quote-reply h3 { margin: 0; }
 .quote-reply__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.quote-photo-open { display: block; margin: 0; padding: 0; border: 0; background: none; cursor: zoom-in; line-height: 0; }
+.quote-photo-open:hover:not(:disabled) { background: none; }

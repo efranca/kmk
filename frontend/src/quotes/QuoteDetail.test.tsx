@@ -34,6 +34,20 @@ describe("QuoteDetailPage", () => {
     expect(screen.getByRole("link", { name: "Download photo 2 (HEIC)" })).toHaveAttribute("href", "/api/quotes/5/photos/4");
   });
 
+  it("in the installed app a photo opens in a full-screen view inside the app, not as a link that strands an iPhone", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("standalone"), addEventListener: () => undefined, removeEventListener: () => undefined }));
+    api();
+    renderWithProviders(<QuoteDetailPage id={5} />, { session: { user: admin } });
+    await screen.findByRole("heading", { name: /D-0005/ });
+    expect(screen.queryByRole("link", { name: "Open photo 1" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Open photo 1" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveClass("dialog--full");
+    expect(dialog.querySelector("img")).toHaveAttribute("src", "/api/quotes/5/photos/3");
+    fireEvent.click(within(dialog).getAllByRole("button", { name: "Close" })[0]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("sends a reply with the subject filled in", async () => {
     const sent = detail({ conversation: [{ id: 1, direction: "out", subject: "Re: Votre soumission de nettoyage D-0005", body: "Voici le prix.", sent_at: "2026-11-25T15:00:00Z", delivery: "sent", author: { id: 1, name: "Ana" } }] });
     const { calls } = api({ "POST /api/quotes/5/messages": { message: sent.conversation[0], quote: sent } });

@@ -148,6 +148,42 @@ describe("Documents page", () => {
     expect(await screen.findByRole("dialog")).not.toHaveClass("dialog--full");
   });
 
+  describe("installed app (PWA)", () => {
+    afterEach(() => vi.unstubAllGlobals());
+    const standalone = () => vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("standalone"), addEventListener: () => undefined, removeEventListener: () => undefined }));
+
+    it("has no Open link, which would leave the app with no way back on an iPhone; the viewer is already full screen", async () => {
+      standalone();
+      mockApi({ "GET /api/documents": () => res(200, { categories: [], documents: [doc(7, { title: "Lease" })] }) });
+      renderWithProviders(<DocumentsPage />);
+      fireEvent.click(await screen.findByText("Lease"));
+      const dialog = await screen.findByRole("dialog");
+      expect(within(dialog).queryByRole("link", { name: en.docOpen })).toBeNull();
+      expect(dialog.querySelector('a[href*="/api/documents/7/file"]')).toBeNull(); // no link out of the app at all
+      expect(within(dialog).getByRole("button", { name: en.docDownload })).toBeInTheDocument();
+      expect(within(dialog).getAllByRole("button", { name: en.close }).length).toBeGreaterThan(0);
+    });
+
+    it("saves the file through the share sheet when the device offers one, and stays in the app", async () => {
+      standalone();
+      const share = vi.fn(async () => undefined);
+      Object.defineProperty(navigator, "canShare", { value: () => true, configurable: true });
+      Object.defineProperty(navigator, "share", { value: share, configurable: true });
+      mockApi({
+        "GET /api/documents": () => res(200, { categories: [], documents: [doc(7, { title: "Lease" })] }),
+        "GET /api/documents/7/file?download=1": () => ({ ok: true, status: 200, blob: async () => new Blob(["pdf"], { type: "application/pdf" }) }),
+      });
+      renderWithProviders(<DocumentsPage />);
+      fireEvent.click(await screen.findByText("Lease"));
+      fireEvent.click(await within(await screen.findByRole("dialog")).findByRole("button", { name: en.docDownload }));
+      await waitFor(() => expect(share).toHaveBeenCalled());
+      const arg = share.mock.calls[0] as unknown as [{ files: File[] }];
+      expect(arg[0].files[0].name).toBe("f7.pdf");
+      Reflect.deleteProperty(navigator, "canShare");
+      Reflect.deleteProperty(navigator, "share");
+    });
+  });
+
   it("shows a text document's content in the dialog, read by the app (no iframe)", async () => {
     mockApi({
       "GET /api/documents": () => res(200, { categories: [], documents: [doc(9, { title: "Notes", content_type: "text/plain", file_name: "notes.txt" })] }),

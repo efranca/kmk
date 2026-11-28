@@ -434,6 +434,7 @@
   "docUploading": "Subiendo",
   "docOpen": "Abrir",
   "docDownload": "Descargar",
+  "docDownloadFailed": "No se pudo guardar el archivo. Inténtalo de nuevo.",
   "docViewerLabel": "Vista previa del documento",
   "docViewerLoading": "Cargando el documento…",
   "docViewerFailed": "No se pudo mostrar el documento aquí. Usa Descargar para abrirlo.",

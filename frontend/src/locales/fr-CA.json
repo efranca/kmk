@@ -434,6 +434,7 @@
   "docUploading": "Envoi en cours",
   "docOpen": "Ouvrir",
   "docDownload": "Télécharger",
+  "docDownloadFailed": "Impossible d’enregistrer le fichier. Réessayez.",
   "docViewerLabel": "Aperçu du document",
   "docViewerLoading": "Chargement du document…",
   "docViewerFailed": "Impossible d’afficher le document ici. Utilisez Télécharger pour l’ouvrir.",

@@ -11,6 +11,7 @@ import { ErrorNotice, Loading } from "../ui/Feedback";
 import { TextAreaField } from "../ui/Field";
 import { PageHeader } from "../ui/PageHeader";
 import { useToast } from "../ui/toastContext";
+import { isInstalledApp } from "../documents/saveFile";
 import { photoUrl } from "./api";
 import { Conversation } from "./Conversation";
 import { useDeleteQuote, useQuote, useUpdateQuote } from "./hooks";
@@ -29,6 +30,9 @@ function Request({ quote }: { quote: QuoteDetail }) {
   const d = quote.details;
   const when = (iso: string) => new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
   const place = [quote.geo_city, quote.geo_country].filter(Boolean).join(", ");
+  const installed = isInstalledApp();
+  const [viewing, setViewing] = useState<number | null>(null);
+  const viewed = viewing !== null ? quote.photos[viewing] : undefined;
   return (
     <section className="section quote-card">
       <h2>{t("quoteRequest")}</h2>
@@ -62,6 +66,11 @@ function Request({ quote }: { quote: QuoteDetail }) {
                 <li key={p.id}>
                   {heic ? (
                     <a href={photoUrl(quote.id, p.id)} download aria-label={t("quotePhotoDownload", { n: i + 1 })}>HEIC</a>
+                  ) : installed ? (
+                    // Installed on a phone there is no back button: the photo opens in a full-screen view inside the app.
+                    <button type="button" className="quote-photo-open" aria-label={t("quotePhotoOpen", { n: i + 1 })} onClick={() => setViewing(i)}>
+                      <img src={photoUrl(quote.id, p.id)} alt="" loading="lazy" />
+                    </button>
                   ) : (
                     <a href={photoUrl(quote.id, p.id)} target="_blank" rel="noreferrer" aria-label={t("quotePhotoOpen", { n: i + 1 })}>
                       <img src={photoUrl(quote.id, p.id)} alt="" loading="lazy" />
@@ -71,6 +80,11 @@ function Request({ quote }: { quote: QuoteDetail }) {
               );
             })}
           </ul>
+          {viewed && (
+            <Dialog open size="full" title={t("quotePhotoOpen", { n: (viewing ?? 0) + 1 })} onClose={() => setViewing(null)}>
+              <img className="doc-view doc-view--image" src={photoUrl(quote.id, viewed.id)} alt="" />
+            </Dialog>
+          )}
         </>
       )}
     </section>
