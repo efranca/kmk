@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useRoute } from "../route";
+import { useNarrow } from "../schedule/useNarrow";
 import { useSession } from "../session";
 import { Button, IconButton } from "../ui/Button";
 import { ErrorNotice, Loading } from "../ui/Feedback";
@@ -26,6 +27,7 @@ const TAB_KEYS: Record<Tab, string> = { details: "clientTabDetails", properties:
 export function ClientPage({ id }: { id: number }) {
   const { t, i18n } = useTranslation();
   const { navigate } = useRoute();
+  const narrow = useNarrow();
   const canManage = useSession().user.role !== "user";
   const { data: client, isPending, isError, error, refetch } = useClient(id);
   const [tab, setTab] = useState<Tab>("details");
@@ -50,7 +52,7 @@ export function ClientPage({ id }: { id: number }) {
   return (
     <div className="page page--client">
       <PageHeader title={<span className="clientpage__top">{back}{client.name}</span>} actions={canManage ? <Button icon="pencil" onClick={() => setEditing(true)}>{t("clientEdit")}</Button> : undefined} />
-      <Segmented label={t("clientTabs")} value={tab} onChange={setTab} options={tabs.map((x) => ({ value: x, label: counts[x] ? `${t(TAB_KEYS[x])} ${counts[x]}` : t(TAB_KEYS[x]) }))} />
+      <Segmented dropdown={narrow} label={t("clientTabs")} value={tab} onChange={setTab} options={tabs.map((x) => ({ value: x, label: counts[x] ? `${t(TAB_KEYS[x])} ${counts[x]}` : t(TAB_KEYS[x]) }))} />
       <section className="section client-card">
         {tab === "details" && (
           <ClientDetails client={client} />
