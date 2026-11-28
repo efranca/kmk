@@ -7,7 +7,7 @@ from app.auth import audit, policy
 from app.auth.errors import ApiError
 from app.clients.schemas import ClientIn, PropertyIn
 from app.invoices import money
-from app.models import Client, Document, Event, EventPerson, Property, Quote, Task, User
+from app.models import Client, Document, Event, EventPerson, Invoice, Property, Quote, Task, User
 
 FIELDS = ("name", "kinds", "contact_name", "email", "phone", "address", "city", "notes")
 LIST_LIMIT = 500
@@ -132,6 +132,7 @@ def detail_payload(db: Session, actor: User, client: Client) -> dict:
     events = db.execute(select(Event.id, Event.title, Event.start_date, Event.start_time).where(Event.client_id == client.id).order_by(Event.start_date.desc(), Event.id.desc()).limit(LINKED_LIMIT)).all()
     documents = db.execute(select(Document.id, Document.title, Document.content_type).where(Document.client_id == client.id, Document.size_bytes.is_not(None)).order_by(Document.created_at.desc()).limit(LINKED_LIMIT)).all()
     quotes = db.execute(select(Quote.id, Quote.status, Quote.kind, Quote.submitted_at).where(Quote.client_id == client.id).order_by(Quote.id.desc()).limit(LINKED_LIMIT)).all()
+    invoices = db.execute(select(Invoice.id, Invoice.number, Invoice.issued_on, Invoice.total, Invoice.status).where(Invoice.client_id == client.id).order_by(Invoice.number.desc()).limit(LINKED_LIMIT)).all()
     return {
         **client_payload(client),
         "properties": _properties_of(db, client.id, actor),
@@ -139,6 +140,7 @@ def detail_payload(db: Session, actor: User, client: Client) -> dict:
         "events": [{"id": i, "title": t, "start_date": _iso(d), "start_time": s.strftime("%H:%M") if s else None} for i, t, d, s in events],
         "documents": [{"id": i, "title": t, "content_type": ct} for i, t, ct in documents],
         "quotes": [{"id": i, "reference": f"D-{i:04d}", "status": s, "kind": k, "submitted_at": _iso(at)} for i, s, k, at in quotes],
+        "invoices": [{"id": i, "reference": f"{n:03d}", "issued_on": _iso(d), "total": money.as_json(t), "status": s} for i, n, d, t, s in invoices],
     }
 
 

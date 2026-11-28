@@ -270,6 +270,25 @@ def test_snapshot_survives_client_changes(boss):
     assert c.post(f"/api/invoices/{inv['id']}/cancel", headers=h).status_code == 200  # still works without its document
 
 
+def test_client_detail_lists_its_invoices(boss, staff, owner_engine):
+    from test_schedule_api import uid
+
+    c, h = boss
+    a = add(c, h).json()["client"]["id"]
+    b = add(c, h, name="Marc Dion").json()["client"]["id"]
+    first, second = manual(c, h, a, "10"), manual(c, h, a, "20.50")
+    manual(c, h, b, "99")
+    c.post(f"/api/invoices/{first['id']}/payment", json={"paid_on": "2026-11-20"}, headers=h)
+    got = c.get(f"/api/clients/{a}").json()["client"]["invoices"]
+    assert got == [
+        {"id": second["id"], "reference": "008", "issued_on": "2026-11-27", "total": "20.50", "status": "unpaid"},
+        {"id": first["id"], "reference": "007", "issued_on": "2026-11-27", "total": "10.00", "status": "paid"},
+    ]
+    create_event(c, h, client_id=a, people=[uid(owner_engine, "zoe")])
+    s, _ = staff
+    assert "invoices" not in s.get(f"/api/clients/{a}").json()["client"]
+
+
 def test_send_by_email(boss, owner_engine, caplog):
     import logging
 
