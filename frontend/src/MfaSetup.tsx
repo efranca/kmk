@@ -60,27 +60,35 @@ export default function MfaSetup({
   if (codes) return <RecoveryCodes codes={codes} onContinue={onDone} />;
 
   return (
-    <>
+    <div className="mfasetup">
       <h1>{t("mfaSetupTitle")}</h1>
-      <p className="status">{t("mfaSetupIntro")}</p>
+      <p className="mfasetup__intro">{t("mfaSetupIntro")}</p>
       {pending && (
-        <>
-          <img className="qr" src={pending.qr} alt={t("mfaQrAlt")} width="200" height="200" />
-          <p className="status">{t("mfaSecretLabel")}</p>
-          <p className="secret">{pending.secret}</p>
-          <form onSubmit={submit} className="form">
-            <label>
-              {t("mfaCode")}
-              <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" required maxLength={12} />
-            </label>
-            {error && <p className="error" role="alert">{t(error)}</p>}
-            <button type="submit" disabled={busy}>{t("mfaEnable")}</button>
-          </form>
-        </>
+        <div className="mfasetup__grid">
+          <div className="mfasetup__qr">
+            <img className="qr" src={pending.qr} alt={t("mfaQrAlt")} width="200" height="200" />
+          </div>
+          <div className="mfasetup__side">
+            <div className="mfasetup__key">
+              <span>{t("mfaSecretLabel")}</span>
+              <code className="secret">{pending.secret}</code>
+            </div>
+            <form onSubmit={submit} className="mfasetup__form">
+              <label>
+                {t("mfaCode")}
+                <input className="mfasetup__code" value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" placeholder="000000" required maxLength={12} />
+              </label>
+              {error && <p className="error" role="alert">{t(error)}</p>}
+              <button type="submit" disabled={busy}>{t("mfaEnable")}</button>
+            </form>
+          </div>
+        </div>
       )}
       {!pending && error && <p className="error" role="alert">{t(error)}</p>}
-      {onCancel && <button type="button" className="secondary" onClick={onCancel}>{t("backToSignIn")}</button>}
-      {onSignOut && <button type="button" className="secondary" onClick={onSignOut}>{t("signOut")}</button>}
-    </>
+      <div className="mfasetup__foot">
+        {onCancel && <button type="button" className="secondary" onClick={onCancel}>{t("mfaBackToAccount")}</button>}
+        {onSignOut && <button type="button" className="secondary" onClick={onSignOut}>{t("signOut")}</button>}
+      </div>
+    </div>
   );
 }

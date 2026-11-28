@@ -148,7 +148,7 @@
 
 /* people filter: pickable faces */
 .avatarfilter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.avatarpick { display: inline-flex; margin: 0; padding: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; position: relative; line-height: 0; }
+.avatarpick { display: inline-flex; align-items: center; justify-content: center; margin: 0; padding: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; position: relative; line-height: 0; }
 .avatarpick:hover:not(:disabled) { background: none; z-index: 1; }
 .avatarpick:focus-visible { z-index: 2; outline: 3px solid var(--accent); outline-offset: 2px; }
 .avatarpick[aria-pressed="true"] { z-index: 1; }

@@ -11,8 +11,19 @@
 .chip-tag { padding: 2px 10px; border-radius: 999px; background: var(--surface-2); color: var(--text-muted); font-size: 0.8125rem; font-weight: 600; white-space: nowrap; }
 .chip-tag--status { background: transparent; border: 1px solid var(--line); }
 .chip-tag--flag { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
-.user-dialog__head { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; }
-.user-dialog__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.user-dialog__head { display: flex; gap: 16px; align-items: center; margin-bottom: 12px; }
+.user-dialog__who { display: grid; gap: 6px; min-width: 0; justify-items: start; }
+.user-dialog__username { font-weight: 600; color: var(--text); }
+.user-dialog__email { color: var(--text-muted); font-size: 0.9rem; overflow-wrap: anywhere; }
+.user-dialog__seen { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 8px 12px; border-radius: var(--radius-md); background: var(--surface-2); color: var(--text-muted); font-size: 0.85rem; }
+.user-dialog__seen svg { flex: none; }
+/* the actions: the main one, account changes, security resets, then the destructive ones apart at the end */
+.user-actions { display: grid; gap: 0; }
+.user-actions__group { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 8px; padding-block: 12px; border-top: 1px solid var(--line); }
+.user-actions__group:first-child { border-top: 0; padding-top: 0; }
+.user-actions__group .btn { width: 100%; justify-content: center; margin: 0; }
+.user-actions__group--main { grid-template-columns: 1fr; }
+.user-actions__group--danger { padding-bottom: 0; }
 @media (max-width: 599px) { .user-card__open { flex-wrap: wrap; } .user-card__chips { flex-basis: 100%; } }
 .users-toolbar .segmented__option { white-space: nowrap; }
 @media (max-width: 599px) { .users-toolbar .segmented { max-width: 100%; } .users-toolbar .segmented__option { padding: 6px 9px; font-size: 0.82rem; } }

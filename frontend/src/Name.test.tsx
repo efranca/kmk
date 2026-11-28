@@ -75,17 +75,22 @@ describe("greeting and account page", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Bonjour, alice" })).toBeInTheDocument();
   });
 
-  it("shows 'name · username' on the account page, just the username without a name", async () => {
+  it("shows the name with the username under it on the account page, just the username without a name", async () => {
     visit("/account");
     mockApi({ "GET /api/auth/me": me(person({ name: "Marie Tremblay" })) });
     render(<App />);
-    expect(await screen.findByText(/Marie Tremblay · alice/)).toBeInTheDocument();
+    await screen.findByRole("heading", { level: 1, name: frCA.navAccount });
+    const card = document.querySelector(".profile-card__who")!;
+    expect(card.querySelector("strong")).toHaveTextContent("Marie Tremblay");
+    expect(card.querySelector(".muted")).toHaveTextContent("alice");
     cleanup();
     mockApi({ "GET /api/auth/me": me(person()) });
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1, name: frCA.navAccount })).toBeInTheDocument();
-    expect(screen.queryByText(/ · alice/)).toBeNull();
-    expect(screen.getByText(new RegExp(`alice · ${frCA.roleLabel}`))).toBeInTheDocument();
+    const plain = document.querySelector(".profile-card__who")!;
+    expect(plain.querySelector("strong")).toHaveTextContent("alice");
+    expect(plain.querySelectorAll(".muted")).toHaveLength(0); // no name: the username is the heading, not repeated
+    expect(plain).toHaveTextContent(frCA.role_user);
   });
 });
 

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { request } from "../schedule/api";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
+import { Icon } from "../ui/Icon";
 import { ErrorNotice } from "../ui/Feedback";
 import { useToast } from "../ui/toastContext";
 
@@ -51,17 +52,20 @@ export function CalendarFeedCard({ csrfToken }: { csrfToken: string }) {
   }
 
   return (
-    <section className="section settings-card">
-      <h2>{t("feedTitle")}</h2>
-      <p className="settings-hint">{t("feedHint")}</p>
-      <p className="settings-hint">{t("feedHowTo")}</p>
-      <p className="notice">{t("feedWarning")}</p>
-      {info && !info.exists && <p className="status" role="status">{t("feedNone")}</p>}
+    <section className="section settings-card feedcard">
+      <header className="feedcard__head">
+        <span className="feedcard__icon" aria-hidden="true"><Icon name="calendar" size={22} /></span>
+        <div>
+          <h2>{t("feedTitle")}</h2>
+          <p className="settings-hint">{t("feedHint")}</p>
+        </div>
+      </header>
+      {info && !info.exists && <p className="status feedcard__state" role="status">{t("feedNone")}</p>}
       {info?.exists && info.created_at && (
-        <p className="status ok" role="status">
-          {t("feedActive", { date: when(info.created_at) })}
-          {info.last_used_at && <> {t("feedLastUsed", { date: when(info.last_used_at) })}</>}
-        </p>
+        <div className="feedcard__state">
+          <p className="status ok" role="status">{t("feedActive", { date: when(info.created_at) })}</p>
+          {info.last_used_at && <p className="settings-hint">{t("feedLastUsed", { date: when(info.last_used_at) })}</p>}
+        </div>
       )}
       {url && (
         <div className="feed-link">
@@ -83,6 +87,8 @@ export function CalendarFeedCard({ csrfToken }: { csrfToken: string }) {
           )}
         </div>
       )}
+      <p className="feedcard__how">{t("feedHowTo")}</p>
+      <p className="feedcard__warn"><Icon name="info" size={18} /><span>{t("feedWarning")}</span></p>
       <Dialog
         open={confirm !== null}
         title={confirm === "revoke" ? t("feedRevoke") : t("feedRegenerate")}

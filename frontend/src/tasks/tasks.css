@@ -79,6 +79,7 @@
 .board--tabs .card-task__move { min-height: 40px; font-size: 0.9rem; max-width: 12rem; padding: 6px 10px; }
 
 @media (max-width: 640px) {
+  .tasks-toolbar { row-gap: 14px; } /* room for the search box's focus ring above the rows below it */
   .tasks-toolbar__search { flex: 1 1 100%; }
   .tasks-toolbar__search input { width: 100%; min-width: 0; box-sizing: border-box; }
   .tasks-toolbar__row { display: flex; flex: 1 1 100%; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
@@ -87,3 +88,7 @@
 /* The global `button:hover` rule paints pine; the open buttons stay transparent and the whole card or row takes the soft tint instead (as the Dashboard's My events rows do). */
 .card-task__open:hover:not(:disabled), .task__open:hover:not(:disabled) { background: transparent; color: var(--text); }
 .card-task:hover, .task:hover { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+
+/* a search box that sits right under the page header (Clients, Quotes), not inside the toolbar: room below it */
+.page > .tasks-toolbar__search { display: block; margin-bottom: 14px; }
+.page > .tasks-toolbar__search input { width: 100%; max-width: 28rem; box-sizing: border-box; }

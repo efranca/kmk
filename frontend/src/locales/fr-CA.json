@@ -43,6 +43,7 @@
   "invalidCode": "Code invalide.",
   "mfaSetupTitle": "Activer la vérification en deux étapes",
   "mfaSetupIntro": "Scannez le code QR avec votre application d'authentification (Google Authenticator, Microsoft Authenticator, Aegis…), puis entrez le code à 6 chiffres affiché.",
+  "mfaBackToAccount": "Retour à mon compte",
   "mfaSecretLabel": "Ou entrez cette clé manuellement :",
   "mfaQrAlt": "Code QR",
   "mfaEnable": "Activer",

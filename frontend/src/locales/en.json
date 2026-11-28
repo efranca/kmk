@@ -43,6 +43,7 @@
   "invalidCode": "Invalid code.",
   "mfaSetupTitle": "Turn on two-step verification",
   "mfaSetupIntro": "Scan the QR code with your authenticator app (Google Authenticator, Microsoft Authenticator, Aegis…), then enter the 6-digit code it shows.",
+  "mfaBackToAccount": "Back to my account",
   "mfaSecretLabel": "Or enter this key manually:",
   "mfaQrAlt": "QR code",
   "mfaEnable": "Turn on",

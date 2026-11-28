@@ -28,7 +28,7 @@ export default function ChangePassword({ csrfToken }: { csrfToken: string }) {
   }
 
   return (
-    <section className="section">
+    <section className="section settings-card">
       <h2>{t("changePasswordTitle")}</h2>
       <form onSubmit={submit} className="form">
         <p className="status">{t("passwordRules")}</p>

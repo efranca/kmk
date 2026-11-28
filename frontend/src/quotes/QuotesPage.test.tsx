@@ -45,10 +45,24 @@ describe("QuotesPage", () => {
     expect(screen.getByText("2 messages")).toBeInTheDocument();
   });
 
+  it("keeps the search box behind the magnifier button in the header, like Clients", async () => {
+    api();
+    renderWithProviders(<QuotesPage />);
+    await screen.findByRole("link", { name: /Maria Silva/ });
+    expect(screen.queryByRole("searchbox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Search quotes" }));
+    expect(screen.getByRole("searchbox", { name: "Search quotes" })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search quotes" }), { target: { value: "sao" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search quotes" })); // closing it clears the search
+    expect(screen.queryByRole("searchbox")).toBeNull();
+    expect(await screen.findByRole("link", { name: /Maria Silva/ })).toBeInTheDocument();
+  });
+
   it("searches name, address, phone and reference ignoring case and accents", async () => {
     api();
     renderWithProviders(<QuotesPage />);
     await screen.findByRole("link", { name: /Maria Silva/ });
+    fireEvent.click(screen.getByRole("button", { name: "Search quotes" }));
     fireEvent.change(screen.getByRole("searchbox", { name: "Search quotes" }), { target: { value: "sao PAULO" } });
     expect(await screen.findByRole("link", { name: /São Paulo Cleaning/ })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Maria Silva/ })).toBeNull();

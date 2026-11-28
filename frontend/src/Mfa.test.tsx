@@ -164,6 +164,19 @@ describe("enrollment", () => {
     expect(screen.queryByText(frCA.mfaBannerUser)).toBeNull();
   });
 
+  it("started from My account, offers a way back to My account (not to the sign-in page)", async () => {
+    visitAccount();
+    mockApi({ "GET /api/auth/me": session(), ...enrollmentApi });
+    render(<App />);
+    await screen.findByRole("button", { name: frCA.mfaSetupTitle });
+    click(frCA.mfaSetupTitle);
+    await screen.findByText("JBSWY3DPEHPK3PXP");
+    expect(screen.queryByRole("button", { name: frCA.backToSignIn })).toBeNull();
+    click(frCA.mfaBackToAccount);
+    expect(await screen.findByText(frCA.mfaStatusOff)).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/account");
+  });
+
   it("goes straight to enrollment when the server requires it, with no way to skip", async () => {
     const fn = mockApi({ "GET /api/auth/me": session(boss, "setup", false), ...enrollmentApi });
     render(<App />);

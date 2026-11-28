@@ -101,17 +101,17 @@ describe("Settings page", () => {
     expect(screen.queryByRole("switch", { name: frCA.settingsWidgetQuotesLatest })).toBeNull();
   });
 
-  it("lets a person keep just the icons in the phone's bottom bar, and saves it to the account", async () => {
+  it("lets a person show the page names in the phone's bottom bar, and saves it to the account", async () => {
     const fetchMock = vi.fn(async () => res(200, { preferences: {} }));
     vi.stubGlobal("fetch", fetchMock);
     render(<Providers><SettingsPage onLanguageChanged={vi.fn()} /></Providers>);
     const toggle = screen.getByRole("switch", { name: frCA.settingsMenuLabels });
-    expect(toggle).toBeChecked(); // names are shown until turned off
+    expect(toggle).not.toBeChecked(); // icons only, until turned on
     fireEvent.click(toggle);
-    expect(screen.getByRole("switch", { name: frCA.settingsMenuLabels })).not.toBeChecked();
+    expect(screen.getByRole("switch", { name: frCA.settingsMenuLabels })).toBeChecked();
     const patch = () => (fetchMock.mock.calls as unknown as [string, RequestInit][]).find(([url]) => url === "/api/me/preferences");
     await waitFor(() => expect(patch()).toBeDefined());
-    expect(JSON.parse(String(patch()![1].body))).toEqual({ show_menu_labels: false });
+    expect(JSON.parse(String(patch()![1].body))).toEqual({ show_menu_labels: true });
   });
 
   it("is a page of its own for signed-in people", async () => {

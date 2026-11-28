@@ -6,7 +6,16 @@ import { displayName } from "../person";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
+import { Icon } from "../ui/Icon";
 import { personOf } from "./UserRow";
+
+// The actions, in the order and groups they are shown: the main one, then account changes, security resets, and the destructive ones apart.
+const GROUPS: { id: string; actions: string[] }[] = [
+  { id: "main", actions: ["edit"] },
+  { id: "account", actions: ["set_role", "resend_invite", "enable", "restore"] },
+  { id: "security", actions: ["reset_password", "reset_mfa"] },
+  { id: "danger", actions: ["disable", "delete"] },
+];
 
 // Actions that need a "confirm" step before they are sent.
 const CONFIRMED = new Set(["reset_password", "reset_mfa", "disable", "delete", "set_role"]);
@@ -76,32 +85,38 @@ export default function UserDialog({
     if (ok) onClose();
   }
 
+  const canRemovePicture = user.avatarUrl !== null && user.actions.includes("edit");
   const actions = user.actions.filter((a) => a !== "view");
+  const known = new Set(GROUPS.flatMap((g) => g.actions));
+  const groups = GROUPS.map((g) => ({ id: g.id, actions: g.actions.filter((a) => actions.includes(a)) }))
+    .map((g) => (g.id === "account" ? { ...g, actions: [...g.actions, ...actions.filter((a) => !known.has(a))] } : g)) // an action the server adds later lands with the account ones
+    .filter((g) => g.actions.length > 0 || (g.id === "security" && canRemovePicture));
   // Only people who can read quote requests (administrators) have the switch, and only someone who may edit them can flip it.
   const canSetQuotes = user.actions.includes("edit") && user.role !== "user";
   async function toggleQuotes(on: boolean) {
     setNotifyQuotes(on);
     if (!(await run(adminSettings(csrfToken, user.id, { notify_quotes: on })))) setNotifyQuotes(!on);
   }
-  const canRemovePicture = user.avatarUrl !== null && user.actions.includes("edit");
 
   return (
     <Dialog open title={displayName(user)} onClose={onClose}>
       {notice}
       <div className="user-dialog__head">
-        <Avatar person={personOf(user)} size="lg" muted={user.status !== "active"} />
-        <div className="user-card__who">
-          <span className="muted">{user.name ? `${user.username} · ${user.email}` : user.email}</span>
+        <Avatar person={personOf(user)} size="xl" muted={user.status !== "active"} />
+        <div className="user-dialog__who">
+          {user.name && <span className="user-dialog__username">{user.username}</span>}
+          <span className="user-dialog__email">{user.email}</span>
           <span className="user-card__chips">
             <span className="chip-tag">{t(`role_${user.role}`)}</span>
             <span className="chip-tag chip-tag--status">{t(`status_${user.status}`)}</span>
             <span className="chip-tag">{t(user.mfaEnabled ? "adminMfaOn" : "adminMfaOff")}</span>
           </span>
-          <span className="muted" title={t("adminLastSignIn")}>
-            {t("adminLastSignIn")}: {user.lastSignIn ? new Date(user.lastSignIn).toLocaleString(i18n.language) : t("adminNever")}
-          </span>
         </div>
       </div>
+      <p className="user-dialog__seen" title={t("adminLastSignIn")}>
+        <Icon name="clock" size={16} />
+        <span>{t("adminLastSignIn")}: {user.lastSignIn ? new Date(user.lastSignIn).toLocaleString(i18n.language) : t("adminNever")}</span>
+      </p>
       {canSetQuotes && !editing && !pending && (
         <label className="user-dialog__check">
           <input type="checkbox" checked={notifyQuotes} onChange={(e) => void toggleQuotes(e.target.checked)} />
@@ -140,11 +155,15 @@ export default function UserDialog({
           <Button variant="ghost" onClick={() => setPending(null)}>{t("adminCancel")}</Button>
         </div>
       ) : (
-        <div className="row user-dialog__actions">
-          {actions.map((a) => (
-            <Button key={a} onClick={() => void choose(a)}>{label(a)}</Button>
+        <div className="user-actions">
+          {groups.map((g) => (
+            <div key={g.id} className={`user-actions__group user-actions__group--${g.id}`} data-group={g.id}>
+              {g.actions.map((a) => (
+                <Button key={a} variant={g.id === "main" ? "primary" : g.id === "danger" ? "danger" : "secondary"} onClick={() => void choose(a)}>{label(a)}</Button>
+              ))}
+              {g.id === "security" && canRemovePicture && <Button onClick={() => void run(adminRemoveAvatar(csrfToken, user.id)).then((ok) => ok && onClose())}>{t("avatarRemove")}</Button>}
+            </div>
           ))}
-          {canRemovePicture && <Button onClick={() => void run(adminRemoveAvatar(csrfToken, user.id)).then((ok) => ok && onClose())}>{t("avatarRemove")}</Button>}
         </div>
       )}
     </Dialog>

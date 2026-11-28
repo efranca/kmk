@@ -43,6 +43,7 @@
   "invalidCode": "Código inválido.",
   "mfaSetupTitle": "Ativar a verificação em duas etapas",
   "mfaSetupIntro": "Escaneie o código QR com seu aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Aegis…) e digite o código de 6 dígitos exibido.",
+  "mfaBackToAccount": "Voltar para minha conta",
   "mfaSecretLabel": "Ou digite esta chave manualmente:",
   "mfaQrAlt": "Código QR",
   "mfaEnable": "Ativar",

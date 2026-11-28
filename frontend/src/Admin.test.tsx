@@ -41,7 +41,7 @@ const listOf = (users: AdminRow[]) => () => res(200, { users });
 const calls = (fn: ReturnType<typeof mockApi>, route: string) => fn.mock.calls.filter(([u, i]) => `${i?.method ?? "GET"} ${u}` === route);
 const bodyOf = (call: unknown[]) => JSON.parse((call[1] as RequestInit).body as string);
 const headersOf = (call: unknown[]) => (call[1] as RequestInit).headers as Record<string, string>;
-const tab = (status: string) => fireEvent.click(screen.getByRole("radio", { name: new RegExp(`^${frCA[`status_${status}` as keyof typeof frCA]} \\d+$`) }));
+const tab = (status: string) => fireEvent.click(screen.getByRole("radio", { name: frCA[`status_${status}` as keyof typeof frCA] }));
 const rowOf = (name: string) => screen.getByRole("article", { name });
 const click = (scope: { getByRole: typeof screen.getByRole }, name: string) => fireEvent.click(scope.getByRole("button", { name }));
 /** Taps a person's row and returns queries scoped to the dialog that opens. */
@@ -137,10 +137,10 @@ describe("the list", () => {
     expect(screen.getByRole("article", { name: "marc" })).toBeInTheDocument();
   });
 
-  it("puts a count on each tab", async () => {
+  it("labels each tab with its status only, no counts", async () => {
     await openAdmin(users);
     for (const status of ["active", "invited", "disabled", "deleted"]) {
-      expect(screen.getByRole("radio", { name: new RegExp(`^${frCA[`status_${status}` as keyof typeof frCA]} \\d+$`) })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: frCA[`status_${status}` as keyof typeof frCA] })).toBeInTheDocument();
     }
   });
 
@@ -177,6 +177,25 @@ describe("buttons come only from the server's list of actions", () => {
     expect(carl.getByRole("button", { name: frCA.act_make_user })).toBeInTheDocument();
     expect(carl.getByRole("button", { name: frCA.act_restore })).toBeInTheDocument();
     expect(carl.queryByRole("button", { name: frCA.act_make_admin })).toBeNull();
+  });
+
+  it("groups the actions: edit first, then the account and security ones, and the destructive ones set apart at the end", async () => {
+    await openAdmin(
+      [
+        row({ id: 11, username: "bob", actions: ["view", "edit", "reset_password", "reset_mfa", "set_role", "disable", "delete"] }),
+      ],
+      "superadmin",
+    );
+    const dialog = openUser("bob");
+    const groupOf = (action: keyof typeof frCA) => dialog.getByRole("button", { name: frCA[action] }).closest("[data-group]")?.getAttribute("data-group");
+    expect(groupOf("act_edit")).toBe("main");
+    expect(groupOf("act_make_admin")).toBe("account");
+    expect(groupOf("act_reset_password")).toBe("security");
+    expect(groupOf("act_reset_mfa")).toBe("security");
+    expect(groupOf("act_disable")).toBe("danger");
+    expect(groupOf("act_delete")).toBe("danger");
+    const groups = [...document.querySelectorAll("[data-group]")].map((g) => g.getAttribute("data-group"));
+    expect(groups).toEqual(["main", "account", "security", "danger"]);
   });
 });
 

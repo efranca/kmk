@@ -46,15 +46,27 @@ export default function AccountPage({
   return (
     <>
       <h1>{t("navAccount")}</h1>
-      <AvatarPicker person={{ id: user.id, name: displayName(user), color: memberColor(user.id), avatar_url: user.avatar_url }} csrfToken={csrfToken} onChanged={onAvatarChanged} />
-      <p className="status">
-        {user.name ? `${user.name} · ${user.username}` : user.username} · {t("roleLabel")}: {t(`role_${user.role}`)}
-      </p>
       {recoveryCodesLeft !== null && <p className="notice" role="status">{t("codesRemaining", { count: recoveryCodesLeft })}</p>}
       {!mfaEnabled && <MfaBanner role={user.role} />}
-      <SecuritySection csrfToken={csrfToken} mfaEnabled={mfaEnabled} onEnroll={() => setEnrolling(true)} onDisabled={() => onMfaChange(false)} />
-      <ChangePassword csrfToken={csrfToken} />
-      <CalendarFeedCard csrfToken={csrfToken} />
+      <div className="settings-layout account-layout">
+        <section className="settings-card profile-card" aria-label={displayName(user)}>
+          <AvatarPicker
+            person={{ id: user.id, name: displayName(user), color: memberColor(user.id), avatar_url: user.avatar_url }}
+            csrfToken={csrfToken}
+            onChanged={onAvatarChanged}
+            heading={
+              <div className="profile-card__who">
+                <strong>{displayName(user)}</strong>
+                {user.name && <span className="muted">{user.username}</span>}
+                <span className="chip-tag" title={t("roleLabel")}>{t(`role_${user.role}`)}</span>
+              </div>
+            }
+          />
+        </section>
+        <SecuritySection csrfToken={csrfToken} mfaEnabled={mfaEnabled} onEnroll={() => setEnrolling(true)} onDisabled={() => onMfaChange(false)} />
+        <ChangePassword csrfToken={csrfToken} />
+        <CalendarFeedCard csrfToken={csrfToken} />
+      </div>
     </>
   );
 }

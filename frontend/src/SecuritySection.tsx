@@ -57,7 +57,7 @@ export default function SecuritySection({
   if (codes) return <RecoveryCodes codes={codes} onContinue={() => setCodes(null)} />;
 
   return (
-    <section className="section">
+    <section className="section settings-card">
       <h2>{t("securityTitle")}</h2>
       <p className="status">{t(mfaEnabled ? "mfaStatusOn" : "mfaStatusOff")}</p>
       {!mfaEnabled && <button type="button" onClick={onEnroll}>{t("mfaSetupTitle")}</button>}

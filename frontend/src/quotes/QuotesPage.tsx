@@ -30,6 +30,7 @@ export function QuotesPage() {
   });
   const [text, setText] = useState("");
   const [entering, setEntering] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const searching = text.trim().length > 0;
   const result = useQuotes(searching ? "all" : tab); // a search looks through every status
   const when = (iso: string) => new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
@@ -37,12 +38,22 @@ export function QuotesPage() {
 
   return (
     <>
-      <PageHeader title={t("quoteTitle")} actions={<IconButton icon="plus" variant="primary" label={t("quoteManualNew")} onClick={() => setEntering(true)} />} />
+      <PageHeader title={t("quoteTitle")} actions={
+        <>
+          <IconButton icon="search" label={t("quoteSearch")} aria-pressed={searchOpen} onClick={() => { if (searchOpen) setText(""); setSearchOpen(!searchOpen); }} />
+          <IconButton icon="plus" variant="primary" label={t("quoteManualNew")} onClick={() => setEntering(true)} />
+        </>
+      } />
+      {searchOpen && (
+        <label className="tasks-toolbar__search quotes-searchbox">
+          <span className="visually-hidden">{t("quoteSearch")}</span>
+          <input type="search" value={text} autoFocus placeholder={t("quoteSearchPlaceholder")} onChange={(e) => setText(e.target.value)} />
+        </label>
+      )}
       <div className="quotes-toolbar">
         <div className="quotes-tabs">
           <Segmented dropdown={narrow} label={t("quoteTabs")} value={tab} onChange={setTab} options={TABS.map((value) => ({ value, label: t(TAB_KEYS[value]) }))} />
         </div>
-        <input type="search" className="input quotes-search" aria-label={t("quoteSearch")} placeholder={t("quoteSearchPlaceholder")} value={text} onChange={(e) => setText(e.target.value)} />
       </div>
       {result.isPending ? <Loading /> : result.isError ? <ErrorNotice error={result.error} onRetry={() => void result.refetch()} /> : rows.length === 0 ? (
         searching ? <EmptyState>{t("quoteNoResults")}</EmptyState>

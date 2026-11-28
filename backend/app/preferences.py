@@ -20,7 +20,7 @@ DEFAULTS: dict = {
     "show_task_people": True,
     "show_schedule_people": True,
     "show_document_categories": False,
-    "show_menu_labels": True,
+    "show_menu_labels": False,
     "notify_assigned": True,
     "documents_view": "list",
     "dashboard_widgets": {"my_events": True, "all_events": True, "my_tasks": True, "quotes_summary": True, "quotes_latest": True, "my_clients": True},

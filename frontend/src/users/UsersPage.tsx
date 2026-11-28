@@ -69,7 +69,6 @@ export default function UsersPage({ session }: { session: Session }) {
   const visible = (users ?? []).filter(
     (u) => (searching ? fold(u.username).includes(needle) || fold(u.email).includes(needle) || fold(u.name ?? "").includes(needle) : u.status === tab),
   );
-  const countOf = (status: StatusTab) => (users ?? []).filter((u) => u.status === status).length;
   const open = users?.find((u) => u.id === openId) ?? null;
   const dialogOpen = inviting || open !== null;
 
@@ -99,7 +98,7 @@ export default function UsersPage({ session }: { session: Session }) {
       <div className="users-toolbar">
         {!searching && users && (
           <Segmented dropdown={narrow} label={t("adminStatusLabel")} value={tab} onChange={setTab}
-            options={TABS.map((s) => ({ value: s, label: `${t(`status_${s}`)} ${countOf(s)}` }))} />
+            options={TABS.map((s) => ({ value: s, label: t(`status_${s}`) }))} />
         )}
         {searchOpen && (
           <label className="users-toolbar__search">

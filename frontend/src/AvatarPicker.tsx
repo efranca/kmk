@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ApiFailure, request, upload } from "./schedule/api";
@@ -10,7 +10,7 @@ import { AVATAR_ACCEPT, prepareAvatar } from "./ui/prepareAvatar";
  * Your picture, with Change and Remove. The browser crops and shrinks the chosen file; it is sent at once.
  * `onChanged` runs after the server accepted a change, so the page can show the new picture everywhere.
  */
-export default function AvatarPicker({ person, csrfToken, onChanged }: { person: Person; csrfToken: string; onChanged: () => void }) {
+export default function AvatarPicker({ person, csrfToken, onChanged, heading }: { person: Person; csrfToken: string; onChanged: () => void; /** Shown beside the picture, above the buttons (the name and role on the Account page). */ heading?: ReactNode }) {
   const { t } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -33,7 +33,9 @@ export default function AvatarPicker({ person, csrfToken, onChanged }: { person:
   return (
     <div className="avatar-picker">
       <Avatar person={person} size="xl" labelled />
-      <div className="avatar-picker__actions">
+      <div className="avatar-picker__side">
+        {heading}
+        <div className="avatar-picker__actions">
         <Button icon="upload" busy={busy} onClick={() => input.current?.click()}>
           {t(person.avatar_url ? "avatarChange" : "avatarChoose")}
         </Button>
@@ -43,6 +45,7 @@ export default function AvatarPicker({ person, csrfToken, onChanged }: { person:
           </Button>
         )}
         {error && <p className="error" role="alert">{error}</p>}
+        </div>
       </div>
       <input
         ref={input}

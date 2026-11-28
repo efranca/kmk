@@ -11,7 +11,7 @@ DEFAULTS = {
     "show_task_people": True,
     "show_schedule_people": True,
     "show_document_categories": False,
-    "show_menu_labels": True,
+    "show_menu_labels": False,
     "notify_assigned": True,
     "documents_view": "list",
     "dashboard_widgets": {"my_events": True, "all_events": True, "my_tasks": True, "quotes_summary": True, "quotes_latest": True, "my_clients": True},
@@ -111,10 +111,10 @@ def test_category_chips_on_the_documents_page_are_off_until_chosen_and_follow_th
 
 def test_menu_names_in_the_phone_bar_are_on_until_turned_off_and_follow_the_account(make_client, add_user):
     c, h, first = session(make_client, add_user)
-    assert first["preferences"]["show_menu_labels"] is True
-    r = c.patch("/api/me/preferences", json={"show_menu_labels": False}, headers=h)
-    assert r.status_code == 200 and r.json()["preferences"]["show_menu_labels"] is False
-    assert login(make_client(), "alice").json()["preferences"]["show_menu_labels"] is False
+    assert first["preferences"]["show_menu_labels"] is False  # icons only in the phone's bottom bar, until turned on
+    r = c.patch("/api/me/preferences", json={"show_menu_labels": True}, headers=h)
+    assert r.status_code == 200 and r.json()["preferences"]["show_menu_labels"] is True
+    assert login(make_client(), "alice").json()["preferences"]["show_menu_labels"] is True
     assert c.patch("/api/me/preferences", json={"show_menu_labels": "no"}, headers=h).status_code == 422
 
 

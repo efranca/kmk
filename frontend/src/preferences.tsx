@@ -30,7 +30,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   show_task_people: true,
   show_schedule_people: true,
   show_document_categories: false,
-  show_menu_labels: true,
+  show_menu_labels: false,
   notify_assigned: true,
   documents_view: "list",
   dashboard_widgets: { my_events: true, all_events: true, my_tasks: true, quotes_summary: true, quotes_latest: true, my_clients: true },

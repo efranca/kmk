@@ -99,3 +99,19 @@ button { min-height: var(--touch-target); }
 .mfacard__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .mfacard__actions button { margin: 0; }
 @media (max-width: 640px) { .mfacard__actions { width: 100%; margin-left: 54px; } }
+
+/* two-step verification setup: the QR code beside the key and the code field (stacked on a phone) */
+.mfasetup { max-width: 44rem; text-align: left; }
+.mfasetup h1 { margin-bottom: var(--space-2); }
+.mfasetup__intro { margin: 0 0 var(--space-4); color: var(--text-muted); max-width: 60ch; line-height: 1.5; }
+.mfasetup__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: var(--space-4); align-items: start; padding: var(--space-4); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+.mfasetup__qr { display: grid; place-items: center; padding: var(--space-3); background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.mfasetup__qr .qr { display: block; width: 200px; height: 200px; max-width: 100%; margin: 0; }
+.mfasetup__side { display: grid; gap: var(--space-4); min-width: 0; align-content: start; }
+.mfasetup__key { display: grid; gap: 6px; font-size: 0.9rem; color: var(--text-muted); }
+.mfasetup .secret { display: block; margin: 0; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-sm); font-family: ui-monospace, monospace; font-size: 0.95rem; letter-spacing: 0.08em; color: var(--text); overflow-wrap: anywhere; user-select: all; }
+.mfasetup__form { display: grid; gap: var(--space-3); margin: 0; }
+.mfasetup__form label { display: grid; gap: 6px; font-size: 0.9rem; font-weight: 600; }
+.mfasetup__code { width: 100%; box-sizing: border-box; text-align: center; font-size: 1.4rem; letter-spacing: 0.35em; font-variant-numeric: tabular-nums; padding: 10px 12px; }
+.mfasetup__form button, .mfasetup__foot button { margin: 0; }
+.mfasetup__foot { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
