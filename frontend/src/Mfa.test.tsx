@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("qrcode", () => {
@@ -107,6 +107,16 @@ describe("encouragement banner", () => {
     render(<App />);
     await screen.findByRole("heading", { level: 1 });
     expect(screen.queryByText(frCA.mfaBannerUser)).toBeNull();
+  });
+
+  it("is a card with a title, the message, and a Set up button that opens the Account page", async () => {
+    mockApi({ "GET /api/auth/me": session() });
+    render(<App />);
+    const card = (await screen.findByText(frCA.mfaBannerUser)).closest("aside")!;
+    expect(card).toHaveClass("mfacard");
+    expect(within(card).getByText(frCA.mfaBannerTitle)).toBeInTheDocument();
+    click(frCA.mfaBannerSetup);
+    expect(window.location.pathname).toBe("/account");
   });
 
   it("keeps the banner for admins, with no dismiss button", async () => {

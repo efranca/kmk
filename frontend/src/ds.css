@@ -89,3 +89,13 @@ button { min-height: var(--touch-target); }
 @media (prefers-reduced-motion: no-preference) { .btn, .appnav > a, .accountmenu__item { transition: background-color 150ms ease-out, color 150ms ease-out; } }
 /* the phone bar holds six tabs and the account face: its labels use the 12px overline size so they all fit */
 @media (max-width: 639px) { .appnav > a:not(.appnav__brand), .appnav > .appnav__more { font-size: 0.75rem; } }
+
+/* the two-step verification card: an icon, a title and a sentence, and the actions to the right (below on a phone) */
+.mfacard { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 0 0 14px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--warning); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); text-align: left; color: var(--text); }
+.mfacard__icon { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--warning-tint); color: var(--warning); }
+.mfacard__text { flex: 1 1 14rem; min-width: 0; display: grid; gap: 2px; }
+.mfacard__text strong { font-size: 1rem; }
+.mfacard__text p { margin: 0; font-size: 0.9rem; color: var(--text-muted); }
+.mfacard__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.mfacard__actions button { margin: 0; }
+@media (max-width: 640px) { .mfacard__actions { width: 100%; margin-left: 54px; } }

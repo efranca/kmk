@@ -55,6 +55,8 @@
   "confirm": "Confirm",
   "mfaBannerAdmin": "Your account has administrator rights. Turn on two-step verification to protect it.",
   "mfaBannerUser": "Protect your account with two-step verification.",
+  "mfaBannerTitle": "Secure your account",
+  "mfaBannerSetup": "Set up",
   "dismiss": "Later",
   "securityTitle": "Security",
   "mfaStatusOn": "Two-step verification: on",

@@ -46,7 +46,7 @@ export function DashboardPage({ user, mfaEnabled, recoveryCodesLeft }: { user: U
     <div className="page page--dashboard">
       <h1>{t("welcome", { name: displayName(user) })}</h1>
       {recoveryCodesLeft !== null && <p className="notice" role="status">{t("codesRemaining", { count: recoveryCodesLeft })}</p>}
-      {!mfaEnabled && <MfaBanner role={user.role} />}
+      {!mfaEnabled && <MfaBanner role={user.role} onSetup={() => navigate("/account")} />}
       <div className="dash__grid">
         {widgets.my_events && <MyEventsCard items={items} userId={user.id} people={byId} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />}
         {showAll && <AllEventsCard items={items} everyone={people} today={today} locale={i18n.language} state={state} onOpen={openDay} onOpenSchedule={openSchedule} />}

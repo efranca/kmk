@@ -55,6 +55,8 @@
   "confirm": "Confirmar",
   "mfaBannerAdmin": "Sua conta tem direitos de administrador. Ative a verificação em duas etapas para protegê-la.",
   "mfaBannerUser": "Proteja sua conta com a verificação em duas etapas.",
+  "mfaBannerTitle": "Proteja sua conta",
+  "mfaBannerSetup": "Configurar",
   "dismiss": "Depois",
   "securityTitle": "Segurança",
   "mfaStatusOn": "Verificação em duas etapas: ativada",

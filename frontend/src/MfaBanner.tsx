@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Button } from "./ui/Button";
+import { Icon } from "./ui/Icon";
+
 const KEY = "kmk.mfaBannerDismissed";
 
 function wasDismissed(): boolean {
@@ -12,7 +15,7 @@ function wasDismissed(): boolean {
 }
 
 /** Encourages turning on two-step verification. Permanent for admins, dismissible (per browser) for others. */
-export default function MfaBanner({ role }: { role: "user" | "admin" | "superadmin" }) {
+export default function MfaBanner({ role, onSetup }: { role: "user" | "admin" | "superadmin"; /** Where "Set up" goes (left out on the Account page, which already has the setup). */ onSetup?: () => void }) {
   const { t } = useTranslation();
   const privileged = role !== "user";
   const [hidden, setHidden] = useState(() => !privileged && wasDismissed());
@@ -28,9 +31,16 @@ export default function MfaBanner({ role }: { role: "user" | "admin" | "superadm
   }
 
   return (
-    <aside className="banner" role="note">
-      <p>{t(privileged ? "mfaBannerAdmin" : "mfaBannerUser")}</p>
-      {!privileged && <button type="button" className="secondary" onClick={dismiss}>{t("dismiss")}</button>}
+    <aside className="mfacard" role="note">
+      <span className="mfacard__icon" aria-hidden="true"><Icon name="shield" size={22} /></span>
+      <div className="mfacard__text">
+        <strong>{t("mfaBannerTitle")}</strong>
+        <p>{t(privileged ? "mfaBannerAdmin" : "mfaBannerUser")}</p>
+      </div>
+      <div className="mfacard__actions">
+        {onSetup && <Button variant="primary" onClick={onSetup}>{t("mfaBannerSetup")}</Button>}
+        {!privileged && <Button variant="ghost" onClick={dismiss}>{t("dismiss")}</Button>}
+      </div>
     </aside>
   );
 }

@@ -17,6 +17,7 @@ const PATHS = {
   "chev-right": '<path d="m9.5 6 6 6-6 6"/>',
   "chev-down": '<path d="m6 9.5 6 6 6-6"/>',
   undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
+  shield: '<path d="M12 3l7 3v5c0 4.4-2.9 8.2-7 9.5-4.1-1.3-7-5.1-7-9.5V6z"/><path d="m9 12 2 2 4-4"/>',
   users: '<circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M17 5.5a3 3 0 0 1 0 5.5M21 20c0-2.6-1.6-4.7-4-5.6"/>',
   tasks: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 9.5 1.5 1.5 3-3M8 16h8"/>',
   settings: '<path d="M5 8h14M5 16h14"/><circle cx="9" cy="8" r="2.2"/><circle cx="15" cy="16" r="2.2"/>',
