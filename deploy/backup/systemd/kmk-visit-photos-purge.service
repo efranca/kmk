@@ -1,5 +1,6 @@
 [Unit]
 Description=Delete kmk visit photos older than six months
+OnFailure=kmk-visit-photos-purge-alert.service
 
 [Service]
 Type=oneshot

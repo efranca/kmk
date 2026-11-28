@@ -107,10 +107,11 @@ elif [[ ! -r "$KMK_BACKUP_PHOTOS_SRC" || ! -x "$KMK_BACKUP_PHOTOS_SRC" ]]; then
   fail "the photo folder $KMK_BACKUP_PHOTOS_SRC exists but cannot be read by this user: the photos were NOT backed up"
 else
   # A full walk (no early stop) so that an unreadable subfolder is reported by find, never mistaken for "no files".
-  find "$KMK_BACKUP_PHOTOS_SRC" -type f >"$WORK/photos.list" 2>"$WORK/find.err" \
+  # -H: the folder itself may be a symlink (followed); links inside it are not.
+  find -H "$KMK_BACKUP_PHOTOS_SRC" -type f >"$WORK/photos.list" 2>"$WORK/find.err" \
     || fail "the photo folder $KMK_BACKUP_PHOTOS_SRC cannot be read completely: the photos were NOT backed up"
   # rsync --link-dest would link an unchanged file without reading it, so check readability explicitly.
-  [[ -z "$(find "$KMK_BACKUP_PHOTOS_SRC" -type f ! -readable -print -quit 2>/dev/null)" ]] \
+  [[ -z "$(find -H "$KMK_BACKUP_PHOTOS_SRC" -type f ! -readable -print -quit 2>/dev/null)" ]] \
     || fail "some files in the photo folder $KMK_BACKUP_PHOTOS_SRC cannot be read by this user: the photos were NOT backed up"
   [[ -s "$WORK/photos.list" ]] || log "photos: $KMK_BACKUP_PHOTOS_SRC has no files, skipping"
 fi

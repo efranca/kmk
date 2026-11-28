@@ -10,7 +10,7 @@ SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SELF_DIR/lib.sh"
 
 UNIT_DIR="${KMK_BACKUP_UNIT_DIR:-$HOME/.config/systemd/user}"
-UNITS=(kmk-backup.service kmk-backup.timer kmk-backup-alert.service kmk-visit-photos-purge.service kmk-visit-photos-purge.timer)
+UNITS=(kmk-backup.service kmk-backup.timer kmk-backup-alert.service kmk-visit-photos-purge.service kmk-visit-photos-purge.timer kmk-visit-photos-purge-alert.service)
 MODE=install; RENDER_DIR=""
 while [[ $# -gt 0 ]]; do
   case "$1" in

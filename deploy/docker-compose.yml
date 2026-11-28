@@ -55,7 +55,10 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@kmk-entretien.ca}
       VISIT_PHOTOS_DIR: /data/visit-photos
     volumes:
-      - ./data/visit-photos:/data/visit-photos   # the photos of visits; the folder must be owned by uid 10001 (docs/operations)
+      # The photos of visits, at one ABSOLUTE host path (auto-deploy runs compose from a disposable worktree, so a
+      # relative path would point into it). The backup reads the same folder (deploy/backup/lib.sh, same variable and
+      # default). Prepare it before the first deploy: owned by uid 10001, group = the host user's, mode 2750 (docs/operations).
+      - ${KMK_VISIT_PHOTOS_HOST_DIR:-/var/lib/kmk/visit-photos}:/data/visit-photos
     mem_limit: 1536m       # Argon2 uses 64 MiB per call (at most 4 at once); a 50 MB document upload holds a few copies (at most 2 at once)
     pids_limit: 256
     cap_drop: [ALL]

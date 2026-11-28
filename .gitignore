@@ -16,6 +16,3 @@ infrastructure/backups/
 
 # pytest-testmon: which tests touch which code (local cache)
 .testmondata*
-
-# Photos of visits (runtime data, never committed)
-deploy/data/

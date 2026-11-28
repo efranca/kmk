@@ -18,7 +18,9 @@ REPO_DIR="$(cd "$LIB_DIR/../.." && pwd)"
 : "${KMK_BACKUP_PG_USER:=postgres}"
 : "${KMK_BACKUP_KEEP_DAILY:=14}"  # two weeks
 # Visit photos (a folder of files): snapshotted next to the database archives. Empty or missing = skipped, not a failure.
-: "${KMK_BACKUP_PHOTOS_SRC=$REPO_DIR/deploy/data/visit-photos}"
+# The default is the very folder the api container writes (the bind in deploy/docker-compose.yml, same variable, same
+# absolute default): it must not depend on the checkout the backup runs from (auto-deploy builds from another one).
+: "${KMK_BACKUP_PHOTOS_SRC=${KMK_VISIT_PHOTOS_HOST_DIR:-/var/lib/kmk/visit-photos}}"
 : "${KMK_BACKUP_TMP:=${XDG_RUNTIME_DIR:-/dev/shm}}"  # working files go to tmpfs and are removed at the end
 
 log() { printf '%s\n' "$*" >&2; }

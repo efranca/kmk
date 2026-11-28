@@ -282,6 +282,54 @@ def test_new_photo_files_are_640_and_shard_dirs_750(tmp_path):
         assert (tmp_path / fid[:2]).stat().st_mode & 0o777 == 0o750
 
 
+def test_save_never_changes_the_mode_of_a_folder(tmp_path, monkeypatch):
+    """Ruling R14: inside the container the API is not in the folder's group and has no CAP_FSETID, so a chmod of a
+    folder would clear its setgid bit. Only the new file's own mode is set."""
+    import stat
+
+    calls = []
+    real_chmod, real_fchmod = os.chmod, os.fchmod
+
+    def chmod(path, mode, *a, **kw):
+        calls.append(("chmod", stat.S_ISDIR(os.stat(path).st_mode)))
+        return real_chmod(path, mode, *a, **kw)
+
+    def fchmod(fd, mode):
+        calls.append(("fchmod", stat.S_ISDIR(os.fstat(fd).st_mode)))
+        return real_fchmod(fd, mode)
+
+    monkeypatch.setattr(os, "chmod", chmod)
+    monkeypatch.setattr(os, "fchmod", fchmod)
+    first = storage.save(tmp_path, b"abc")  # a new shard folder
+    for _ in range(40):  # and saves into shard folders that already exist (40 saves: a repeated shard is near certain)
+        storage.save(tmp_path, b"x")
+    assert ("fchmod", False) in calls  # the file's mode is set...
+    assert not [c for c in calls if c[1]], calls  # ...and never a folder's
+    assert (tmp_path / first[:2]).is_dir()
+
+
+def test_a_new_shard_folder_inherits_the_setgid_bit_and_group(tmp_path):
+    """The root folder is prepared `chmod 2750` with the host user's group: new shard folders and files get that group
+    from the kernel (setgid inheritance), never from a chmod."""
+    import stat
+
+    root = tmp_path / "photos"
+    root.mkdir()
+    groups = [g for g in os.getgroups() if g != os.getegid()] or [os.getegid()]
+    try:
+        os.chown(root, -1, groups[0])
+        os.chmod(root, 0o2750)
+    except OSError as e:
+        pytest.skip(f"cannot prepare a setgid folder here: {e}")
+    if not root.stat().st_mode & stat.S_ISGID:
+        pytest.skip("this filesystem does not keep the setgid bit on folders")
+    fid = storage.save(root, b"abc")
+    shard, file = root / fid[:2], root / fid[:2] / fid
+    assert shard.stat().st_mode & stat.S_ISGID, oct(shard.stat().st_mode)
+    assert shard.stat().st_gid == root.stat().st_gid == file.stat().st_gid == groups[0]
+    assert shard.stat().st_mode & 0o777 == 0o750 and file.stat().st_mode & 0o777 == 0o640
+
+
 def test_upload_waiting_for_the_visit_lock_does_not_block_the_event_loop(team, owner_engine):
     started(team)
     visit_id = sql(owner_engine, "SELECT id FROM visits")[0][0]

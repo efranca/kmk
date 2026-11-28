@@ -430,7 +430,7 @@ def test_units_are_rendered_with_the_repository_path(setup):
     names = sorted(p.name for p in out.iterdir())
     assert names == [
         "kmk-backup-alert.service", "kmk-backup.service", "kmk-backup.timer",
-        "kmk-visit-photos-purge.service", "kmk-visit-photos-purge.timer",
+        "kmk-visit-photos-purge-alert.service", "kmk-visit-photos-purge.service", "kmk-visit-photos-purge.timer",
     ]
     service = (out / "kmk-backup.service").read_text()
     timer = (out / "kmk-backup.timer").read_text()
@@ -455,6 +455,34 @@ def test_purge_units_are_rendered(setup):
     dry = run("install.sh", {**setup.env, "KMK_BACKUP_UNIT_DIR": str(setup.tmp / "uu")}, "--dry-run").stdout
     assert "kmk-visit-photos-purge.timer" in dry and "enable --now kmk-visit-photos-purge.timer" in dry
     assert "enable --now kmk-backup.timer" in dry
+
+
+def test_a_failed_purge_alerts_the_owner(setup):
+    """Ruling R17: its own alert unit (the backup alert reads the backup status file, which would say ok)."""
+    r, out = render_units(setup)
+    assert r.returncode == 0, r.stderr
+    service = (out / "kmk-visit-photos-purge.service").read_text()
+    alert = (out / "kmk-visit-photos-purge-alert.service").read_text()
+    assert "OnFailure=kmk-visit-photos-purge-alert.service" in service
+    assert "After=docker.service" not in service  # a user unit cannot order itself against a system unit
+    assert "Type=oneshot" in alert and f"ExecStart={REPO}/deploy/backup/notify-failure.sh purge" in alert
+    dry = run("install.sh", {**setup.env, "KMK_BACKUP_UNIT_DIR": str(setup.tmp / "uu")}, "--dry-run").stdout
+    for name in ("kmk-backup.service", "kmk-backup.timer", "kmk-backup-alert.service", "kmk-visit-photos-purge.service",
+                 "kmk-visit-photos-purge.timer", "kmk-visit-photos-purge-alert.service"):
+        assert f"### {setup.tmp / 'uu' / name}" in dry, name
+
+
+def test_notify_failure_for_the_purge_has_its_own_message(setup):
+    write_status_file(setup, result="failed", message="the mount is gone")  # the backup's status: not about the purge
+    bin_dir = fake_notifier(setup.tmp, 0)
+    r = run("notify-failure.sh", {**setup.env, "PATH": f"{bin_dir}:{os.environ['PATH']}"}, "purge")
+    assert r.returncode == 0, r.stderr
+    sent = (setup.tmp / "notify.log").read_text()
+    assert "The photo clean-up (purge) failed: photos older than 6 months may still be on disk" in sent
+    assert "journalctl --user -u kmk-visit-photos-purge.service" in sent and "critical" in sent
+    assert "the mount is gone" not in sent and "KMK backup FAILED" not in sent
+    assert run("notify-failure.sh", {**setup.env, "KMK_NOTIFY_BIN": "no-such-notifier"}, "purge").returncode == 0
+    assert run("notify-failure.sh", {**setup.env, "KMK_NOTIFY_BIN": "no-such-notifier"}, "something-else").returncode == 0  # never fails
 
 
 @pytest.mark.skipif(not shutil.which("systemd-analyze"), reason="systemd-analyze not available")
@@ -660,3 +688,42 @@ def test_snapshot_modes_are_private(setup, add_user):
     mode = lambda p: p.stat().st_mode & 0o777  # noqa: E731
     assert mode(setup.dest / "photos") == 0o700 and mode(snap) == 0o700 and mode(snap / "a") == 0o700
     assert mode(snap / "a" / "1.jpg") == 0o600
+
+
+def lib_value(env: dict, name: str) -> str:
+    r = subprocess.run(["bash", "-c", f'source "{SCRIPTS}/lib.sh"; printf %s "${name}"'], env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    return r.stdout
+
+
+def test_the_photo_source_defaults_to_the_folder_the_api_writes(setup):
+    """Ruling R13: the same absolute host folder as the api's bind in deploy/docker-compose.yml."""
+    base = {k: v for k, v in setup.env.items() if k not in ("KMK_BACKUP_PHOTOS_SRC", "KMK_VISIT_PHOTOS_HOST_DIR")}
+    assert lib_value(base, "KMK_BACKUP_PHOTOS_SRC") == "/var/lib/kmk/visit-photos"
+    assert lib_value({**base, "KMK_VISIT_PHOTOS_HOST_DIR": "/srv/photos"}, "KMK_BACKUP_PHOTOS_SRC") == "/srv/photos"
+    assert lib_value({**base, "KMK_BACKUP_PHOTOS_SRC": ""}, "KMK_BACKUP_PHOTOS_SRC") == ""  # empty still means "skip"
+    assert lib_value({**base, "KMK_BACKUP_PHOTOS_SRC": "/x"}, "KMK_BACKUP_PHOTOS_SRC") == "/x"
+
+
+def test_a_symlinked_photo_folder_is_followed(setup, add_user, tmp_path):
+    add_user()
+    real = tmp_path / "real-photos"
+    (real / "a").mkdir(parents=True)
+    (real / "a" / "1.jpg").write_bytes(b"one")
+    link = tmp_path / "photos-link"
+    link.symlink_to(real, target_is_directory=True)
+    r = run_at(setup, "2026-11-23 02:30:00", KMK_BACKUP_PHOTOS_SRC=str(link))
+    assert r.returncode == 0, r.stderr
+    assert status_of(setup)["message"] == "backup written (photos: 1 files)"
+    (snap,) = photo_snapshots(setup)
+    assert (snap / "a" / "1.jpg").read_bytes() == b"one" and not (snap / "a" / "1.jpg").is_symlink()
+    # an unreadable file behind the link is still caught
+    (real / "a" / "1.jpg").chmod(0o000)
+    try:
+        if os.access(real / "a" / "1.jpg", os.R_OK):
+            pytest.skip("chmod does not block reads for this user")
+        r = run_at(setup, "2026-11-24 02:30:00", KMK_BACKUP_PHOTOS_SRC=str(link), KMK_BACKUP_KEEP_DAILY="1")
+    finally:
+        (real / "a" / "1.jpg").chmod(0o644)
+    assert r.returncode == 1 and status_of(setup)["result"] == "failed" and "photo" in status_of(setup)["message"]
+    assert [p.name for p in photo_snapshots(setup)] == ["2026-11-23_023000"]

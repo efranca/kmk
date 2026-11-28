@@ -118,6 +118,22 @@ def test_visit_photos_volume_and_setting_are_on_the_api_only(compose):
             assert all(v["target"] != "/data/visit-photos" for v in svc.get("volumes", [])), name
 
 
+PHOTOS_BIND = "${KMK_VISIT_PHOTOS_HOST_DIR:-/var/lib/kmk/visit-photos}:/data/visit-photos"
+
+
+def test_visit_photos_live_at_one_absolute_host_path(compose):
+    """Ruling R13: auto-deploy runs compose from a disposable worktree, so a relative bind would land in that worktree
+    (created by Docker as root). The source is absolute, the same default the backup reads (deploy/backup/lib.sh)."""
+    (bind,) = [v for v in compose["api"]["volumes"] if v["target"] == "/data/visit-photos"]
+    assert bind["type"] == "bind" and bind["source"].startswith("/"), bind["source"]
+    text = (DEPLOY / "docker-compose.yml").read_text()
+    assert text.count(PHOTOS_BIND) == 1 and "./data/visit-photos" not in text
+    default = PHOTOS_BIND.split(":-", 1)[1].split("}", 1)[0]
+    assert default == "/var/lib/kmk/visit-photos"
+    lib = (DEPLOY / "backup" / "lib.sh").read_text()
+    assert f"${{KMK_VISIT_PHOTOS_HOST_DIR:-{default}}}" in lib  # the backup reads the very same folder
+
+
 def test_devis_serves_the_quote_page():
     text = CADDYFILE.read_text()
     block = text[text.index("@devis path"):text.index("handle /assets/*")]

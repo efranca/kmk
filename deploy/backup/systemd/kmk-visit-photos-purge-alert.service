@@ -1,0 +1,6 @@
+[Unit]
+Description=Tell the owner that the kmk visit photo purge failed
+
+[Service]
+Type=oneshot
+ExecStart=@REPO@/deploy/backup/notify-failure.sh purge
