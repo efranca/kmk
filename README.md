@@ -32,7 +32,7 @@ features (customer records, AI tools); see [docs/roadmap.md](docs/roadmap.md).
 ```
 backend/    FastAPI app (app/), migrations (alembic/), tests (tests/)
 frontend/   React app (src/); `npm run build` produces dist/, which Caddy serves
-deploy/     docker-compose.yml, Caddyfile, .env.example (the real .env is git-ignored); deploy/backup/ = encrypted backup scripts and timer
+deploy/     docker-compose.yml, Caddyfile, .env.example (the real .env is git-ignored); deploy/backup/ = backup scripts (plain, unencrypted archives plus visit photo snapshots) and their systemd units
 scripts/    scripts/audit-deps.sh: scan the Python and JavaScript dependencies for known vulnerabilities
 docs/       documentation; docs/superpowers/ holds the design specs and implementation plans
 scope.md    the original project plan
