@@ -584,7 +584,8 @@ def test_missing_photo_folder_is_not_a_failure(setup, add_user):
     assert r.returncode == 0, r.stderr
     assert status_of(setup)["message"] == "backup written" and photo_snapshots(setup) == []
     r = run_at(setup, "2026-11-25 02:30:00", KMK_BACKUP_PHOTOS_SRC="")
-    assert r.returncode == 0, r.stderr and status_of(setup)["message"] == "backup written"
+    assert r.returncode == 0, r.stderr
+    assert status_of(setup)["message"] == "backup written"
 
 
 def test_a_failed_photo_step_records_failed_and_deletes_nothing(setup, add_user, tmp_path):
@@ -600,3 +601,62 @@ def test_a_failed_photo_step_records_failed_and_deletes_nothing(setup, add_user,
     assert status_of(setup)["result"] == "failed" and "photo" in status_of(setup)["message"]
     assert len(archives(setup)) == 2  # the new archive stays, the old one was not pruned
     assert [p.name for p in photo_snapshots(setup)] == ["2026-11-22_023000"]  # no partial left, nothing pruned
+
+
+def fake_rsync(tmp_path, body: str) -> str:
+    bindir = tmp_path / "bin"
+    bindir.mkdir(exist_ok=True)
+    (bindir / "rsync").write_text("#!/bin/bash\n" + body)
+    (bindir / "rsync").chmod(0o755)
+    return f"{bindir}:{os.environ['PATH']}"
+
+
+def test_an_unreadable_photo_folder_fails_and_deletes_nothing(setup, add_user):
+    add_user()
+    src = make_photos(setup, {"a/1.jpg": b"one"})
+    assert run_at(setup, "2026-11-22 02:30:00").returncode == 0
+    for unreadable in (src, src / "a" / "1.jpg", src / "a"):
+        unreadable.chmod(0o000)
+        try:
+            if os.access(unreadable, os.R_OK) and unreadable.is_file():
+                pytest.skip("chmod does not block reads for this user")
+            r = run_at(setup, "2026-11-23 02:30:00", KMK_BACKUP_KEEP_DAILY="1")
+        finally:
+            unreadable.chmod(0o755 if unreadable.is_dir() else 0o644)
+        assert r.returncode == 1, unreadable
+        assert status_of(setup)["result"] == "failed" and "photo" in status_of(setup)["message"]
+        assert str(src) in r.stderr and "1.jpg" not in status_of(setup)["message"]
+        assert [p.name for p in photo_snapshots(setup)] == ["2026-11-22_023000"]  # nothing pruned, no partial
+        assert not list((setup.dest / "photos").glob("*.partial"))
+        assert len(archives(setup)) == 2  # the new archive was kept, the old one not pruned
+
+
+def test_an_empty_readable_photo_folder_skips_quietly(setup, add_user):
+    add_user()
+    (Path(setup.env["KMK_BACKUP_PHOTOS_SRC"]) / "a").mkdir(parents=True)
+    r = run_at(setup, "2026-11-23 02:30:00")
+    assert r.returncode == 0, r.stderr
+    assert status_of(setup)["message"] == "backup written" and not (setup.dest / "photos").exists()
+
+
+def test_rsync_exit_24_is_a_success(setup, add_user, tmp_path):
+    add_user()
+    make_photos(setup, {"a.jpg": b"x", "b.jpg": b"y"})
+    path = fake_rsync(tmp_path, 'real=$(PATH=${PATH#*:} command -v rsync); "$real" "$@"; exit 24\n')
+    r = run_at(setup, "2026-11-23 02:30:00", PATH=path)
+    assert r.returncode == 0, r.stderr
+    assert status_of(setup)["result"] == "ok" and status_of(setup)["message"] == "backup written (photos: 2 files)"
+    assert [p.name for p in photo_snapshots(setup)] == ["2026-11-23_023000"]
+
+
+def test_snapshot_modes_are_private(setup, add_user):
+    add_user()
+    make_photos(setup, {"a/1.jpg": b"one"})
+    src = Path(setup.env["KMK_BACKUP_PHOTOS_SRC"])
+    (src / "a" / "1.jpg").chmod(0o644)  # even a world-readable source stays private in the snapshot
+    (src / "a").chmod(0o755)
+    assert run_at(setup, "2026-11-23 02:30:00").returncode == 0
+    (snap,) = photo_snapshots(setup)
+    mode = lambda p: p.stat().st_mode & 0o777  # noqa: E731
+    assert mode(setup.dest / "photos") == 0o700 and mode(snap) == 0o700 and mode(snap / "a") == 0o700
+    assert mode(snap / "a" / "1.jpg") == 0o600

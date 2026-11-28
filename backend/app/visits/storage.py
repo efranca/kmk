@@ -24,14 +24,18 @@ def _path(root: Path, file_id: str) -> Path:
 
 
 def save(root: Path, data: bytes) -> str:
-    """Write the bytes under a new random id (temp name first, then an atomic rename; mode 600) and return the id."""
+    """Write the bytes under a new random id (temp name first, then an atomic rename; file mode 640, shard folder 750) and return the id."""
     file_id = secrets.token_hex(16)
     path = _path(root, file_id)
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Modes are set explicitly (the umask must not change them). The group is whatever the setgid root folder gives:
+    # the host user's backup reads the files through it. Keep a setgid bit the folder inherited.
+    os.chmod(path.parent, 0o750 | (path.parent.stat().st_mode & 0o2000))
     temp = path.with_name(file_id + ".tmp")
     try:
-        fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o640)
         with os.fdopen(fd, "wb") as handle:
+            os.fchmod(handle.fileno(), 0o640)
             handle.write(data)
         os.replace(temp, path)
     except BaseException:

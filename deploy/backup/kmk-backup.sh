@@ -103,9 +103,18 @@ if [[ -z "$KMK_BACKUP_PHOTOS_SRC" ]]; then
   log "photos: no source folder configured, skipping"
 elif [[ ! -d "$KMK_BACKUP_PHOTOS_SRC" ]]; then
   log "photos: $KMK_BACKUP_PHOTOS_SRC does not exist, skipping"
-elif [[ -z "$(find "$KMK_BACKUP_PHOTOS_SRC" -type f -print -quit 2>/dev/null)" ]]; then
-  log "photos: $KMK_BACKUP_PHOTOS_SRC has no files, skipping"
+elif [[ ! -r "$KMK_BACKUP_PHOTOS_SRC" || ! -x "$KMK_BACKUP_PHOTOS_SRC" ]]; then
+  fail "the photo folder $KMK_BACKUP_PHOTOS_SRC exists but cannot be read by this user: the photos were NOT backed up"
 else
+  # A full walk (no early stop) so that an unreadable subfolder is reported by find, never mistaken for "no files".
+  find "$KMK_BACKUP_PHOTOS_SRC" -type f >"$WORK/photos.list" 2>"$WORK/find.err" \
+    || fail "the photo folder $KMK_BACKUP_PHOTOS_SRC cannot be read completely: the photos were NOT backed up"
+  # rsync --link-dest would link an unchanged file without reading it, so check readability explicitly.
+  [[ -z "$(find "$KMK_BACKUP_PHOTOS_SRC" -type f ! -readable -print -quit 2>/dev/null)" ]] \
+    || fail "some files in the photo folder $KMK_BACKUP_PHOTOS_SRC cannot be read by this user: the photos were NOT backed up"
+  [[ -s "$WORK/photos.list" ]] || log "photos: $KMK_BACKUP_PHOTOS_SRC has no files, skipping"
+fi
+if [[ -n "$KMK_BACKUP_PHOTOS_SRC" && -d "$KMK_BACKUP_PHOTOS_SRC" && -s "$WORK/photos.list" ]]; then
   command -v rsync >/dev/null 2>&1 || fail "rsync is not installed: cannot back up the visit photos (install it, e.g. apt install rsync)"
   mkdir -p "$PHOTOS_DIR" || fail "cannot create $PHOTOS_DIR"
   chmod 700 "$PHOTOS_DIR" 2>/dev/null || true
@@ -120,9 +129,15 @@ else
   if [[ -n "$PREV" && -d "$PHOTOS_ABS/$PREV" && ! -L "$PHOTOS_ABS/$PREV" ]]; then link_opt=(--link-dest="$PHOTOS_ABS/$PREV"); fi
   PARTIAL="$PHOTOS_ABS/$SNAP_NAME.partial"
   log "photos: snapshotting $KMK_BACKUP_PHOTOS_SRC ..."
-  if ! rsync -a "${link_opt[@]}" "$KMK_BACKUP_PHOTOS_SRC/" "$PARTIAL/" 2>"$WORK/rsync.err"; then
+  # Snapshot files are private to the owner whatever the source modes are (the source is group-readable for this user).
+  rsync_rc=0
+  rsync -a --chmod=D700,F600 "${link_opt[@]}" "$KMK_BACKUP_PHOTOS_SRC/" "$PARTIAL/" 2>"$WORK/rsync.err" || rsync_rc=$?
+  if [[ $rsync_rc -eq 24 ]]; then
+    log "photos: some files vanished while copying (deleted meanwhile); the snapshot holds the rest"
+  elif [[ $rsync_rc -ne 0 ]]; then
+    head -c 2000 "$WORK/rsync.err" >&2 || true  # the details (file names) go to the journal, not to the status
     rm -rf -- "$PARTIAL"
-    fail "the photo snapshot failed (rsync): $(head -c 300 "$WORK/rsync.err")"
+    fail "the photo snapshot failed (rsync exit code $rsync_rc); see: journalctl --user -u kmk-backup.service"
   fi
   # A snapshot with this very name can exist only if the same second was backed up twice: replace it, like the archive.
   [[ -d "$PHOTOS_ABS/$SNAP_NAME" && ! -L "$PHOTOS_ABS/$SNAP_NAME" ]] && rm -rf -- "$PHOTOS_ABS/$SNAP_NAME"

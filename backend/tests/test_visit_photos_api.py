@@ -1,5 +1,6 @@
 """Visit photos: upload by room, view, delete and room skips (spec sections 8, 9, 14, 15)."""
 
+import os
 import io
 import threading
 import time
@@ -262,8 +263,23 @@ def test_storage_refuses_bad_ids_and_deletes_quietly(tmp_path):
     storage.delete(tmp_path, "0" * 32)  # missing: no error
     fid = storage.save(tmp_path, b"abc")
     assert storage.open_bytes(tmp_path, fid) == b"abc" and storage.all_ids(tmp_path) == {fid}
-    assert (tmp_path / fid[:2] / fid).stat().st_mode & 0o777 == 0o600
     assert not list(tmp_path.rglob("*.tmp"))
+
+
+def test_new_photo_files_are_640_and_shard_dirs_750(tmp_path):
+    old = os.umask(0o077)  # the process umask must neither widen nor narrow the modes
+    try:
+        a = storage.save(tmp_path, b"abc")
+    finally:
+        os.umask(old)
+    os.umask(0o000)
+    try:
+        b = storage.save(tmp_path, b"def")
+    finally:
+        os.umask(old)
+    for fid in (a, b):
+        assert (tmp_path / fid[:2] / fid).stat().st_mode & 0o777 == 0o640
+        assert (tmp_path / fid[:2]).stat().st_mode & 0o777 == 0o750
 
 
 def test_upload_waiting_for_the_visit_lock_does_not_block_the_event_loop(team, owner_engine):
