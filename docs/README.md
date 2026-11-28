@@ -146,6 +146,7 @@ Every mutating request needs an allowed `Origin` header; authenticated mutating 
 | `GET /api/quotes?status`, `GET /api/quotes/{id}`, `GET /api/quotes/{id}/photos/{photo_id}` | admins and the super admin | list (with the counts for the navigation badge), one request, one photo |
 | `POST /api/quotes` | admins and the super admin | enter a quote by hand (a phone call): name, phone and type are required; email, address, property, frequency, notes and client are optional. It starts New with the 24-hour deadline (`source` = `manual`, `created_by`) and makes no task, Agenda item, email or push. A reply cannot be emailed without an email (`422 no_email`); a customer reply can still be logged |
 | `PATCH /api/quotes/{id}` | admins and the super admin | status, internal note, client |
+| `PUT /api/quotes/{id}/request` | admins and the super admin | complete a saved quote: the whole form again (name, phone, email, language, type, city, address, property, frequency, bedrooms, bathrooms, area, listing link; the description only for manual quotes). A web quote's description stays as sent (`422 message_locked`); unknown `details` keys are kept |
 | `POST /api/quotes/{id}/messages`, `POST /api/quotes/{id}/messages/{mid}/retry` | admins and the super admin | send a reply by email (`409 sender_not_configured` without a sender) or paste a customer reply; retry a failed send |
 | `DELETE /api/quotes/{id}` | super admin | delete the request, its photos and its conversation |
 | `GET` / `PATCH /api/settings/system` | super admin | the company-wide settings |
