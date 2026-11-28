@@ -22,6 +22,15 @@ if os.environ.get("TEST_DATABASE_URL") and os.environ.get("TEST_APP_DATABASE_URL
     os.environ["MIGRATION_DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
 os.environ.setdefault("SESSION_SECRET", "test-secret")
 
+# Argon2 at production strength (64 MiB, 3 passes) costs ~36 ms per hash or login, which adds up over a thousand tests.
+# Tests hash with the cheapest valid settings; production code is untouched, and hashes made with other settings
+# still verify because the parameters are stored inside each hash.
+from argon2 import PasswordHasher  # noqa: E402
+
+import app.security as _security  # noqa: E402
+
+_security._hasher = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1)
+
 from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402
