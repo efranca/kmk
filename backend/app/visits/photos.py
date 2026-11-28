@@ -10,8 +10,8 @@ The order of the conditions is the same for the upload (`precheck`, then `add`) 
 without a reason, else the correction authority; open on its day and the actor not active on it -> `403 not_checked_in`.
 
 Write order: file first, then the row (the file is deleted if the row cannot be saved). Removal: the row is marked
-removed first. A plain removal (open visit, its own day) then deletes the file (a leftover file is found by the
-cleanup). A removal that is a correction keeps the file until the 6-month purge (ruling R16: the original is never
+removed first. A plain removal (open visit, its own day) then deletes the file (a file a failed delete leaves behind
+goes with the 6-month purge, which purges removed rows too). A removal that is a correction keeps the file until the 6-month purge (ruling R16: the original is never
 erased); admins can still open it by id (`policy.can_open_removed_visit_photo`), and the purge deletes it like any old
 photo (the row stays).
 """
