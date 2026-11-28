@@ -8,7 +8,7 @@ import { KIND_KEYS } from "./ClientDialog";
 import { placeText } from "./maps";
 import { PlaceLinks } from "./PlaceLinks";
 
-/** One property: name and kind, the address with its map links, the listing, the access notes. */
+/** One property: name and kind, the address with its map links, the listing, the rooms, the access notes. */
 export function PropertyCard({ property, onEdit }: { property: Property; onEdit?: () => void }) {
   const { t, i18n } = useTranslation();
   const narrow = useNarrow();
@@ -18,11 +18,13 @@ export function PropertyCard({ property, onEdit }: { property: Property; onEdit?
       <header className="propcard__head">
         <strong>{property.name}</strong>
         <span className="chip-tag">{t(KIND_KEYS[property.kind])}</span>
+        {property.photos_required && <span className="chip-tag chip-tag--status">{t("visPhotosRequired")}</span>}
         {onEdit && (narrow ? <IconButton icon="pencil" label={t("propEdit")} onClick={onEdit} /> : <Button variant="ghost" icon="pencil" onClick={onEdit}>{t("propEdit")}</Button>)}
       </header>
       {place && <p className="propcard__place">{place}</p>}
       <PlaceLinks place={place} listingUrl={property.listing_url} />
       {property.visit_price != null && <p className="propcard__price"><b>{t("invVisitPrice")}:</b> {formatMoney(property.visit_price, i18n.language)}</p>}
+      {property.rooms && property.rooms.length > 0 && <p className="propcard__rooms"><b>{t("visRooms")}:</b> {property.rooms.map((r) => r.name).join(", ")}</p>}
       {property.access_notes && <p className="propcard__access"><b>{t("propFieldAccess")}:</b> {property.access_notes}</p>}
     </article>
   );

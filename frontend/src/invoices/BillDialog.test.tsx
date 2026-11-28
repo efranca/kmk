@@ -10,7 +10,7 @@ const admin = { session: { user: { ...testUser, role: "admin" as const } } };
 
 const occ = (over: Partial<BillableOccurrence>): BillableOccurrence => ({
   event_id: 3, occurrence_date: "2026-11-06", date: "2026-11-06", title: "Cleaning", property_id: 11, property_name: "Beach house", price: "120.00",
-  description: "Entretien ménager - Beach house - 06/11/2026", ...over,
+  description: "Entretien ménager - Beach house - 06/11/2026", checked_out: true, ...over,
 });
 const OCCURRENCES = [occ({}), occ({ event_id: 4, occurrence_date: "2026-11-13", date: "2026-11-14", price: null, property_id: null, property_name: null, description: "Entretien ménager - Vitres - 14/11/2026" })];
 const created = { invoice: { id: 9, number: 9, reference: "009" } };
@@ -74,6 +74,31 @@ describe("BillDialog", () => {
       { description: "Vitres", amount: "40.00" },
     ]);
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith(9));
+  });
+
+  it("marks a cleaning that has no check-out, and keeps it ticked and billable", async () => {
+    const { api } = open({
+      "GET /api/clients/5/billable": { occurrences: [
+        occ({}),
+        occ({ event_id: 4, occurrence_date: "2026-11-13", date: "2026-11-14", checked_out: false, description: "Entretien ménager - Beach house - 14/11/2026" }),
+        // an item without a property has no check-in at all: nothing to warn about
+        occ({ event_id: 5, occurrence_date: "2026-11-16", date: "2026-11-16", checked_out: false, property_id: null, property_name: null, price: "50.00", description: "Entretien ménager - Vitres - 16/11/2026" }),
+      ] },
+      "POST /api/invoices": created,
+    });
+    await screen.findAllByLabelText("Amount");
+    expect(screen.getAllByText("No check-out")).toHaveLength(1);
+    const unchecked = screen.getByRole("checkbox", { name: /Include .*Nov 14/ });
+    expect(unchecked.closest("li")).toHaveTextContent("No check-out");
+    expect(screen.getByRole("checkbox", { name: /Include .*Nov 6/ }).closest("li")).not.toHaveTextContent("No check-out");
+    expect(screen.getByRole("checkbox", { name: /Include .*Nov 16/ }).closest("li")).not.toHaveTextContent("No check-out");
+    expect(unchecked).toBeChecked();
+    expect(unchecked).toBeEnabled();
+    expect(screen.getByTestId("bill-total")).toHaveTextContent("290.00");
+    fireEvent.click(create());
+    await waitFor(() => expect(api.calls.some((c) => c.method === "POST")).toBe(true));
+    const lines = (api.calls.find((c) => c.method === "POST")!.body as { lines: { event_id?: number }[] }).lines;
+    expect(lines.map((l) => l.event_id)).toEqual([3, 4, 5]);
   });
 
   it("asks again for the occurrences when the period changes", async () => {

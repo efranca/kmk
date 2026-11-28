@@ -63,3 +63,32 @@
 
 .visit-corrections ul { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
 .visit-corrections li { overflow-wrap: anywhere; }
+
+/* The Agenda item's dialog: the visit's state and the way to its check-in. */
+.agenda-visit { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 0 0 14px; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--line); }
+
+/* "Visits done" (admins). */
+.visit-state--warn { background: var(--warning-tint); color: var(--warning); }
+.visits-report { max-width: 860px; display: flex; flex-direction: column; gap: 12px; }
+.visits-report h2 { margin: 0; font-size: 1.1rem; }
+.visits-report__range { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+.visits-report__range > * { flex: 1 1 150px; max-width: 220px; }
+.visits-report .visit-hint { margin: 0; }
+.visits-report__table { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.visits-report__table table { width: 100%; border-collapse: collapse; }
+.visits-report__table th, .visits-report__table td { padding: 6px 12px; text-align: right; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.visits-report__table thead th { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); vertical-align: bottom; }
+.visits-report__table th[scope="row"], .visits-report__table thead th:first-child { text-align: left; }
+.visits-report__table tbody tr:last-child > * { border-bottom: 0; }
+.visits-report__table tr.is-chosen { background: var(--surface-2); }
+.visits-report__table td.is-marked { font-weight: 700; color: var(--warning); }
+.visits-report__person { min-height: 44px; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; overflow-wrap: anywhere; }
+.visits-report__detail, .visits-report__open { display: flex; flex-direction: column; gap: 8px; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+.visits-report__detail-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.visits-report__detail-head h2:focus { outline: none; }
+.visits-report__detail-head h2:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.visits-report__lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.visits-report__line { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); overflow-wrap: anywhere; }
+.visits-report__line-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.visits-report__muted { font-size: 0.9rem; color: var(--text-muted); }
+.visits-report__open-link { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; color: var(--accent); }

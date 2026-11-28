@@ -39,6 +39,9 @@ const ERROR_KEYS: Record<string, string> = {
   invalid_room: "visErrInvalidRoom",
   already_skipped: "visErrAlreadySkipped",
   forbidden: "visErrForbidden",
+  room_not_found: "visErrRoomNotFound", // the property's room editor
+  invalid_range: "visRangeInvalid", // the report
+  range_too_long: "visRangeTooLong",
 };
 
 export function codeOf(error: unknown): string {

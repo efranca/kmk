@@ -91,6 +91,29 @@ describe("the Visits entry", () => {
   });
 });
 
+describe("the Visits done entry", () => {
+  beforeEach(() => phone(900));
+  it("is for admins and the super admin, after Invoices", () => {
+    for (const roles of [{ isAdmin: true, isSuperAdmin: false }, { isAdmin: true, isSuperAdmin: true }]) {
+      const { unmount } = render(nav(roles));
+      const link = screen.getByRole("link", { name: en.visReportTitle });
+      expect(link).toHaveAttribute("href", "/visits/report");
+      const names = screen.getAllByRole("link").map((l) => l.textContent ?? "");
+      expect(names.indexOf(en.visReportTitle)).toBe(names.indexOf(en.invTitle) + 1);
+      unmount();
+    }
+  });
+  it("is not shown to Staff", () => {
+    render(nav({ isAdmin: false, isSuperAdmin: false, hasClients: true }));
+    expect(screen.queryByRole("link", { name: en.visReportTitle })).toBeNull();
+  });
+  it("is marked as the current page, and Visits is not", () => {
+    render(nav({ active: "visitsReport" }));
+    expect(screen.getByRole("link", { name: en.visReportTitle })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: en.visTitle })).not.toHaveAttribute("aria-current");
+  });
+});
+
 describe("the Invoices entry", () => {
   beforeEach(() => phone(900));
   it("is for admins and the super admin, after Quotes", () => {

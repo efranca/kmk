@@ -31,8 +31,16 @@ export type Property = {
   access_notes: string | null;
   /** Administrators only (money string, "120.00"): the price of one visit, used to bill. Staff never get it. */
   visit_price?: string | null;
+  /** Check-out needs a photo or a skip with a reason for every room. */
+  photos_required?: boolean;
+  /** In order: the cleaners pick one for each photo. */
+  rooms?: Room[];
 };
-export type PropertyInput = Omit<Property, "id" | "client_id">;
+export type Room = { id: number; name: string };
+/** The body of POST and PATCH (the whole form). The rooms are saved apart, with `saveRooms`. */
+export type PropertyInput = Omit<Property, "id" | "client_id" | "rooms" | "photos_required"> & { photos_required: boolean };
+/** One room of the list sent to `PUT /api/properties/{id}/rooms`: a kept room keeps its id, a new one has `id: null`. */
+export type RoomInput = { id: number | null; name: string };
 
 export type ClientDetail = Client & {
   properties: Property[];
@@ -57,4 +65,5 @@ export const deleteClient = (id: number, csrf: string) => request<void>("DELETE"
 
 export const createProperty = async (clientId: number, input: PropertyInput, csrf: string) => (await request<{ property: Property }>("POST", `${BASE}/${clientId}/properties`, csrf, input)).property;
 export const updateProperty = async (id: number, input: PropertyInput, csrf: string) => (await request<{ property: Property }>("PATCH", `/api/properties/${id}`, csrf, input)).property;
+export const saveRooms = async (propertyId: number, rooms: RoomInput[], csrf: string) => (await request<{ rooms: Room[] }>("PUT", `/api/properties/${propertyId}/rooms`, csrf, { rooms })).rooms;
 export const deleteProperty = (id: number, csrf: string) => request<void>("DELETE", `/api/properties/${id}`, csrf);

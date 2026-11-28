@@ -13,6 +13,7 @@ import { TextAreaField, TextField } from "../ui/Field";
 import { IconPicker } from "../ui/IconPicker";
 import { EVENT_COLORS, eventColorVar } from "../ui/memberColor";
 import { useToast } from "../ui/toastContext";
+import { AgendaVisit } from "../visits/AgendaVisit";
 import {
   EVENT_TITLE_MAX, emptyEventForm, fromEvent, resyncRepeat, seriesFieldsChanged, toEventInput, validateEventForm,
   type EventFormErrors, type EventFormValues,
@@ -156,6 +157,7 @@ function EventForm({ event, item, date, time, onClose }: EventFormProps) {
         />
       )}
       {event?.client_id != null && <EventPlace clientId={event.client_id} propertyId={event.property_id ?? null} onNavigate={onClose} />}
+      {event && item && event.property_id != null && <AgendaVisit eventId={event.id} occurrenceDate={item.original_date} onNavigate={onClose} />}
       {!editable && <p className="notice" role="note">{t("schViewOnly")}</p>}
       <form id={formId} hidden={asking !== null} onSubmit={(e) => swallow(submit(e))} noValidate>
         <fieldset className="sched-form" disabled={!editable}>

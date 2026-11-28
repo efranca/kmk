@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useSession } from "../session";
-import { createClient, createProperty, deleteClient, deleteProperty, getClient, listClients, updateClient, updateProperty, type ClientInput, type PropertyInput } from "./api";
+import { createClient, createProperty, deleteClient, deleteProperty, getClient, listClients, saveRooms, updateClient, updateProperty, type ClientInput, type PropertyInput, type RoomInput } from "./api";
 
 export const clientKeys = { all: ["clients"] as const, list: ["clients", "list"] as const, one: (id: number) => ["clients", "one", id] as const };
 
@@ -41,6 +41,16 @@ export function useSaveProperty(clientId: number) {
   return useMutation({
     mutationFn: ({ id, input }: { id?: number; input: PropertyInput }) => (id ? updateProperty(id, input, csrfToken) : createProperty(clientId, input, csrfToken)),
     onSuccess: () => qc.invalidateQueries({ queryKey: clientKeys.all }),
+  });
+}
+
+/** Replaces a property's room list (one ordered list). The visits show the rooms too. */
+export function useSaveRooms() {
+  const { csrfToken } = useSession();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ propertyId, rooms }: { propertyId: number; rooms: RoomInput[] }) => saveRooms(propertyId, rooms, csrfToken),
+    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: clientKeys.all }), qc.invalidateQueries({ queryKey: ["visits"] })]),
   });
 }
 

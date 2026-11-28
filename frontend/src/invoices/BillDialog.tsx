@@ -99,7 +99,10 @@ export function BillDialog({ clientId, onClose, onCreated }: { clientId: number;
                   <input type="checkbox" checked={ticked} aria-label={t("invIncludeLine", { date: day })} onChange={() => toggle(key)} />
                   <input type="text" aria-label={t("invLineDescription")} value={descriptions[key] ?? o.description} maxLength={200} disabled={!ticked} onChange={(e) => set(setDescriptions, key, e.target.value)} />
                   <input type="text" inputMode="decimal" aria-label={t("invLineAmount")} aria-invalid={bad || undefined} placeholder="0.00" value={amount} maxLength={12} disabled={!ticked} onChange={(e) => set(setAmounts, key, e.target.value)} />
-                  <span className="bill-line__date">{day}</span>
+                  <span className="bill-line__date">
+                    {day}
+                    {o.checked_out === false && o.property_id !== null && <span className="chip-tag bill-line__warn">{t("visNoCheckout")}</span>}
+                  </span>
                 </li>
               );
             })}

@@ -39,6 +39,9 @@ export type BillableOccurrence = {
   property_name: string | null;
   price: string | null;
   description: string;
+  /** False when the visit was never closed (no check-out): a hint only, it stays billable. Always false for an item
+   * without a property (it has no check-in at all), so the dialog warns only for items with one. */
+  checked_out: boolean;
 };
 
 export type InvoiceInput = {

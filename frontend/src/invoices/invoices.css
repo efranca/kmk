@@ -37,6 +37,7 @@ a.btn { text-decoration: none; }
 .bill-lines { list-style: none; margin: 10px 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .bill-line { display: grid; grid-template-columns: auto 1fr 7.5rem; gap: 8px 10px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 12px; }
 .bill-line--bad { border-color: var(--danger); background: var(--danger-tint); }
-.bill-line__date { grid-column: 2 / -1; font-size: 0.85rem; color: var(--text-muted); }
+.bill-line__date { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 0.85rem; color: var(--text-muted); }
+.chip-tag.bill-line__warn { background: var(--warning-tint); color: var(--warning); }
 .bill-line input[type="text"] { width: 100%; min-width: 0; }
 .bill-total { display: flex; justify-content: space-between; margin: 12px 0 0; padding: 10px 12px; font-weight: 700; background: var(--surface-2); border-radius: 10px; }

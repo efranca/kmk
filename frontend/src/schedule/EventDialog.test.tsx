@@ -1,8 +1,8 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { mockApi, occurrence, person, renderWithProviders, resetLanguage, testUser, useEnglish } from "../testUtils";
+import { mockApi, occurrence, person, renderWithProviders, reply, resetLanguage, testUser, useEnglish } from "../testUtils";
 import { EventDialog, type EventDialogTarget } from "./EventDialog";
 import type { EventDetail } from "./types";
 
@@ -400,5 +400,73 @@ describe("EventDialog: who may change an event", () => {
     await userEvent.type(await screen.findByLabelText("Title"), "Dinner");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("no longer");
+  });
+});
+
+describe("EventDialog: the visit of an item with a property", () => {
+  const cleaning: EventDetail = { ...swimmingEvent, title: "Cleaning", client_id: 5, property_id: 11 };
+  const client = { id: 5, name: "Chantal Roy", kinds: ["airbnb"], contact_name: null, email: null, phone: null, address: null, city: null, created_at: "", updated_at: "",
+    properties: [{ id: 11, client_id: 5, name: "Beach house", kind: "airbnb", address: null, city: null, listing_url: null, access_notes: null, rooms: [] }] };
+  const visit = (over: Record<string, unknown> = {}) => ({
+    id: 4, event_id: 1, occurrence_date: "2026-11-12", date: "2026-11-13", title: "Cleaning", client_name: "Chantal Roy", property_name: "Beach house", property_id: 11,
+    photos_required: false, rooms: [], state: "in_progress", people: [], listed: [], closed_at: null, closed_by_name: null, closed_without_photos: false, corrected: false,
+    photos: [], photo_count_total: 0, skips: [], corrections: [], can_correct_until: null, ...over,
+  });
+  // moved from its original Thursday to the Friday: the visit is keyed by the original date
+  const moved = occurrence({ event_id: 1, title: "Cleaning", date: "2026-11-13", original_date: "2026-11-12", repeating: true, modified: true });
+
+  function open(visitAnswer: unknown, event: EventDetail = cleaning) {
+    const api = mockApi({
+      "GET /api/schedule/people": () => ({ people: [alice, leo] }),
+      [`GET ${E}/1`]: () => ({ event }),
+      "GET /api/clients/5": () => ({ client }),
+      "GET /api/visits/1/2026-11-12": () => visitAnswer,
+    });
+    const onClose = vi.fn();
+    renderWithProviders(<EventDialog target={{ kind: "item", item: moved }} onClose={onClose} />, { session: {} });
+    return { api, onClose };
+  }
+
+  it("shows the visit's state and links to its check-in by event and original date", async () => {
+    const { api, onClose } = open({ visit: visit() });
+    const link = await screen.findByRole("link", { name: "Open check-in" });
+    expect(link).toHaveAttribute("href", "/visits?event=1&date=2026-11-12");
+    expect(screen.getByText("In progress")).toBeInTheDocument();
+    expect(api.calls.filter((c) => c.path.startsWith("/api/visits"))).toHaveLength(1);
+    fireEvent.click(link);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("shows a visit not started yet, and a closed and corrected one, as such", async () => {
+    open({ visit: visit({ id: null, state: "not_started" }) });
+    expect(await screen.findByText("Not started")).toBeInTheDocument();
+    cleanup();
+    open({ visit: visit({ state: "closed", corrected: true }) });
+    expect(await screen.findByText("Closed")).toBeInTheDocument();
+    expect(screen.getByText("Corrected")).toBeInTheDocument();
+  });
+
+  it("shows nothing at all for a visit the person may not see", async () => {
+    const { api } = open(reply(404, { error: "not_found" }));
+    await screen.findByDisplayValue("Cleaning");
+    await waitFor(() => expect(api.calls.some((c) => c.path === "/api/visits/1/2026-11-12")).toBe(true));
+    await screen.findByRole("link", { name: "Chantal Roy" });
+    expect(screen.queryByRole("link", { name: "Open check-in" })).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByText(/no longer exists/)).toBeNull();
+  });
+
+  it("does not ask for a visit when the item has no property", async () => {
+    const { api } = open({ visit: visit() }, { ...cleaning, property_id: null });
+    await screen.findByDisplayValue("Cleaning");
+    await screen.findByRole("link", { name: "Chantal Roy" });
+    expect(api.calls.some((c) => c.path.startsWith("/api/visits"))).toBe(false);
+    expect(screen.queryByRole("link", { name: "Open check-in" })).toBeNull();
+  });
+
+  it("does not ask for a visit for a new item", async () => {
+    const { api } = setup(newSwimming);
+    await screen.findByLabelText("Title");
+    expect(api.calls.some((c) => c.path.startsWith("/api/visits"))).toBe(false);
   });
 });

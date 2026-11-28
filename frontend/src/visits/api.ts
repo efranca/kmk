@@ -88,6 +88,33 @@ export const skipRoom = async (eventId: number, occurrenceDate: string, input: S
 export const removePhoto = async (photoId: number, reason: string | undefined, csrf: string) =>
   (await call<{ visit: Visit }>("DELETE", `/api/visit-photos/${photoId}`, csrf, reason === undefined ? undefined : { reason })).visit;
 
+// ---- the "Visits done" report (admins): `from` and `to` are required, at most 366 days ----------------------------
+
+/** One person's count: closed visits they were checked in on when it closed. `user_id` is null for a deleted account. */
+export type ReportPerson = { user_id: number | null; name: string; visits: number; corrected: number; without_photos: number };
+/** A visit someone checked in on, never closed. */
+export type ReportOpenVisit = { event_id: number | null; occurrence_date: string; date: string; client_name: string | null; property_name: string | null; people: string[] };
+export type ReportSummary = { people: ReportPerson[]; open: ReportOpenVisit[] };
+/** One visit of a person. `checked_in_at` and `closed_at` are company time `HH:MM`: proof of presence, never hours. */
+export type ReportLine = {
+  event_id: number | null;
+  occurrence_date: string;
+  date: string;
+  client_name: string | null;
+  property_name: string | null;
+  checked_in_at: string | null;
+  closed_at: string | null;
+  photos: number;
+  without_photos: boolean;
+  corrected: boolean;
+  checked_in_by_name: string | null;
+};
+
+const range = (from: string, to: string) => new URLSearchParams({ from, to }).toString();
+export const reportCsvUrl = (from: string, to: string) => `/api/visits/report.csv?${range(from, to)}`;
+export const visitReport = (from: string, to: string) => call<ReportSummary>("GET", `/api/visits/report?${range(from, to)}`);
+export const visitReportPerson = async (userId: number, from: string, to: string) => (await call<{ visits: ReportLine[] }>("GET", `/api/visits/report/${userId}?${range(from, to)}`)).visits;
+
 /** A photo that has not finished sending after this long is given up (a phone whose connection died silently would
  * otherwise wait for good); the server drops a body that trickles in for more than 60 s, so this is longer. */
 export const PHOTO_UPLOAD_TIMEOUT_MS = 90_000;

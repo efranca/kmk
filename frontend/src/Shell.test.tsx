@@ -264,6 +264,35 @@ describe("navigation by role", () => {
     expect(document.title).toContain(frCA.visTitle);
   });
 
+  it("sends Staff who type /visits/report to the Dashboard, without any report request", async () => {
+    visit("/visits/report");
+    const fn = mockApi({ "GET /api/auth/me": signedIn("user") });
+    render(<App />);
+    await screen.findByRole("link", { name: frCA.navDashboard });
+    expect(screen.queryByRole("heading", { name: frCA.visReportTitle })).toBeNull();
+    expect(screen.queryByRole("link", { name: frCA.visReportTitle })).toBeNull();
+    expect(fn.mock.calls.filter(([u]) => String(u).startsWith("/api/visits/report"))).toHaveLength(0);
+  });
+
+  it("opens the Visits done report for an admin from the nav, with it marked as the current page", async () => {
+    const fn = mockApi({ "GET /api/auth/me": signedIn("admin"), "GET /api/visits/today": () => res(200, { visits: [] }) });
+    const base = fn.getMockImplementation()!;
+    fn.mockImplementation(async (url: string, init?: RequestInit) => (String(url).startsWith("/api/visits/report?") ? res(200, { people: [], open: [] }) : base(url, init)));
+    render(<App />);
+    fireEvent.click(await screen.findByRole("link", { name: frCA.visReportTitle }));
+    expect(await screen.findByRole("heading", { level: 1, name: frCA.visReportTitle })).toBeInTheDocument();
+    expect(await screen.findByText(frCA.visReportEmpty)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: frCA.visReportTitle })).toHaveAttribute("aria-current", "page");
+    expect(document.title).toContain(frCA.visReportTitle);
+  });
+
+  it("sends someone who is not signed in from /visits/report to the sign-in page", async () => {
+    visit("/visits/report");
+    mockApi({});
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Connexion");
+  });
+
   it("sends someone who is not signed in from /visits to the sign-in page", async () => {
     visit("/visits");
     mockApi({});
