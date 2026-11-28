@@ -10,3 +10,6 @@ infrastructure/deployments/logs/
 infrastructure/deployments/worktree/
 *.tsbuildinfo
 .claude/worktrees/
+
+# Local database backups (plain, unencrypted dumps): never commit
+infrastructure/backups/

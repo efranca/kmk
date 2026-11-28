@@ -18,15 +18,15 @@ The product plan is `scope.md`; what is actually built is described in `docs/`.
 - `backend/app/tasks/` the task list and its categories: `schemas.py`, `service.py`, `routes.py`.
 - `backend/app/documents/` the company library: `visibility.py` (who sees what, applied in SQL), `limits.py`, `files.py` (type by bytes), `uploads.py` (capped read, upload slots), `service.py`, `routes.py`. `backend/app/auth/devices.py` and `geo.py` are connected devices.
 - `frontend/src/` React app: `App.tsx` routes by path to the card pages (sign-in, recovery, two-step screens) or to the signed-in `Shell.tsx` / `app/Layout.tsx` (Dashboard, Schedule, Account, Admin pages); `schedule/` (views, event dialog, drag, reminders), `dashboard/` (the five widgets: My events, All events, My tasks, and for admins Quotes summary and Latest quotes), `tasks/` (the task list, dialog, categories) and `ui/` (shared pieces) hold the calendar; `quotes/` the Quotes area (admins); `invoices/` the Invoices list and page (admins) and the Bill dialog opened from a client's Invoices tab; `clients/` the Clients list and page (Staff see the ones they are scheduled for) and the `ClientPicker` used in the task, event and document forms; `settings/` the Notifications and Company settings cards; `public-quote/` the open quote form (its own page `quote.html` served at `/devis`, its own CSS copied from kmk-public and its own three-language strings; it imports nothing from the signed-in app); `lang.ts` has the language helpers; `locales/` has the four languages (fr-CA, en, pt-BR, es; the public quote form has its own three) (flat keys, every key must exist in all three; schedule strings start with `sch`, task strings with `task`).
-- `deploy/` compose, Caddyfile, `.env.example`; `deploy/backup/` the encrypted backup scripts (backup, status, restore, key ceremony, installer, failure notifier) and their systemd units; `scripts/audit-deps.sh` scans dependencies.
-- `infrastructure/` operations around the app: `deployments/` auto-deploy (polls GitHub, builds in a git-ignored worktree, systemd timer; not installed until the owner runs its install steps), `utilities/` read-only helper scripts. Backups stay in `deploy/backup/`.
+- `deploy/` compose, Caddyfile, `.env.example`; `deploy/backup/` the backup scripts (backup, status, restore, installer, failure notifier; plain unencrypted tar files written to the git-ignored `infrastructure/backups/`, never including `deploy/.env`) and their systemd units; `scripts/audit-deps.sh` scans dependencies.
+- `infrastructure/` operations around the app: `deployments/` auto-deploy (polls GitHub, builds in a git-ignored worktree, systemd timer; not installed until the owner runs its install steps), `utilities/` read-only helper scripts. Backup scripts stay in `deploy/backup/`; the backups themselves are written to `infrastructure/backups/` (git-ignored).
 - `docs/superpowers/specs/` design documents; `docs/superpowers/plans/` implementation plans. `.superpowers/` is git-ignored scratch (progress ledgers).
 
 ## Commands
 
 ```bash
 cd backend && .venv/bin/pytest -q                      # all backend tests (uses the kmk_test database only)
-cd backend && .venv/bin/pytest -q -m "not slow"        # same without the backup-script tests (real pg_dump/gpg)
+cd backend && .venv/bin/pytest -q -m "not slow"        # same without the backup-script tests (real pg_dump)
 cd backend && .venv/bin/alembic upgrade head           # migrate the database named by MIGRATION_DATABASE_URL
 cd frontend && npx vitest run && npm run build         # frontend tests and production build
 cd deploy && docker compose up -d --build              # rebuild and restart the stack (build the frontend first)
@@ -49,7 +49,7 @@ Set up the backend once with `python3 -m venv backend/.venv && backend/.venv/bin
   because the Postgres server is shared with other apps and has a limited number of connections.
 - **Test first**, and watch the test fail before implementing.
 - **The compose file lists each container's environment explicitly** (so the API never gets the database owner's URL: only the one-shot `migrate` service does). A new API setting must be added to `api.environment` there. Deploy compose hardening one service at a time and watch its health (dropping all capabilities once stopped Caddy).
-- **Backup scripts** are tested by `backend/tests/test_backup_scripts.py` (real shared Postgres through `docker exec`, `kmk_test`, temporary directories and a throwaway key); restore trusts only archives whose hash the backup recorded.
+- **Backup scripts** are tested by `backend/tests/test_backup_scripts.py` (real shared Postgres through `docker exec`, `kmk_test` and temporary directories); restore trusts only archives whose hash the backup recorded.
 - **Rate limiting** is serialized with advisory locks (`ratelimit.serialize`) on every endpoint that counts attempts; keep that when adding one.
 - **Secrets** live only in git-ignored `.env` files (`deploy/.env`, `backend/.env`); never print them, commit them, or paste them into chat.
   Tokens, TOTP secrets, recovery codes and passwords must never reach logs or audit rows.

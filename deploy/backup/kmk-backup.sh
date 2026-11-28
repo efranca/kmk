@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Encrypted, verified backup of the kmk database and deploy/.env.
+# Verified backup of the kmk database (plain tar: dump + manifest; deploy/.env is deliberately NOT included).
 # See docs/operations.md. Exit code 0 on success, 1 on any failure (message on stderr, failure recorded in the status file).
 set -euo pipefail
 
@@ -10,7 +10,6 @@ source "$SELF_DIR/lib.sh"
 DB="$KMK_BACKUP_DB"
 SCRATCH="$KMK_BACKUP_SCRATCH_DB"
 WORK=""
-KEYRING=""
 SCRATCH_CREATED=0
 
 cleanup() {
@@ -21,10 +20,6 @@ cleanup() {
   fi
   if [[ "$SCRATCH_CREATED" == 1 ]]; then
     pg_exec postgres "DROP DATABASE IF EXISTS \"$SCRATCH\" WITH (FORCE)" >/dev/null 2>&1 || true
-  fi
-  if [[ -n "$KEYRING" ]]; then
-    GNUPGHOME="$KEYRING" gpgconf --kill all >/dev/null 2>&1 || true
-    rm -rf "$KEYRING"
   fi
   [[ -n "$WORK" ]] && rm -rf "$WORK"
   exit "$rc"
@@ -42,17 +37,9 @@ fi
   || fail "the database container '$KMK_BACKUP_PG_CONTAINER' is not running"
 [[ "$(pg_exec postgres "select count(*) from pg_database where datname = '$DB'" 2>/dev/null || true)" == "1" ]] \
   || fail "database '$DB' not found"
-[[ -r "$KMK_BACKUP_ENV_FILE" ]] || fail "cannot read the env file $KMK_BACKUP_ENV_FILE"
-[[ -r "$KMK_BACKUP_RECIPIENT_FILE" ]] || fail "recipient public key not found: $KMK_BACKUP_RECIPIENT_FILE (run make-backup-key.sh first)"
 
 mkdir -p "$KMK_BACKUP_TMP" || fail "cannot use the temporary directory $KMK_BACKUP_TMP"
-KEYRING="$(mktemp -d -p "$KMK_BACKUP_TMP" kmk-keyring.XXXXXX)"
-chmod 700 "$KEYRING"
-export GNUPGHOME="$KEYRING"
-gpg --batch --quiet --import "$KMK_BACKUP_RECIPIENT_FILE" >/dev/null 2>&1 || fail "the recipient file contains no usable public key"
-[[ "$(gpg --batch --with-colons --list-keys | grep -c '^pub:')" == "1" ]] || fail "the recipient file must contain exactly one public key"
-FPR="$(gpg --batch --with-colons --list-keys | awk -F: '/^fpr:/ {print $10; exit}')"
-[[ -n "$FPR" ]] || fail "cannot read the recipient key fingerprint"
+umask 077  # everything this script writes (the archive too) is private to the owner
 
 # Free space at the destination (its parent if it does not exist yet).
 space_dir="$KMK_BACKUP_DEST"
@@ -61,6 +48,7 @@ avail_kb="$(df -Pk "$space_dir" | awk 'NR==2 {print $4}')"
 (( avail_kb >= 512000 )) || fail "less than 500 MB free at $space_dir"
 
 mkdir -p "$KMK_BACKUP_DEST/daily" || fail "cannot create $KMK_BACKUP_DEST/daily"
+chmod 700 "$KMK_BACKUP_DEST" "$KMK_BACKUP_DEST/daily" 2>/dev/null || true  # the dump holds password hashes; ignored on filesystems without modes
 
 # ---- dump (into tmpfs) ----
 WORK="$(mktemp -d -p "$KMK_BACKUP_TMP" kmk-backup.XXXXXX)"
@@ -86,8 +74,6 @@ pg_exec postgres "DROP DATABASE IF EXISTS \"$SCRATCH\" WITH (FORCE)" >/dev/null
 SCRATCH_CREATED=0
 
 # ---- manifest and archive ----
-cp "$KMK_BACKUP_ENV_FILE" "$WORK/deploy.env"
-chmod 600 "$WORK/deploy.env"
 {
   echo "time: $(now_iso)"
   echo "git_commit: $(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
@@ -96,37 +82,27 @@ chmod 600 "$WORK/deploy.env"
   echo "dump_sha256: $(sha256sum "$WORK/kmk.dump" | cut -d' ' -f1)"
   table_counts "$DB" | sed 's/^/rows./; s/=/: /'
 } >"$WORK/MANIFEST.txt"
-tar -C "$WORK" -cf "$WORK/archive.tar" kmk.dump deploy.env MANIFEST.txt
-
-NAME="kmk-$(date -d "${KMK_BACKUP_NOW:-now}" +%Y-%m-%d_%H%M%S).tar.gpg"
+NAME="kmk-$(date -d "${KMK_BACKUP_NOW:-now}" +%Y-%m-%d_%H%M%S).tar"
 FINAL="$KMK_BACKUP_DEST/daily/$NAME"
-gpg --batch --yes --quiet --trust-model always --encrypt --recipient "$FPR" --output "$FINAL.partial" "$WORK/archive.tar" \
-  || { rm -f "$FINAL.partial"; fail "encryption failed"; }
+tar -C "$WORK" -cf "$FINAL.partial" kmk.dump MANIFEST.txt || { rm -f "$FINAL.partial"; fail "cannot write the archive"; }
 mv -f "$FINAL.partial" "$FINAL"
 
-# Sunday: also keep a weekly copy.
-if [[ "$(date -d "${KMK_BACKUP_NOW:-now}" +%u)" == "7" ]]; then
-  mkdir -p "$KMK_BACKUP_DEST/weekly"
-  cp "$FINAL" "$KMK_BACKUP_DEST/weekly/$NAME.partial" && mv -f "$KMK_BACKUP_DEST/weekly/$NAME.partial" "$KMK_BACKUP_DEST/weekly/$NAME"
-fi
-
 # ---- retention: only after a successful write ----
-# Newest first BY NAME (the name carries the timestamp), never by modification time: the destination is an NTFS share
-# that other systems can write to, and a file with a future modification time must not push the new backup out.
+# Newest first BY NAME (the name carries the timestamp), never by modification time: a file with a future modification
+# time (clock skew, a copied folder) must not push the new backup out.
 prune() {
   local dir=$1 keep=$2 keep_file=$3 n
   [[ -d "$dir" ]] || return 0
-  ls -1 "$dir" | grep -E '^kmk-.*\.tar\.gpg$' | sort -r | tail -n +"$((keep + 1))" | while IFS= read -r n; do
+  ls -1 "$dir" | grep -E '^kmk-.*\.tar$' | sort -r | tail -n +"$((keep + 1))" | while IFS= read -r n; do
     [[ "$dir/$n" == "$keep_file" ]] && continue  # never delete the backup just written
     rm -f -- "$dir/$n"
   done
 }
 prune "$KMK_BACKUP_DEST/daily" "$KMK_BACKUP_KEEP_DAILY" "$FINAL"
-prune "$KMK_BACKUP_DEST/weekly" "$KMK_BACKUP_KEEP_WEEKLY" "$KMK_BACKUP_DEST/weekly/$NAME"
 [[ -f "$FINAL" ]] || fail "internal error: the new backup is missing after pruning"
 
-# Remember the hash of what we wrote, on the Linux disk (not on the shared partition): the restore script only
-# trusts archives it can find in this list, so an archive someone else drops on the share is not executed.
+# Remember the hash of what we wrote, in the state directory (outside the backup folder): the restore script only
+# trusts archives it can find in this list, so an archive someone else drops in the folder is not executed.
 mkdir -p "$KMK_BACKUP_STATE_DIR"
 printf '%s  %s\n' "$(sha256sum "$FINAL" | cut -d' ' -f1)" "$NAME" >>"$KMK_BACKUP_STATE_DIR/archives.sha256"
 

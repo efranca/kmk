@@ -40,13 +40,13 @@ see the [design](superpowers/specs/2026-11-17-phase5-frontend-design.md). **Stil
 
 ## Done: phase 6, Hardening and go-live (owner steps remain)
 
-Built: encrypted, verified, automated backups to `/mnt/shared/BACKUPS/kmk` with a rehearsable restore; log rotation, health checks and container limits; dependency scanning; the security checklist with live evidence; an independent security review whose Important findings were fixed test-first;
+Built: verified, automated backups (plain files, newest 14, in `infrastructure/backups/`) with a rehearsable restore; log rotation, health checks and container limits; dependency scanning; the security checklist with live evidence; an independent security review whose Important findings were fixed test-first;
 and the go-live runbook with an incident playbook. See [security-review.md](security-review.md), [golive.md](golive.md) and the [design](superpowers/specs/2026-11-17-phase6-hardening-design.md).
 
 **What is still to do, by the owner (everything is listed with how to check it in [golive.md](golive.md), section 1):** run the key ceremony and store the private key and passphrase in the password manager; the first backup and a restore rehearsal; switch email to Resend and test deliverability;
 enroll the super admin in two-step verification; decide on `MFA_REQUIRED_ROLES` before inviting any admin; optionally an uptime monitor; a Portuguese review; then the pilot and the invitations.
 
-**Future steps:** passkeys (the preferred long-term alternative to passwords, see [decisions.md](decisions.md) D2), an off-site copy of the encrypted backups (the destination is on the same SSD as the system), a Cloudflare rate-limit rule in front of `/api/auth/*`, uptime monitoring, the privacy-law review before customer records, and the minor review findings below.
+**Future steps:** passkeys (the preferred long-term alternative to passwords, see [decisions.md](decisions.md) D2), an off-site copy of the backups, encrypted first (the destination is on the same disk as the system), a Cloudflare rate-limit rule in front of `/api/auth/*`, uptime monitoring, the privacy-law review before customer records, and the minor review findings below.
 
 ## Minor findings from the independent review (phase 6), not yet fixed
 
@@ -80,7 +80,7 @@ F17 safe-name check for scratch databases; F18 failed weekly copy handling; F24 
 | Risk | Status | Note |
 | --- | --- | --- |
 | Privacy regulation (PIPEDA, Quebec Law 25, LGPD) | parked | have a qualified person review before real customer data is stored |
-| Backups and encryption | built | encrypted, verified daily backups with a rehearsable restore (see [operations.md](operations.md)); still on the same SSD (off-site copy is a future step); the owner's first restore rehearsal is a go-live step |
+| Backups | built | verified daily backups, not encrypted, without `deploy/.env` (see [operations.md](operations.md), decisions D14); on the same disk (off-site copy is a future step); the owner's first restore rehearsal is a go-live step |
 | Production only (no dev/staging) | accepted | the same compose file can run locally with a different `.env` |
 | "Local" hosting | resolved | no inbound ports are needed; access is through the Cloudflare Tunnel |
 | Password policy fixed at 8 characters | accepted | revisit in phase 6 |

@@ -1,4 +1,6 @@
-"""Tests for the backup scripts in deploy/backup/ (run through subprocess against kmk_test and temporary directories)."""
+"""Tests for the backup scripts in deploy/backup/ (run through subprocess against kmk_test and temporary directories).
+
+The backup is a plain tar (no encryption) holding the database dump and a manifest; deploy.env is deliberately not in it."""
 
 import os
 import shutil
@@ -22,8 +24,8 @@ def _postgres_running() -> bool:
 
 
 pytestmark = [
-    pytest.mark.slow,  # real pg_dump + gpg per test: skip with `pytest -m "not slow"`
-    pytest.mark.skipif(not (shutil.which("gpg") and _postgres_running()), reason="needs gpg and the shared postgres container"),
+    pytest.mark.slow,  # real pg_dump per test: skip with `pytest -m "not slow"`
+    pytest.mark.skipif(not _postgres_running(), reason="needs the shared postgres container"),
 ]
 
 SCRATCH = "kmk_backup_verify_test"
@@ -42,46 +44,22 @@ def db_exists(name: str) -> bool:
     return psql(f"select count(*) from pg_database where datname = '{name}'") == "1"
 
 
-@pytest.fixture(scope="session")
-def test_key(tmp_path_factory):
-    """A throwaway gpg key pair (no passphrase): public file for the scripts, keyring for decrypting in tests."""
-    home = tmp_path_factory.mktemp("gnupg")
-    home.chmod(0o700)
-    env = {**os.environ, "GNUPGHOME": str(home)}
-    gpg = ["gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", ""]
-    subprocess.run([*gpg, "--quick-generate-key", "KMK Test <test@example.invalid>", "default", "default", "never"], env=env, check=True, capture_output=True)
-    public = home / "public.asc"
-    private = home / "private.asc"
-    subprocess.run([*gpg, "--export", "--armor", "--output", str(public)], env=env, check=True)
-    subprocess.run([*gpg, "--export-secret-keys", "--armor", "--output", str(private)], env=env, check=True)
-    fpr = subprocess.run(["gpg", "--with-colons", "--list-keys"], env=env, capture_output=True, text=True).stdout
-    fpr = next(line.split(":")[9] for line in fpr.splitlines() if line.startswith("fpr:"))
-    yield SimpleNamespace(home=home, public=public, private=private, fpr=fpr)
-    subprocess.run(["gpgconf", "--kill", "all"], env=env)
-
-
-def decrypt(archive: Path, key, out_dir: Path) -> Path:
+def extract(archive: Path, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
-    tar_path = out_dir / "archive.tar"
-    env = {**os.environ, "GNUPGHOME": str(key.home)}
-    subprocess.run(
-        ["gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--decrypt", "--output", str(tar_path), str(archive)],
-        env=env, check=True, capture_output=True,
-    )
-    with tarfile.open(tar_path) as t:
+    with tarfile.open(archive) as t:
         t.extractall(out_dir, filter="data")
     return out_dir
 
 
 @pytest.fixture
-def setup(tmp_path, test_key):
+def setup(tmp_path):
     """Paths and the base environment for one script run."""
     work = tmp_path / "work"
     work.mkdir()
     envfile = tmp_path / "deploy.env"
-    envfile.write_text("SECRET_TEST_VALUE=abc123-do-not-leak\n")
+    envfile.write_text("SECRET_TEST_VALUE=abc123-do-not-leak\n")  # must never end up in an archive
     s = SimpleNamespace(
-        tmp=tmp_path, dest=tmp_path / "dest", state=tmp_path / "state", work=work, envfile=envfile, key=test_key,
+        tmp=tmp_path, dest=tmp_path / "dest", state=tmp_path / "state", work=work, envfile=envfile,
     )
     s.env = {
         **os.environ,
@@ -89,8 +67,6 @@ def setup(tmp_path, test_key):
         "KMK_BACKUP_REQUIRE_MOUNT": "",
         "KMK_BACKUP_DB": "kmk_test",
         "KMK_BACKUP_SCRATCH_DB": SCRATCH,
-        "KMK_BACKUP_ENV_FILE": str(envfile),
-        "KMK_BACKUP_RECIPIENT_FILE": str(test_key.public),
         "KMK_BACKUP_STATE_DIR": str(s.state),
         "KMK_BACKUP_TMP": str(work),
     }
@@ -110,23 +86,23 @@ def status_of(setup) -> dict:
 
 def archives(setup, folder="daily") -> list[Path]:
     d = setup.dest / folder
-    return sorted(d.glob("kmk-*.tar.gpg")) if d.exists() else []
+    return sorted(d.glob("kmk-*.tar")) if d.exists() else []
 
 
 # ---- a good run ----
 
-def test_run_produces_a_decryptable_archive(setup, add_user):
+def test_run_produces_a_plain_archive_without_secrets(setup, add_user):
     for n in ("ann", "bob", "cy"):
         add_user(n, f"{n}@example.com")
     r = run("kmk-backup.sh", setup.env)
     assert r.returncode == 0, r.stderr
     (archive,) = archives(setup)
-    raw = archive.read_bytes()
-    assert b"PGDMP" not in raw and b"SECRET_TEST_VALUE" not in raw  # encrypted, not just packaged
+    assert archive.name.endswith(".tar") and oct(archive.stat().st_mode)[-3:] == "600"  # it holds password hashes
+    assert b"SECRET_TEST_VALUE" not in archive.read_bytes()  # deploy.env is not part of the backup
 
-    out = decrypt(archive, setup.key, setup.tmp / "out")
-    assert sorted(p.name for p in out.iterdir() if p.name != "archive.tar") == ["MANIFEST.txt", "deploy.env", "kmk.dump"]
-    assert (out / "deploy.env").read_text() == setup.envfile.read_text()
+    out = extract(archive, setup.tmp / "out")
+    assert sorted(p.name for p in out.iterdir()) == ["MANIFEST.txt", "kmk.dump"]
+    assert (out / "kmk.dump").read_bytes().startswith(b"PGDMP")
     manifest = dict(line.split(": ", 1) for line in (out / "MANIFEST.txt").read_text().splitlines() if ": " in line)
     assert manifest["rows.users"] == "3"
     assert manifest["alembic_revision"] == psql("select version_num from alembic_version", "kmk_test")  # whatever the current revision is
@@ -138,6 +114,12 @@ def test_run_produces_a_decryptable_archive(setup, add_user):
     assert {"users", "sessions", "tokens", "audit_log", "login_attempts", "recovery_codes", "alembic_version"} <= tables
 
 
+def test_the_backup_does_not_read_the_env_file(setup, add_user):
+    add_user()
+    setup.envfile.unlink()  # the script must not need (or copy) deploy.env
+    assert run("kmk-backup.sh", setup.env).returncode == 0
+
+
 def test_status_and_cleanliness(setup, add_user):
     add_user()
     assert run("kmk-backup.sh", setup.env).returncode == 0
@@ -146,8 +128,8 @@ def test_status_and_cleanliness(setup, add_user):
     assert status["result"] == "ok" and status["file"] == str(archive) and int(status["bytes"]) == archive.stat().st_size
     assert (setup.dest / "STATUS").read_text() == (setup.state / "status").read_text()
     assert not db_exists(SCRATCH)  # the scratch database is gone
-    assert list(setup.work.iterdir()) == []  # no plaintext or keyring left in the temporary directory
-    assert sorted(p.name for p in setup.dest.iterdir()) == ["STATUS", "daily"]  # no weekly folder on a weekday, no .partial files
+    assert list(setup.work.iterdir()) == []  # nothing left in the temporary directory
+    assert sorted(p.name for p in setup.dest.iterdir()) == ["STATUS", "daily"]  # no weekly folder, no .partial files
 
 
 # ---- refusals and failures ----
@@ -162,19 +144,11 @@ def test_refuses_without_a_mount(setup):
 
 @pytest.mark.parametrize(
     "case",
-    ["missing_recipient", "garbage_recipient", "missing_env_file", "no_such_container", "no_such_database"],
+    ["no_such_container", "no_such_database"],
 )
 def test_each_missing_prerequisite_fails_loudly(setup, case):
     env = dict(setup.env)
-    if case == "missing_recipient":
-        env["KMK_BACKUP_RECIPIENT_FILE"] = str(setup.tmp / "nope.asc")
-    elif case == "garbage_recipient":
-        bad = setup.tmp / "bad.asc"
-        bad.write_text("this is not a key\n")
-        env["KMK_BACKUP_RECIPIENT_FILE"] = str(bad)
-    elif case == "missing_env_file":
-        env["KMK_BACKUP_ENV_FILE"] = str(setup.tmp / "no.env")
-    elif case == "no_such_container":
+    if case == "no_such_container":
         env["KMK_BACKUP_PG_CONTAINER"] = "no-such-container"
     else:
         env["KMK_BACKUP_DB"] = "no_such_db"
@@ -214,17 +188,14 @@ def test_row_count_comparison_detects_differences(setup, add_user):
         psql(f'DROP DATABASE IF EXISTS "{empty}" WITH (FORCE)')
 
 
-# ---- weekly copy and retention ----
+# ---- retention (the newest 14, about two weeks; no weekly copies) ----
 
-def test_weekly_copy_only_on_sundays(setup, add_user):
+def test_no_weekly_copy_on_sundays(setup, add_user):
     add_user()
     assert run("kmk-backup.sh", {**setup.env, "KMK_BACKUP_NOW": "2026-11-22 02:30:00"}).returncode == 0  # a Sunday
     (daily,) = archives(setup)
-    (weekly,) = archives(setup, "weekly")
-    assert daily.name == weekly.name == "kmk-2026-11-22_023000.tar.gpg"
-    assert daily.read_bytes() == weekly.read_bytes()
-    assert run("kmk-backup.sh", {**setup.env, "KMK_BACKUP_NOW": "2026-11-23 02:30:00"}).returncode == 0  # a Monday
-    assert len(archives(setup)) == 2 and len(archives(setup, "weekly")) == 1
+    assert daily.name == "kmk-2026-11-22_023000.tar"
+    assert not (setup.dest / "weekly").exists()
 
 
 def _seed(setup, folder, count):
@@ -233,7 +204,7 @@ def _seed(setup, folder, count):
     now = time.time()
     names = []
     for i in range(count):
-        f = d / f"kmk-2026-01-{i + 1:02d}_000000.tar.gpg"
+        f = d / f"kmk-2026-01-{i + 1:02d}_000000.tar"
         f.write_bytes(b"old")
         age = (count - i + 40) * 86400  # i = 0 is the oldest
         os.utime(f, (now - age, now - age))
@@ -244,19 +215,16 @@ def _seed(setup, folder, count):
 def test_retention_keeps_the_newest(setup, add_user):
     add_user()
     old_daily = _seed(setup, "daily", 20)
-    old_weekly = _seed(setup, "weekly", 10)
-    r = run("kmk-backup.sh", {**setup.env, "KMK_BACKUP_NOW": "2026-11-23 02:30:00"})  # a Monday: no new weekly copy
+    r = run("kmk-backup.sh", {**setup.env, "KMK_BACKUP_NOW": "2026-11-23 02:30:00"})
     assert r.returncode == 0, r.stderr
     daily = [p.name for p in archives(setup)]
-    assert len(daily) == 14 and "kmk-2026-11-23_023000.tar.gpg" in daily
+    assert len(daily) == 14 and "kmk-2026-11-23_023000.tar" in daily
     assert not set(old_daily[:7]) & set(daily) and set(old_daily[7:]) <= set(daily)  # the 7 oldest went
-    weekly = [p.name for p in archives(setup, "weekly")]
-    assert sorted(weekly) == sorted(old_weekly[2:])  # the 2 oldest went
 
 
 def test_a_failed_run_deletes_nothing(setup):
     old_daily = _seed(setup, "daily", 20)
-    r = run("kmk-backup.sh", {**setup.env, "KMK_BACKUP_RECIPIENT_FILE": str(setup.tmp / "nope.asc")})
+    r = run("kmk-backup.sh", {**setup.env, "KMK_BACKUP_PG_CONTAINER": "no-such-container"})
     assert r.returncode == 1
     assert sorted(p.name for p in archives(setup)) == sorted(old_daily)
 
@@ -267,8 +235,8 @@ def test_an_unexpected_error_still_records_a_failed_status(setup, add_user):
     write_status_file(setup, message="an old good run")
     bad_bin = setup.tmp / "badbin"
     bad_bin.mkdir()
-    (bad_bin / "tar").write_text("#!/bin/sh\nexit 1\n")
-    (bad_bin / "tar").chmod(0o755)
+    (bad_bin / "mktemp").write_text("#!/bin/sh\nexit 1\n")  # a command the script does not guard with its own `|| fail`
+    (bad_bin / "mktemp").chmod(0o755)
     r = run("kmk-backup.sh", {**setup.env, "PATH": f"{bad_bin}:{os.environ['PATH']}"})
     assert r.returncode != 0
     status = status_of(setup)
@@ -284,14 +252,14 @@ def test_retention_goes_by_the_name_not_the_modification_time(setup, add_user):
     d.mkdir(parents=True)
     future = time.time() + 30 * 86400
     for i in range(14):
-        f = d / f"kmk-2026-01-{i + 1:02d}_000000.tar.gpg"
+        f = d / f"kmk-2026-01-{i + 1:02d}_000000.tar"
         f.write_bytes(b"x")
         os.utime(f, (future + i, future + i))
     r = run("kmk-backup.sh", {**setup.env, "KMK_BACKUP_NOW": "2026-11-23 02:30:00"})
     assert r.returncode == 0, r.stderr
     names = [p.name for p in archives(setup)]
-    assert "kmk-2026-11-23_023000.tar.gpg" in names  # the new backup survives
-    assert len(names) == 14 and "kmk-2026-01-01_000000.tar.gpg" not in names  # the oldest by NAME went
+    assert "kmk-2026-11-23_023000.tar" in names  # the new backup survives
+    assert len(names) == 14 and "kmk-2026-01-01_000000.tar" not in names  # the oldest by NAME went
     assert status_of(setup)["result"] == "ok"
 
 
@@ -308,7 +276,7 @@ def test_scripts_pass_the_bash_syntax_check(script):
 
 def write_status_file(setup, **kw):
     setup.state.mkdir(parents=True, exist_ok=True)
-    data = {"result": "ok", "time": "2026-11-17T02:30:00-05:00", "epoch": str(int(time.time())), "file": "/x/kmk.tar.gpg", "bytes": "1234", "message": "backup written"}
+    data = {"result": "ok", "time": "2026-11-17T02:30:00-05:00", "epoch": str(int(time.time())), "file": "/x/kmk.tar", "bytes": "1234", "message": "backup written"}
     data.update({k: str(v) for k, v in kw.items()})
     (setup.state / "status").write_text("".join(f"{k}={v}\n" for k, v in data.items()))
 
@@ -317,7 +285,7 @@ def test_status_fresh_ok(setup):
     write_status_file(setup)
     r = run("kmk-backup-status.sh", setup.env)
     assert r.returncode == 0, r.stderr
-    assert "ok" in r.stdout and "/x/kmk.tar.gpg" in r.stdout
+    assert "ok" in r.stdout and "/x/kmk.tar" in r.stdout
 
 
 def test_status_too_old(setup):
@@ -363,21 +331,13 @@ def backup(setup, add_user):
         psql(f'DROP DATABASE "{RESTORE_DB}" WITH (FORCE)')
 
 
-def restore(b, *extra, archive=None, key=None):
-    return run("kmk-restore.sh", b.restore_env, str(archive or b.archive), "--private-key", str(key or b.key.private), *extra)
-
-
-def reencrypt(b, tar_path: Path, name: str) -> Path:
-    """Encrypt a tar to the test key the way an attacker with the public key could (not made by the backup script)."""
-    env = {**os.environ, "GNUPGHOME": str(b.key.home)}
-    out = b.tmp / name
-    subprocess.run(["gpg", "--batch", "--yes", "--trust-model", "always", "--encrypt", "--recipient", b.key.fpr, "--output", str(out), str(tar_path)], env=env, check=True, capture_output=True)
-    return out
+def restore(b, *extra, archive=None):
+    return run("kmk-restore.sh", b.restore_env, str(archive or b.archive), *extra)
 
 
 def repack(out_dir: Path, tar_path: Path) -> Path:
     with tarfile.open(tar_path, "w") as t:
-        for name in ("kmk.dump", "deploy.env", "MANIFEST.txt"):
+        for name in ("kmk.dump", "MANIFEST.txt"):
             t.add(out_dir / name, arcname=name)
     return tar_path
 
@@ -388,7 +348,7 @@ def test_restore_into_the_scratch_database(backup):
     assert "RESTORE OK" in r.stdout
     assert "rows.users: 3" in r.stdout  # the manifest is shown
     assert not db_exists(RESTORE_DB)  # dropped afterwards
-    assert list(backup.work.iterdir()) == []  # no plaintext or keyring left behind
+    assert list(backup.work.iterdir()) == []  # nothing left behind
 
 
 def test_restore_keep_scratch_leaves_the_restored_data(backup):
@@ -401,30 +361,16 @@ def test_restore_extract_only(backup):
     out = backup.tmp / "extracted"
     r = restore(backup, "--extract-only", str(out))
     assert r.returncode == 0, r.stderr
-    assert sorted(p.name for p in out.iterdir()) == ["MANIFEST.txt", "deploy.env", "kmk.dump"]
+    assert sorted(p.name for p in out.iterdir()) == ["MANIFEST.txt", "kmk.dump"]
     assert all(oct(p.stat().st_mode)[-3:] == "600" for p in out.iterdir())
     assert not db_exists(RESTORE_DB)  # extract-only never touches the database
     assert list(backup.work.iterdir()) == []
 
 
-def test_restore_with_the_wrong_key_fails_cleanly(backup, tmp_path_factory):
-    other_home = tmp_path_factory.mktemp("gnupg_other")
-    other_home.chmod(0o700)
-    env = {**os.environ, "GNUPGHOME": str(other_home)}
-    gpg = ["gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", ""]
-    subprocess.run([*gpg, "--quick-generate-key", "Other <other@example.invalid>", "default", "default", "never"], env=env, check=True, capture_output=True)
-    wrong = other_home / "private.asc"
-    subprocess.run([*gpg, "--export-secret-keys", "--armor", "--output", str(wrong)], env=env, check=True)
-    r = restore(backup, key=wrong)
-    subprocess.run(["gpgconf", "--kill", "all"], env=env)
-    assert r.returncode == 1 and r.stderr.strip()
-    assert not db_exists(RESTORE_DB) and list(backup.work.iterdir()) == []
-
-
 def test_restore_of_a_tampered_archive_fails(backup):
     data = bytearray(backup.archive.read_bytes())
     data[len(data) // 2] ^= 0xFF
-    bad = backup.tmp / "tampered.tar.gpg"
+    bad = backup.tmp / "tampered.tar"
     bad.write_bytes(bytes(data))
     r = restore(backup, archive=bad)
     assert r.returncode == 1
@@ -432,10 +378,10 @@ def test_restore_of_a_tampered_archive_fails(backup):
 
 
 def test_restore_detects_a_manifest_that_does_not_match_the_data(backup):
-    out = decrypt(backup.archive, backup.key, backup.tmp / "edit")
+    out = extract(backup.archive, backup.tmp / "edit")
     manifest = (out / "MANIFEST.txt").read_text().replace("rows.users: 3", "rows.users: 99")
     (out / "MANIFEST.txt").write_text(manifest)
-    forged = reencrypt(backup, repack(out, backup.tmp / "edited.tar"), "forged.tar.gpg")
+    forged = repack(out, backup.tmp / "edited.tar")
     r = restore(backup, "--accept-unverified", archive=forged)
     assert r.returncode == 1
     assert "users" in (r.stdout + r.stderr) and "RESTORE OK" not in r.stdout
@@ -450,9 +396,10 @@ def test_backup_records_the_hash_of_every_archive_it_writes(backup):
 
 
 def test_restore_refuses_an_archive_the_backup_did_not_write(backup):
-    """Review F7: anyone who can write to the share could add an archive encrypted to the public key."""
-    out = decrypt(backup.archive, backup.key, backup.tmp / "same")
-    forged = reencrypt(backup, repack(out, backup.tmp / "same.tar"), "not-ours.tar.gpg")  # same content, different ciphertext
+    """Review F7: anyone who can write to the backup folder could add an archive; restoring runs SQL as the superuser."""
+    out = extract(backup.archive, backup.tmp / "same")
+    (out / "MANIFEST.txt").write_text((out / "MANIFEST.txt").read_text() + "note: not written by the backup script\n")
+    forged = repack(out, backup.tmp / "not-ours.tar")  # a valid, restorable archive whose hash was never recorded
     r = restore(backup, archive=forged)
     assert r.returncode == 1
     assert "not recognised" in r.stderr and "--accept-unverified" in r.stderr
@@ -464,64 +411,8 @@ def test_restore_refuses_an_archive_the_backup_did_not_write(backup):
 
 def test_restore_never_touches_the_backup_status_file(backup):
     before = (backup.state / "status").read_text()
-    restore(backup, archive=backup.tmp / "does-not-exist.tar.gpg")  # a failing restore
+    restore(backup, archive=backup.tmp / "does-not-exist.tar")  # a failing restore
     assert (backup.state / "status").read_text() == before
-
-
-# ======================= key ceremony =======================
-
-def keygen(setup, *extra, private=None, public=None):
-    env = {**setup.env, "KMK_KEYGEN_TEST_NOPASS": "1"}
-    private = private or setup.tmp / "private.asc"
-    public = public or setup.tmp / "recipient.pub.asc"
-    r = run("make-backup-key.sh", env, "--private-out", str(private), "--public-out", str(public), *extra)
-    return r, private, public
-
-
-def test_key_ceremony_roundtrip(setup):
-    r, private, public = keygen(setup)
-    assert r.returncode == 0, r.stderr
-    assert oct(private.stat().st_mode)[-3:] == "600"
-    assert public.exists() and "BEGIN PGP PUBLIC KEY BLOCK" in public.read_text()
-    assert "BEGIN PGP PRIVATE KEY BLOCK" not in public.read_text()
-    shown = subprocess.run(["gpg", "--show-keys", "--with-colons", str(public)], capture_output=True, text=True).stdout
-    fpr = next(line.split(":")[9] for line in shown.splitlines() if line.startswith("fpr:"))
-    assert fpr in r.stdout  # the fingerprint is printed
-    assert list(setup.work.iterdir()) == []  # the temporary keyring is gone
-
-    # encrypt with only the public key, decrypt with only the private key
-    pub_home, priv_home = setup.tmp / "g_pub", setup.tmp / "g_priv"
-    for h in (pub_home, priv_home):
-        h.mkdir(mode=0o700)
-    sample = setup.tmp / "sample.txt"
-    sample.write_text("hello backups")
-    pub_env, priv_env = {**os.environ, "GNUPGHOME": str(pub_home)}, {**os.environ, "GNUPGHOME": str(priv_home)}
-    subprocess.run(["gpg", "--batch", "--import", str(public)], env=pub_env, check=True, capture_output=True)
-    enc = setup.tmp / "sample.gpg"
-    subprocess.run(["gpg", "--batch", "--trust-model", "always", "--encrypt", "--recipient", fpr, "--output", str(enc), str(sample)], env=pub_env, check=True, capture_output=True)
-    cant = subprocess.run(["gpg", "--batch", "--decrypt", str(enc)], env=pub_env, capture_output=True)
-    assert cant.returncode != 0  # the public keyring cannot read it
-    subprocess.run(["gpg", "--batch", "--import", str(private)], env=priv_env, check=True, capture_output=True)
-    plain = subprocess.run(["gpg", "--batch", "--decrypt", str(enc)], env=priv_env, capture_output=True, text=True)
-    assert plain.stdout == "hello backups"
-    for env in (pub_env, priv_env):
-        subprocess.run(["gpgconf", "--kill", "all"], env=env)
-
-
-def test_key_ceremony_refuses_to_overwrite(setup):
-    r, private, public = keygen(setup)
-    assert r.returncode == 0
-    before_private, before_public = private.read_bytes(), public.read_bytes()
-    again, _, _ = keygen(setup, private=private, public=setup.tmp / "other.pub.asc")
-    assert again.returncode == 1 and private.read_bytes() == before_private
-    again, _, _ = keygen(setup, private=setup.tmp / "second.asc", public=public)  # would replace the recipient: refused
-    assert again.returncode == 1 and public.read_bytes() == before_public
-    assert not (setup.tmp / "second.asc").exists()
-
-
-def test_key_ceremony_requires_a_private_out_path(setup):
-    r = run("make-backup-key.sh", {**setup.env, "KMK_KEYGEN_TEST_NOPASS": "1"})
-    assert r.returncode != 0
 
 
 # ======================= scheduling and failure notification =======================
@@ -565,12 +456,6 @@ def test_dry_run_prints_the_plan_and_touches_nothing(setup):
     assert "systemctl --user enable --now kmk-backup.timer" in r.stdout
     assert "OnCalendar=*-*-* 02:30:00" in r.stdout and str(REPO) in r.stdout
     assert not unit_dir.exists()  # nothing was installed
-
-
-def test_install_refuses_without_the_recipient_key(setup):
-    r = run("install.sh", {**setup.env, "KMK_BACKUP_UNIT_DIR": str(setup.tmp / "u"), "KMK_BACKUP_RECIPIENT_FILE": str(setup.tmp / "none.asc")})
-    assert r.returncode == 1 and "make-backup-key" in r.stderr
-    assert not (setup.tmp / "u").exists()
 
 
 def fake_notifier(tmp: Path, exit_code: int) -> Path:

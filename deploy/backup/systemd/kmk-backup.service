@@ -1,5 +1,5 @@
 [Unit]
-Description=Encrypted backup of the kmk database
+Description=Backup of the kmk database
 OnFailure=kmk-backup-alert.service
 
 [Service]

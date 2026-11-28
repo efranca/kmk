@@ -6,20 +6,18 @@
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$LIB_DIR/../.." && pwd)"
 
-: "${KMK_BACKUP_DEST:=/mnt/shared/BACKUPS/kmk}"
-# The directory that must be a real mount for the destination to be trusted. `=` (not `:=`) so that an
-# explicitly empty value (tests only) disables the check.
-: "${KMK_BACKUP_REQUIRE_MOUNT=/mnt/shared}"
+# Backups live inside the project folder (git-ignored). Plain tar files, NOT encrypted: they hold password hashes and the
+# encrypted TOTP secrets, so the folder must stay private (the script creates it mode 700). deploy/.env is never copied.
+: "${KMK_BACKUP_DEST:=$REPO_DIR/infrastructure/backups}"
+# Optional: a directory that must be a real mount for the destination to be trusted (empty = no check).
+: "${KMK_BACKUP_REQUIRE_MOUNT=}"
 : "${KMK_BACKUP_DB:=kmk}"
 : "${KMK_BACKUP_SCRATCH_DB:=kmk_backup_verify}"
-: "${KMK_BACKUP_ENV_FILE:=$REPO_DIR/deploy/.env}"
-: "${KMK_BACKUP_RECIPIENT_FILE:=$HOME/.config/kmk-backup/recipient.pub.asc}"
 : "${KMK_BACKUP_STATE_DIR:=$HOME/.local/state/kmk-backup}"
 : "${KMK_BACKUP_PG_CONTAINER:=postgres}"
 : "${KMK_BACKUP_PG_USER:=postgres}"
-: "${KMK_BACKUP_KEEP_DAILY:=14}"
-: "${KMK_BACKUP_KEEP_WEEKLY:=8}"
-: "${KMK_BACKUP_TMP:=${XDG_RUNTIME_DIR:-/dev/shm}}"  # tmpfs: plaintext never touches a disk
+: "${KMK_BACKUP_KEEP_DAILY:=14}"  # two weeks
+: "${KMK_BACKUP_TMP:=${XDG_RUNTIME_DIR:-/dev/shm}}"  # working files go to tmpfs and are removed at the end
 
 log() { printf '%s\n' "$*" >&2; }
 

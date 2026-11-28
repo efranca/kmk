@@ -91,33 +91,32 @@ docker compose exec api python -m app.cli reset-mfa --username NAME
 
 ## Backups
 
-Encrypted, verified, automatic. Scripts and units are in `deploy/backup/`; the destination is `/mnt/shared/BACKUPS/kmk` (a partition on the same SSD as the system: see the limit below).
+Verified and automatic, **not encrypted**. Scripts and units are in `deploy/backup/`; the backups are written inside the project, in `infrastructure/backups/` (git-ignored; the script creates it mode 700). It is on the same disk as the system and the database: see the limit below.
 
-**What a backup is:** one encrypted file `daily/kmk-YYYY-MM-DD_HHMMSS.tar.gpg` (plus a copy in `weekly/` on Sundays) containing the `kmk` database dump, a copy of `deploy/.env` (the keys the database does not hold: `MFA_ENCRYPTION_KEY`, `SESSION_SECRET`, the database passwords) and a manifest (time, git commit, migration revision, row counts). Retention: newest 14 daily and 8 weekly files, by name.
+**What a backup is:** one plain file `daily/kmk-YYYY-MM-DD_HHMMSS.tar` (mode 600) containing the `kmk` database dump and a manifest (time, git commit, migration revision, row counts). **`deploy/.env` is deliberately not in it** (the script never reads it): the file holds the keys the database does not (`MFA_ENCRYPTION_KEY`, `SESSION_SECRET`, the database passwords), and without encryption it must not sit next to the dump. Keep your own copy of `deploy/.env` in your password manager (golive check 7); after a disaster you need it plus the dump. Retention: the newest **14** files by name (about two weeks); there are no weekly copies.
 
-**How it runs:** the systemd user timer `kmk-backup.timer` runs `kmk-backup.sh` daily at about 02:30 (a run missed because the computer was off happens at the next start; it works without a login). Each run:
-refuses to start unless `/mnt/shared` is really mounted and the database container is running; dumps the database into memory-backed storage; **verifies** the dump by restoring it into a scratch database and comparing row counts; encrypts with the **public** key; records the outcome. A failure shows a desktop notification and is recorded in the status file.
+**Why it is safe enough unencrypted:** the dump holds password hashes, names and emails, and the TOTP secrets (encrypted with `MFA_ENCRYPTION_KEY`, which is not in the backup). Anyone who can read `infrastructure/backups/` can read the people's data, so do not copy, sync or share that folder (it is outside git on purpose), and keep your user account's files private.
 
-**The key (done once, by you):** run in a normal terminal window `deploy/backup/make-backup-key.sh --private-out ~/kmk-backup-private-key.asc`. You choose a passphrase; copy the private key and the passphrase into your password manager, then delete the file. Only the public key stays on this computer (`~/.config/kmk-backup/recipient.pub.asc`).
-Whoever has the private key **and** the passphrase can read every backup; without them the backups can never be restored. Never keep them on this computer or on `/mnt/shared`.
+**How it runs:** the systemd user timer `kmk-backup.timer` runs `kmk-backup.sh` daily at about 02:30 (a run missed because the computer was off happens at the next start; it works without a login). Each run: checks the database container is running; dumps the database into temporary storage; **verifies** the dump by restoring it into a scratch database and comparing row counts; writes the archive; records the outcome. A failure shows a desktop notification and is recorded in the status file.
 
 **Install and check:**
 ```bash
-deploy/backup/install.sh                          # installs and starts the timer (refuses until the public key exists); --dry-run shows what it would do, --uninstall removes it
+deploy/backup/install.sh                          # installs and starts the timer; --dry-run shows what it would do, --uninstall removes it
 systemctl --user list-timers kmk-backup.timer     # next run
 systemctl --user start kmk-backup.service         # run a backup right now
 deploy/backup/kmk-backup-status.sh                # last result and its age; exit code 1 if failed or older than 36 hours (--max-age-hours N)
 journalctl --user -u kmk-backup.service -e        # the log of the last runs
 ```
+`KMK_BACKUP_DEST` can point the backups somewhere else (for example another drive); the default is `infrastructure/backups`.
 
-**Rehearse a restore (do it when the first backup exists, then every three months):** `deploy/backup/kmk-restore.sh <archive> --private-key <key file>` decrypts the archive, shows the manifest, restores it into a scratch database (`kmk_restore_test`), compares the row counts with the manifest, prints `RESTORE OK` and drops the scratch database. It never touches the live database. Get the private key out of the password manager into a temporary file (mode 600) and delete it afterwards.
-The script only accepts archives that this computer's backup script wrote (their hash is kept in `~/.local/state/kmk-backup/archives.sha256`, on the Linux disk), because restoring runs SQL as the database superuser and anyone who can write to the shared partition could otherwise add an archive. After a reinstall that list is gone: then use `--accept-unverified`, but only when you are sure where the file came from.
-Other options: `--extract-only DIR` writes the three files (mode 600) for the disaster procedure below; `--keep-scratch` keeps the restored scratch database for inspection (drop it afterwards).
+**Rehearse a restore (do it when the first backup exists, then every three months):** `deploy/backup/kmk-restore.sh <archive>` shows the manifest, restores the dump into a scratch database (`kmk_restore_test`), compares the row counts with the manifest, prints `RESTORE OK` and drops the scratch database. It never touches the live database.
+The script only accepts archives that this computer's backup script wrote (their hash is kept in `~/.local/state/kmk-backup/archives.sha256`, outside the backup folder), because restoring runs SQL as the database superuser and anyone who can write to the backup folder could otherwise add an archive. After a reinstall that list is gone: then use `--accept-unverified`, but only when you are sure where the file came from.
+Other options: `--extract-only DIR` writes the two files (mode 600) for the disaster procedure below; `--keep-scratch` keeps the restored scratch database for inspection (drop it afterwards).
 
 **Restoring after a disaster** (the database is lost or damaged; everything since the last backup, up to a day, is lost). The rehearsal above proves steps 1 to 2 and the data; the steps were also run against a scratch database to confirm owners and the audit log's INSERT-only permissions come back correctly.
-1. Put your private key from the password manager into a temporary file (mode 600). Pick the newest archive in `/mnt/shared/BACKUPS/kmk/daily/` (or `weekly/`).
-2. Extract: `deploy/backup/kmk-restore.sh <archive> --private-key <key file> --extract-only ~/kmk-restore` (add `--accept-unverified` only after a reinstall and only if you trust the file). The folder holds `kmk.dump`, `deploy.env`, `MANIFEST.txt`.
-3. If `deploy/.env` is gone: `cp ~/kmk-restore/deploy.env deploy/.env && chmod 600 deploy/.env`.
+1. Pick the newest archive in `infrastructure/backups/daily/`.
+2. Extract: `deploy/backup/kmk-restore.sh <archive> --extract-only ~/kmk-restore` (add `--accept-unverified` only after a reinstall and only if you trust the file). The folder holds `kmk.dump` and `MANIFEST.txt`.
+3. If `deploy/.env` is gone, put back your copy from the password manager (`chmod 600 deploy/.env`); the backup does not contain it, and without `MFA_ENCRYPTION_KEY` nobody with two-step verification can sign in.
 4. Stop the application: `cd deploy && docker compose stop caddy api`.
 5. Recreate the roles (their passwords come from `deploy/.env`; this snippet reads them without printing them):
 ```bash
@@ -136,14 +135,14 @@ PY
 7. Restore with owners and permissions (do **not** use `--no-owner` here): `docker exec -i postgres pg_restore -U postgres -d kmk --exit-on-error < ~/kmk-restore/kmk.dump`.
 8. Check: `docker exec postgres psql -U postgres -d kmk -Atc "select p, has_table_privilege('kmk_app','public.audit_log',p) from unnest(array['SELECT','INSERT','UPDATE','DELETE']) p"` must show only INSERT as `t`; compare table counts with `~/kmk-restore/MANIFEST.txt`.
 9. Start: `cd deploy && docker compose up -d` (the migrate step is a no-op when the revision is current), check `curl -s https://app.kmk-entretien.ca/api/health` and sign in.
-10. Securely delete `~/kmk-restore` and the key file (`shred -u`), and run a new backup (`systemctl --user start kmk-backup.service`).
+10. Securely delete `~/kmk-restore` (`shred -u` the dump), and run a new backup (`systemctl --user start kmk-backup.service`).
 
-**Known limit:** `/mnt/shared` is on the same physical SSD as the system. The backups survive mistakes, a Linux reinstall and filesystem damage, but not an SSD failure, theft or fire. An off-site copy (external drive or cloud) is a future step; because the archives are encrypted, copying them anywhere is safe.
+**Known limit:** `infrastructure/backups/` is on the same disk as the system and the database. The backups survive mistakes and a bad migration, but not a disk failure, theft or fire (and a reinstall that wipes the project folder takes them too). An off-site copy is a future step; because the archives are **not encrypted**, encrypt them first (for example with `gpg --symmetric`) before copying them anywhere.
 The shared project scripts (`/home/evandro/projects/shared/scripts/pg-backup.sh`) are not used by kmk.
 
 ## Documents: disk, backups and limits
 
-Document files are stored in the database, so the database and **every daily and weekly encrypted backup** grow with the library (at most 2 GB of files, plus the copies kept by the backup rotation). Check free space on the host (`df -h /`) before large uploads; the library cap is `MAX_LIBRARY_BYTES` in `backend/app/documents/limits.py` (raise it deliberately, and consider moving backups off this disk first). Only `PUT /api/documents/{id}/file` accepts a large body (Caddy, 51 MiB), and `PUT .../preview` a 128 KB one; PDF previews use the pdf.js worker, a same-origin `.mjs` asset that Caddy serves as JavaScript (checked with the real Caddyfile); the API container's `mem_limit` is 1536m because one upload holds a few copies of the file (at most 2 uploads at once). After a Caddyfile change auto-deploy restarts Caddy by itself; by hand: `docker compose restart caddy`.
+Document files are stored in the database, so the database and **every one of the 14 kept backups** grow with the library (at most 2 GB of files, times the copies kept by the backup rotation). Check free space on the host (`df -h /`) before large uploads; the library cap is `MAX_LIBRARY_BYTES` in `backend/app/documents/limits.py` (raise it deliberately, and consider moving backups off this disk first). Only `PUT /api/documents/{id}/file` accepts a large body (Caddy, 51 MiB), and `PUT .../preview` a 128 KB one; PDF previews use the pdf.js worker, a same-origin `.mjs` asset that Caddy serves as JavaScript (checked with the real Caddyfile); the API container's `mem_limit` is 1536m because one upload holds a few copies of the file (at most 2 uploads at once). After a Caddyfile change auto-deploy restarts Caddy by itself; by hand: `docker compose restart caddy`.
 
 ## Container limits, logs and health
 
@@ -232,7 +231,7 @@ Before doing it, make sure the key is backed up and `reset-mfa` works for you. T
 | `docker compose up` stops at `kmk-migrate` | read `docker logs kmk-migrate`: a failed migration or a wrong `MIGRATION_DATABASE_URL`; the API does not start until it succeeds |
 | `kmk-caddy` restarts with `exec /usr/bin/caddy: operation not permitted` | a hardening change removed the capability the Caddy binary needs: keep `cap_add: [NET_BIND_SERVICE]` |
 | A new `.env` setting has no effect on the API | add it to the `api` service's `environment:` in `deploy/docker-compose.yml` |
-| The backup status says failed or is old | `deploy/backup/kmk-backup-status.sh`, then `journalctl --user -u kmk-backup.service -e`; common causes: `/mnt/shared` not mounted, the database container stopped, the public key missing |
+| The backup status says failed or is old | `deploy/backup/kmk-backup-status.sh`, then `journalctl --user -u kmk-backup.service -e`; common causes: the database container stopped, no free space (the script needs 500 MB) |
 | `403 {"error":"forbidden"}` on a request you send with curl | mutating requests need an `Origin` header matching `allowed_origins` (`https://app.kmk-entretien.ca`) |
 | Login always `429 too_many_attempts` | the 15-minute rate-limit window; wait, or delete rows in `login_attempts` as the superuser |
 | MFA endpoints answer `503 mfa_unavailable` | `MFA_ENCRYPTION_KEY` missing, or different from the key that encrypted the stored secrets |

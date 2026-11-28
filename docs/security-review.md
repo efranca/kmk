@@ -58,7 +58,7 @@ Checked on **2026-11-17** against the running system and the code at that date. 
 | Time synchronized (TOTP depends on it) | live: `timedatectl` | `NTPSynchronized=yes` |
 | Dependency vulnerabilities | `scripts/audit-deps.sh` (pip-audit and npm audit) | first run: one finding, `pip` 26.1.2 in the development virtualenv (a build tool, not part of the deployed app; fixed in 26.2); upgraded to 26.3; the container image has `pip` 26.2.2 (not affected). After that: Python clean, JavaScript (production, high or worse) clean |
 | Bounded logs, health checks | live: `docker inspect` | log options `max-size 10m`, `max-file 5` on both; both containers `healthy` |
-| Backups | see [operations.md](operations.md) and [golive.md](golive.md) | encrypted backups are built and tested; the timer is enabled after the owner's key ceremony |
+| Backups | see [operations.md](operations.md) and [golive.md](golive.md) | backups are built and tested; since 2026-11-28 they are plain (unencrypted) files without `deploy/.env`, a choice recorded in decisions D14; the timer is enabled by the owner |
 
 ### Owner to confirm (not verifiable from this computer)
 - Cloudflare: the tunnel's published route for `app.kmk-entretien.ca` points to `http://localhost:8081` (the public URL working is the evidence), and "Always Use HTTPS" is on (the `301` above is the evidence). Nothing else in the Cloudflare dashboard is required by the application.

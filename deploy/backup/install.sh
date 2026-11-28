@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install (or remove) the daily backup timer as systemd USER units.
-#   install.sh                  install and start the timer (needs the recipient key: run make-backup-key.sh first)
+#   install.sh                  install and start the timer
 #   install.sh --dry-run        print the rendered units and the commands; change nothing
 #   install.sh --render-to DIR  write the rendered units into DIR and stop (used by the tests)
 #   install.sh --uninstall      stop and remove the timer and units
@@ -42,10 +42,6 @@ case "$MODE" in
     echo "Backup timer removed. Existing backups were not touched."
     ;;
   install)
-    if [[ ! -r "$KMK_BACKUP_RECIPIENT_FILE" ]]; then
-      echo "ERROR: no recipient public key at $KMK_BACKUP_RECIPIENT_FILE. Run make-backup-key.sh first (see docs/operations.md)." >&2
-      exit 1
-    fi
     mkdir -p "$UNIT_DIR"
     for u in "${UNITS[@]}"; do render "$u" >"$UNIT_DIR/$u"; done
     systemctl --user daemon-reload

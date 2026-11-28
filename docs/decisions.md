@@ -76,11 +76,12 @@ All entries below were decided on 2026-11-17 during the build (phase noted).
 ### D13. Email goes through a small layer: Resend when configured, a log-only backend until then (phase 3)
 - **Status:** Resend is **not set up yet**; invitation and reset links currently appear only in the API log. Switching is a settings change ([operations.md](operations.md)); it is a go-live step.
 
-### D14. Backups: encrypted with a public key, written to `/mnt/shared/BACKUPS/kmk`, verified daily (phase 6)
-- **Owner's choices:** that destination, and encryption.
-- **How the key works:** the unattended job holds only the public key; the private key and its passphrase live in the owner's password manager, never on this computer. Without them backups cannot be restored.
-- **Known limit, accepted for now:** that partition is on the same SSD as the system and readable from Windows, so it protects against mistakes, a reinstall and filesystem damage but not against the SSD failing or being stolen. An off-site copy is a future step.
-- **Safety choices:** the job refuses to run unless the partition is mounted; a restore only trusts archives whose hash the backup recorded.
+### D14. Backups: plain files in `infrastructure/backups/`, newest 14 kept, verified daily (phase 6, changed 2026-11-28)
+- **Owner's choices (2026-11-28):** no encryption, about two weeks of history (14 daily files, no weekly copies), stored in the project folder under `infrastructure/backups/` (git-ignored).
+- **What changed from the first design:** it was encrypted with a public key (the private key and passphrase in the owner's password manager), kept 14 daily and 8 weekly files, and wrote to `/mnt/shared/BACKUPS/kmk`. The key ceremony (`make-backup-key.sh`) and `--private-key` on restore are gone.
+- **Why `deploy/.env` left the archive:** it holds the keys the database does not (`MFA_ENCRYPTION_KEY`, `SESSION_SECRET`, the database passwords). In a plain file they would sit next to the dump they protect, so the owner keeps their own copy of `deploy/.env` (password manager) instead.
+- **Known limit, accepted:** the folder is on the same disk as the system and the database, so it protects against mistakes and a bad migration but not against the disk failing or being stolen. An off-site copy is a future step and must be encrypted first.
+- **Safety choices kept:** the archive and folder are private (600/700); a restore only trusts archives whose hash the backup recorded.
 
 ### D15. Default language French (Canada); the language is stored per user on the server (phases 2, 5)
 - **Decision:** `fr-CA` by default, `en`, `pt-BR` and `es` (Spanish, added 2026-11; the private app and its emails only, the public quote form stays fr/en/pt) available; a signed-in person's choice is saved on the server (so it follows them and sets their email language); before signing in a small picker is remembered in the browser; invitation links carry the language.

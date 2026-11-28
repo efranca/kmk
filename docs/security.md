@@ -164,12 +164,12 @@ Deleting an account is soft, so a deleted person's name stays in the database an
 
 ## Backups
 
-Daily encrypted backups of the `kmk` database and a copy of `deploy/.env` (which holds the keys that the database does not) are written to `/mnt/shared/BACKUPS/kmk` by `deploy/backup/` (see [operations.md](operations.md)).
-- **Encrypted with a public key:** the unattended job holds only the public key; the private key and its passphrase are kept by the owner in a password manager, never on this computer. Anyone who gets the archives without the private key sees nothing.
+Daily backups of the `kmk` database are written to `infrastructure/backups/` (git-ignored) by `deploy/backup/` (see [operations.md](operations.md)).
+- **Not encrypted, by the owner's choice (D14):** the archive is a plain tar with the dump and a manifest, mode 600 in a mode 700 folder. It holds personal data and password hashes, so anyone who can read the folder can read it. **`deploy/.env` is not in the backup:** the keys it holds (`MFA_ENCRYPTION_KEY`, `SESSION_SECRET`, the database passwords) stay out, so a copy of the backups alone cannot open the stored TOTP secrets. Do not copy the folder anywhere without encrypting it first.
 - **Verified every run:** the dump is restored into a scratch database and compared with the source; a failure is recorded and shown as a desktop notification, and a status command reports the last result and its age.
-- **Guards:** the job refuses to run unless `/mnt/shared` is really mounted (otherwise it would fill the system disk), plaintext is kept in memory-backed storage and removed on exit, retention goes by file name (not by modification time) and never deletes the new file, and a restore only trusts archives whose hash was recorded by the backup on the Linux disk (so an archive dropped onto the shared partition is not executed).
-- **Known limit:** the destination is a partition on the same SSD as the system and is readable from Windows; it protects against mistakes, a reinstall and filesystem damage, not against the SSD failing or being stolen. An off-site copy is a future step.
-- Memory-backed storage can be swapped to disk by the operating system, and the restore's extract option writes plaintext files (mode 600) where the owner asks; both are the owner's to clean up.
+- **Guards:** working files are in temporary storage and removed on exit, retention (the newest 14) goes by file name (not by modification time) and never deletes the new file, and a restore only trusts archives whose hash was recorded by the backup in the state directory (so an archive dropped into the backup folder is not executed).
+- **Known limit:** the destination is on the same disk as the system and the database; it protects against mistakes and a bad migration, not against the disk failing or being stolen. An off-site copy (encrypted first) is a future step.
+- The restore's extract option writes the dump (mode 600) where the owner asks; cleaning it up is the owner's job.
 
 ## Accepted risks and known limits
 

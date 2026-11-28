@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Rehearse (or extract from) a backup. Needs the private key, which only the owner has.
-#   kmk-restore.sh ARCHIVE --private-key FILE [--extract-only DIR] [--keep-scratch] [--accept-unverified]
+# Rehearse (or extract from) a backup.
+#   kmk-restore.sh ARCHIVE [--extract-only DIR] [--keep-scratch] [--accept-unverified]
 # Archives must be ones the backup script wrote (its hash is in the state directory); --accept-unverified overrides
 # that (for example after a reinstall) and you must then be sure of where the file came from.
-# Default: decrypt, show the manifest, restore the dump into a scratch database (KMK_RESTORE_DB, default kmk_restore_test),
+# Default: show the manifest, restore the dump into a scratch database (KMK_RESTORE_DB, default kmk_restore_test),
 # compare the row counts with the manifest, print RESTORE OK, drop the scratch database. Never touches the live database.
 set -euo pipefail
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,10 +11,9 @@ SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SELF_DIR/lib.sh"
 KMK_LIB_RECORD_STATUS=0  # a restore must never overwrite the backup status
 
-ARCHIVE=""; PRIVATE_KEY=""; EXTRACT_DIR=""; KEEP=0; ACCEPT_UNVERIFIED=0
+ARCHIVE=""; EXTRACT_DIR=""; KEEP=0; ACCEPT_UNVERIFIED=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --private-key) PRIVATE_KEY="${2:?--private-key needs a file}"; shift 2 ;;
     --extract-only) EXTRACT_DIR="${2:?--extract-only needs a directory}"; shift 2 ;;
     --keep-scratch) KEEP=1; shift ;;
     --accept-unverified) ACCEPT_UNVERIFIED=1; shift ;;
@@ -23,18 +22,14 @@ while [[ $# -gt 0 ]]; do
     *) ARCHIVE="$1"; shift ;;
   esac
 done
-[[ -n "$ARCHIVE" && -n "$PRIVATE_KEY" ]] || { echo "usage: kmk-restore.sh ARCHIVE --private-key FILE [--extract-only DIR] [--keep-scratch] [--accept-unverified]" >&2; exit 2; }
+[[ -n "$ARCHIVE" ]] || { echo "usage: kmk-restore.sh ARCHIVE [--extract-only DIR] [--keep-scratch] [--accept-unverified]" >&2; exit 2; }
 
 RESTORE_DB="${KMK_RESTORE_DB:-kmk_restore_test}"
-WORK=""; KEYRING=""; SCRATCH_CREATED=0
+WORK=""; SCRATCH_CREATED=0
 cleanup() {
   local rc=$?
   if [[ "$SCRATCH_CREATED" == 1 && "$KEEP" == 0 ]]; then
     pg_exec postgres "DROP DATABASE IF EXISTS \"$RESTORE_DB\" WITH (FORCE)" >/dev/null 2>&1 || true
-  fi
-  if [[ -n "$KEYRING" ]]; then
-    GNUPGHOME="$KEYRING" gpgconf --kill all >/dev/null 2>&1 || true
-    rm -rf "$KEYRING"
   fi
   [[ -n "$WORK" ]] && rm -rf "$WORK"
   exit "$rc"
@@ -42,9 +37,8 @@ cleanup() {
 trap cleanup EXIT
 
 [[ -r "$ARCHIVE" ]] || fail "cannot read the archive $ARCHIVE"
-[[ -r "$PRIVATE_KEY" ]] || fail "cannot read the private key file $PRIVATE_KEY"
-# An archive is encrypted to a PUBLIC key, so anyone who can write to the backup share could add one. Restoring runs SQL as
-# the database superuser, so only archives this machine's backup script wrote (hash recorded in the state directory) are trusted.
+# Archives are plain files, so anyone who can write to the backup folder could add one. Restoring runs SQL as the
+# database superuser, so only archives this machine's backup script wrote (hash recorded in the state directory) are trusted.
 archive_hash="$(sha256sum "$ARCHIVE" | cut -d' ' -f1)"
 if ! grep -q "^$archive_hash " "$KMK_BACKUP_STATE_DIR/archives.sha256" 2>/dev/null; then
   if [[ "$ACCEPT_UNVERIFIED" == 1 ]]; then
@@ -57,24 +51,17 @@ check_db_name "$RESTORE_DB"
 [[ "$RESTORE_DB" != "$KMK_BACKUP_DB" ]] || fail "refusing to restore over the live database '$KMK_BACKUP_DB'"
 
 mkdir -p "$KMK_BACKUP_TMP"
-KEYRING="$(mktemp -d -p "$KMK_BACKUP_TMP" kmk-keyring.XXXXXX)"; chmod 700 "$KEYRING"
 WORK="$(mktemp -d -p "$KMK_BACKUP_TMP" kmk-restore.XXXXXX)"; chmod 700 "$WORK"
-export GNUPGHOME="$KEYRING"
-if [[ -t 0 ]]; then GPG_TTY="$(tty)"; export GPG_TTY; fi
-
-gpg --batch --quiet --import "$PRIVATE_KEY" >/dev/null 2>&1 || fail "the private key file could not be imported"
-gpg --batch --yes --quiet --decrypt --output "$WORK/archive.tar" "$ARCHIVE" 2>"$WORK/gpg.err" \
-  || fail "cannot decrypt the archive (wrong key, wrong passphrase, or a damaged file)"
-tar -C "$WORK" -xf "$WORK/archive.tar" 2>/dev/null || fail "the archive content is damaged"
-for f in kmk.dump deploy.env MANIFEST.txt; do [[ -s "$WORK/$f" ]] || fail "the archive is missing $f"; done
+tar -C "$WORK" -xf "$ARCHIVE" 2>/dev/null || fail "the archive content is damaged"
+for f in kmk.dump MANIFEST.txt; do [[ -s "$WORK/$f" ]] || fail "the archive is missing $f"; done
 
 log "manifest:"
 cat "$WORK/MANIFEST.txt"
 
 if [[ -n "$EXTRACT_DIR" ]]; then
   mkdir -p "$EXTRACT_DIR"
-  for f in kmk.dump deploy.env MANIFEST.txt; do install -m 600 "$WORK/$f" "$EXTRACT_DIR/$f"; done
-  echo "Extracted to $EXTRACT_DIR (files are mode 600: they hold secrets; delete them when done)."
+  for f in kmk.dump MANIFEST.txt; do install -m 600 "$WORK/$f" "$EXTRACT_DIR/$f"; done
+  echo "Extracted to $EXTRACT_DIR (files are mode 600: the dump holds password hashes; delete them when done)."
   exit 0
 fi
 
