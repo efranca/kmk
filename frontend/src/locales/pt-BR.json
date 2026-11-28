@@ -683,5 +683,8 @@
   "feedNone": "Nenhum link ainda.",
   "feedLinkLabel": "Seu link de calendário",
   "feedConfirmRevoke": "Revogar o link? Todos os apps que o usam deixam de ser atualizados.",
-  "feedConfirmRegenerate": "Criar um novo link? O atual para de funcionar em todos os apps."
+  "feedConfirmRegenerate": "Criar um novo link? O atual para de funcionar em todos os apps.",
+  "invVisitPrice": "Preço por visita",
+  "invVisitPriceHint": "Quanto custa uma limpeza deste local. Usado para faturar; só os administradores veem.",
+  "invAmountInvalid": "Digite um valor como 120 ou 120,50."
 }

@@ -683,5 +683,8 @@
   "feedNone": "Aucun lien pour le moment.",
   "feedLinkLabel": "Votre lien de calendrier",
   "feedConfirmRevoke": "Révoquer le lien? Toutes les applications qui l’utilisent cesseront d’être mises à jour.",
-  "feedConfirmRegenerate": "Créer un nouveau lien? L’actuel cessera de fonctionner dans toutes les applications."
+  "feedConfirmRegenerate": "Créer un nouveau lien? L’actuel cessera de fonctionner dans toutes les applications.",
+  "invVisitPrice": "Prix par visite",
+  "invVisitPriceHint": "Ce que coûte un ménage de cet endroit. Sert à facturer; seuls les administrateurs le voient.",
+  "invAmountInvalid": "Entrez un montant comme 120 ou 120,50."
 }
