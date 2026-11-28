@@ -90,11 +90,11 @@ def err(r):
     return r.status_code, r.json()
 
 
-def upload(s, t, data, room=None, reason=None):
+def upload(s, t, data, room=None, reason=None, **kw):
     params = {"room_id": room} if room is not None else {}
     if reason is not None:
         params["reason"] = reason
-    return s[0].put(url(t) + "/photos", content=data, params=params, headers={**s[1], "Content-Type": "application/octet-stream"})
+    return s[0].put(url(t, **kw) + "/photos", content=data, params=params, headers={**s[1], "Content-Type": "application/octet-stream"})
 
 
 def remove(s, photo_url, reason=None):
@@ -103,11 +103,11 @@ def remove(s, photo_url, reason=None):
     return s[0].request("DELETE", photo_url, json={"reason": reason}, headers=s[1])
 
 
-def skip(s, t, room, correction_reason=None):
+def skip(s, t, room, correction_reason=None, **kw):
     body = {"room_id": room, "reason": "door locked"}
     if correction_reason is not None:
         body["correction_reason"] = correction_reason
-    return s[0].post(url(t) + "/skips", json=body, headers=s[1])
+    return s[0].post(url(t, **kw) + "/skips", json=body, headers=s[1])
 
 
 def corrections_rows(owner_engine):
@@ -368,9 +368,77 @@ def test_close_correction_keeps_the_rooms_rule(team, clock):
     upload(team.ana, team, image(), room=team.rooms[0]["id"])
     clock["now"] = NEXT_DAY
     assert err(correct(team.ana, team, "close")) == (409, {"error": "rooms_missing", "rooms": ["Bath"]})
-    assert done(skip(team.ana, team, team.rooms[1]["id"]))["state"] == "in_progress"  # still open: a plain skip
+    assert err(skip(team.ana, team, team.rooms[1]["id"])) == (409, {"error": "correction_required"})  # after the visit's day
+    assert done(skip(team.ana, team, team.rooms[1]["id"], correction_reason="bath was locked"))["state"] == "in_progress"
     v = done(correct(team.ana, team, "close"))
     assert (v["state"], v["closed_without_photos"], v["corrections"][0]["details"]) == ("closed", False, {"without_photos": False})
+
+
+def test_open_visit_on_its_day_allows_plain_photo_changes(team, owner_engine):
+    kitchen, bath = team.rooms[0]["id"], team.rooms[1]["id"]
+    checkin(team.ana, team, [team.ids["ana"]])
+    r = upload(team.ana, team, image(), room=kitchen)
+    assert r.status_code == 201, r.text
+    assert remove(team.ana, r.json()["visit"]["photos"][0]["url"]).status_code == 200
+    v = done(skip(team.ana, team, bath))
+    assert (v["state"], v["corrected"], v["corrections"]) == ("in_progress", False, [])
+    assert corrections_rows(owner_engine) == []
+
+
+def test_open_visit_after_its_day_needs_a_correction(team, clock, owner_engine, monkeypatch):
+    """A visit left open is not a blank page: from the day after its date (here the DST day 2026-11-01), photo and skip
+    changes need a reason, are limited to the correction window and are recorded."""
+    from app.visits import photos
+
+    c, h = team.boss
+    eid = create(c, h, title="Dimanche", start_date="2026-11-01", client_id=team.cid, property_id=team.pid, people=[team.ids["ana"], team.ids["carla"]]).json()["event"]["id"]
+    at = {"eid": eid, "day": "2026-11-01"}
+    kitchen, bath = team.rooms[0]["id"], team.rooms[1]["id"]
+    clock["now"] = datetime(2026, 11, 1, 14, 0, tzinfo=timezone.utc)
+    checkin(team.ana, team, [team.ids["ana"]], **at)
+    first = upload(team.ana, team, image(), room=kitchen, **at).json()["visit"]["photos"][0]
+    calls = []
+    real = photos.validate
+    monkeypatch.setattr(photos, "validate", lambda data: calls.append(len(data)) or real(data))
+
+    clock["now"] = datetime(2026, 11, 2, 5, 0, tzinfo=timezone.utc)  # 2026-11-02 00:00 in Toronto (EST): the next day
+    required = (409, {"error": "correction_required"})
+    assert err(upload(team.ana, team, hostile(), room=bath, **at)) == required
+    assert err(remove(team.ana, first["url"])) == required
+    assert err(skip(team.ana, team, bath, **at)) == required
+    assert calls == []  # refused before the body was decoded
+    v = read(team.ana, team, **at)
+    assert (len(v["photos"]), v["skips"], v["corrected"], v["state"]) == (1, [], False, "in_progress")
+    assert corrections_rows(owner_engine) == [] and len(storage.all_ids(team.root)) == 1
+    # someone only listed (never checked in) cannot, with or without a reason
+    assert err(upload(team.carla, team, hostile(), room=bath, reason="late", **at)) == (403, {"error": "not_checked_in"})
+    assert err(skip(team.carla, team, bath, correction_reason="late", **at)) == (403, {"error": "not_checked_in"})
+    assert calls == []
+
+    r = upload(team.ana, team, image(), room=bath, reason="forgot the bathroom", **at)
+    assert r.status_code == 201, r.text
+    assert remove(team.ana, first["url"], reason="wrong house").status_code == 200
+    v = done(skip(team.ana, team, kitchen, correction_reason="kitchen was locked", **at))
+    assert (v["state"], v["corrected"]) == ("in_progress", True)
+    assert [(x["kind"], x["reason"], x["actor_name"]) for x in v["corrections"]] == [
+        ("skip_room", "kitchen was locked", "ana"), ("remove_photo", "wrong house", "ana"), ("add_photo", "forgot the bathroom", "ana"),
+    ]
+
+    clock["now"] = datetime(2026, 11, 3, 4, 59, 59, tzinfo=timezone.utc)  # 2026-11-02 23:59:59 in Toronto: still inside
+    assert upload(team.ana, team, image(), room=kitchen, reason="one more", **at).status_code == 201
+    clock["now"] = datetime(2026, 11, 3, 5, 0, tzinfo=timezone.utc)  # 2026-11-03 00:00: the window is over
+    closed = (403, {"error": "correction_window_closed"})
+    assert err(upload(team.ana, team, hostile(), room=kitchen, reason="late", **at)) == closed
+    assert err(skip(team.ana, team, bath, correction_reason="late", **at)) == closed
+    mine = read(team.ana, team, **at)["photos"][0]
+    assert err(remove(team.ana, mine["url"], reason="late")) == closed
+    assert len(calls) == 2  # only the two accepted uploads were decoded
+    # admins are never limited, and remove anyone's photo
+    assert upload(team.boss, team, image(), room=kitchen, reason="from the client's email", **at).status_code == 201
+    assert remove(team.boss, mine["url"], reason="blurry").status_code == 200
+    kinds = [k for k, *_ in corrections_rows(owner_engine)]
+    assert kinds == ["add_photo", "remove_photo", "skip_room", "add_photo", "add_photo", "remove_photo"]
+    assert sql(owner_engine, "SELECT count(*) FROM audit_log WHERE action = 'visit_corrected'")[0][0] == 6
 
 
 def test_payload_never_carries_property_details(team):

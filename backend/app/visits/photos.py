@@ -1,11 +1,13 @@
-"""Photos of a visit and room skips (the routes call these). While a visit is open, anyone checked in adds photos and skips
-rooms, and a photo is removed only by who uploaded it. After the close each of these is a correction: the request carries a
-`reason` (else `409 already_closed`), the correction authority applies (`corrections.check`), and one `visit_corrections`
-row is written in the same transaction, under the same lock. The bytes live on disk (`storage`); the row is the record.
+"""Photos of a visit and room skips (the routes call these). While a visit is open, on its own day (company date), anyone
+checked in adds photos and skips rooms, and a photo is removed only by who uploaded it. After the close, and on a visit
+still open after its day, each of these is a correction: the request carries a `reason` (else `409 already_closed`, or
+`409 correction_required` for the open visit), the correction authority applies (`corrections.check`: the window, and
+only people checked in on the visit or admins), and one `visit_corrections` row is written in the same transaction,
+under the same lock. The bytes live on disk (`storage`); the row is the record.
 
-The order of the conditions is the same for the upload (`precheck`, then `add`) and the skip, and lives in `_may_write`:
-no visit yet -> `403 not_checked_in`; closed -> `409 already_closed` without a reason, else the correction authority;
-open and the actor not active on it -> `403 not_checked_in`.
+The order of the conditions is the same for the upload (`precheck`, then `add`) and the skip, and lives in `_may_write`
+(with `_correction`, which the removal shares): no visit yet -> `403 not_checked_in`; closed or past its day -> `409`
+without a reason, else the correction authority; open on its day and the actor not active on it -> `403 not_checked_in`.
 
 Write order: file first, then the row (the file is deleted if the row cannot be saved). Delete order: the row is marked
 removed first, then the file is deleted (a leftover file is found by the cleanup, a row without a file never happens).
@@ -69,20 +71,30 @@ def validate(data: bytes) -> str:
     return kind
 
 
+def _correction(db: Session, actor: User, visit: Visit, reason: str | None, now: datetime) -> str | None:
+    """`None` when the change follows the plain rules (an open visit, on its own day: a reason is then ignored). Else the
+    change is a correction: closed, or still open after the visit's day (company date). It needs a reason (`409
+    already_closed` / `409 correction_required` without one), the correction authority (`403 not_checked_in` / `403
+    correction_window_closed`) and a valid reason (`422 invalid_reason`); returns the cleaned reason."""
+    closed = visit.closed_at is not None
+    if not closed and service.company_date(now) <= visit.visit_date:
+        return None
+    if reason is None:
+        raise ApiError(409, "already_closed" if closed else "correction_required")
+    corrections.check(actor, visit, corrections.checked_in_ids(db, visit.id), now)
+    return corrections.clean_reason(reason)
+
+
 def _may_write(db: Session, actor: User, visit: Visit | None, reason: str | None, now: datetime) -> str | None:
     """Whether the actor may add a photo or skip a room on this visit (the one place for the order of the conditions, see
-    the module's docstring). Returns the cleaned correction reason when the visit is closed (the change is a correction),
-    `None` while it is open (an open visit ignores a reason)."""
+    the module's docstring). Returns the cleaned correction reason when the change is a correction (`_correction`),
+    `None` for a plain change."""
     if visit is None:
         raise ApiError(403, "not_checked_in")
-    if visit.closed_at is not None:
-        if reason is None:
-            raise ApiError(409, "already_closed")
-        corrections.check(actor, visit, corrections.checked_in_ids(db, visit.id), now)
-        return corrections.clean_reason(reason)
-    if actor.id not in service._active_ids(db, visit.id):
+    correction = _correction(db, actor, visit, reason, now)
+    if correction is None and actor.id not in service._active_ids(db, visit.id):
         raise ApiError(403, "not_checked_in")
-    return None
+    return correction
 
 
 def _writable_visit(db: Session, actor: User, event_id: int, occurrence_date: date, reason: str | None, now: datetime) -> tuple[Visit, str | None]:
@@ -166,8 +178,8 @@ def read(db: Session, settings: Settings, actor: User, photo_id: int) -> tuple[V
 
 
 def remove(db: Session, settings: Settings, actor: User, photo_id: int, now: datetime, ip: str, reason: str | None = None) -> dict:
-    """While the visit is open, only who uploaded the photo removes it. Once closed it is a correction (`reason` needed, the
-    correction authority applies): Staff still remove only their own photos, admins any photo."""
+    """While the visit is open on its day, only who uploaded the photo removes it. Once closed, or after the visit's day,
+    it is a correction (`_correction`): Staff still remove only their own photos, admins any photo."""
     photo = visible_photo(db, actor, photo_id)
     visit = db.get(Visit, photo.visit_id)
     event_id, occurrence_date = visit.event_id, visit.occurrence_date
@@ -175,12 +187,7 @@ def remove(db: Session, settings: Settings, actor: User, photo_id: int, now: dat
     photo = db.scalars(select(VisitPhoto).where(VisitPhoto.id == photo_id).with_for_update().execution_options(populate_existing=True)).one()
     if photo.deleted_at is not None or photo.purged_at is not None:
         raise ApiError(404, "not_found")
-    correction = None
-    if visit.closed_at is not None:
-        if reason is None:
-            raise ApiError(409, "already_closed")
-        corrections.check(actor, visit, corrections.checked_in_ids(db, visit.id), now)
-        correction = corrections.clean_reason(reason)
+    correction = _correction(db, actor, visit, reason, now)
     if photo.uploaded_by != actor.id and not (correction is not None and policy.can_correct_any_visit(actor)):
         raise ApiError(403, "forbidden")
     photo.deleted_at = now
