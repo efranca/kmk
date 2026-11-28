@@ -133,6 +133,33 @@ describe("Documents page", () => {
     expect(screen.getByText(/nothing like this/)).toBeInTheDocument();
   });
 
+  it("opens a viewable document in a full-size dialog, and a file the browser cannot show in the normal one", async () => {
+    mockApi({
+      "GET /api/documents": () => res(200, { categories: [], documents: [
+        doc(7, { title: "Lease" }),
+        doc(8, { title: "Contract", content_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", file_name: "contract.docx" }),
+      ] }),
+    });
+    renderWithProviders(<DocumentsPage />);
+    fireEvent.click(await screen.findByText("Lease"));
+    expect(await screen.findByRole("dialog")).toHaveClass("dialog--full");
+    fireEvent.click(within(screen.getByRole("dialog")).getAllByRole("button", { name: en.close })[0]);
+    fireEvent.click(await screen.findByText("Contract"));
+    expect(await screen.findByRole("dialog")).not.toHaveClass("dialog--full");
+  });
+
+  it("shows a text document's content in the dialog, read by the app (no iframe)", async () => {
+    mockApi({
+      "GET /api/documents": () => res(200, { categories: [], documents: [doc(9, { title: "Notes", content_type: "text/plain", file_name: "notes.txt" })] }),
+      "GET /api/documents/9/file": () => ({ ok: true, status: 200, text: async () => "First line\nSecond line" }),
+    });
+    renderWithProviders(<DocumentsPage />);
+    fireEvent.click(await screen.findByText("Notes"));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText(/First line/)).toBeInTheDocument();
+    expect(dialog.querySelector("iframe")).toBeNull();
+  });
+
   it("shows the document itself in the dialog, and offers Open only for what a browser can show", async () => {
     mockApi({
       "GET /api/documents": () => res(200, { categories: [], documents: [
@@ -143,7 +170,9 @@ describe("Documents page", () => {
     renderWithProviders(<DocumentsPage />);
     fireEvent.click(await screen.findByText("Lease"));
     let dialog = await screen.findByRole("dialog");
-    expect(dialog.querySelector("iframe.doc-view")).toHaveAttribute("src", expect.stringContaining("/api/documents/7/file"));
+    // no iframe: the page's content policy allows no frames, so a PDF is drawn by the app itself (pdf.js)
+    expect(dialog.querySelector("iframe")).toBeNull();
+    expect(dialog.querySelector(".doc-view--pdf")).not.toBeNull();
     expect(within(dialog).getByRole("link", { name: en.docOpen })).toBeInTheDocument();
     fireEvent.click(within(dialog).getAllByRole("button", { name: en.close })[0]);
     fireEvent.click(await screen.findByText("Contract"));

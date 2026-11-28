@@ -8,6 +8,7 @@ import { ErrorNotice } from "../ui/Feedback";
 import { SelectField, TextAreaField, TextField } from "../ui/Field";
 import { ClientPicker } from "../clients/ClientPicker";
 import { FALLBACK_CATEGORY_ICON } from "../tasks/CategoryChips";
+import { PdfViewer, TextViewer } from "./DocumentViewer";
 import { fileUrl, previewUrl, type DocumentCategory, type DocumentItem, type Visibility } from "./api";
 import { useDeleteDocument, useSaveDocument } from "./hooks";
 import { fileKind } from "./fileKind";
@@ -81,12 +82,14 @@ export function DocumentDialog({ document, categories, onClose, defaultClientId 
   ) : <Button variant="ghost" onClick={onClose}>{t("close")}</Button>;
 
   return (
-    <Dialog open title={document ? (canManage ? t("docEditTitle") : document.title) : t("docNewTitle")} onClose={onClose} footer={footer}>
+    <Dialog open title={document ? (canManage ? t("docEditTitle") : document.title) : t("docNewTitle")} onClose={onClose} footer={footer} size={document?.has_file && kind.inline ? "full" : "default"}>
       {document?.has_file && kind.inline && (document.content_type ?? "").startsWith("image/")
         ? <img className="doc-view doc-view--image" src={fileUrl(document.id)} alt={document.title} />
-        : document?.has_file && kind.inline
-          ? <iframe className="doc-view doc-view--frame" src={fileUrl(document.id)} title={document.title} />
-          : document?.has_preview && <img className="doc-preview" src={previewUrl(document.id, document.updated_at)} alt="" loading="lazy" />}
+        : document?.has_file && kind.inline && document.content_type === "application/pdf"
+          ? <PdfViewer url={fileUrl(document.id)} />
+          : document?.has_file && kind.inline
+            ? <TextViewer url={fileUrl(document.id)} />
+            : document?.has_preview && <img className="doc-preview" src={previewUrl(document.id, document.updated_at)} alt="" loading="lazy" />}
       {document?.has_file && (
         <p className="doc-links">
           {kind.inline && (

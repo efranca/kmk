@@ -9,10 +9,12 @@ interface DialogProps {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  /** "full": the whole screen, on every device (a document being read). */
+  size?: "default" | "full";
 }
 
 /** Native <dialog>: focus trapping, Escape to close and the inert background come from the browser. */
-export function Dialog({ open, title, onClose, children, footer }: DialogProps) {
+export function Dialog({ open, title, onClose, children, footer, size = "default" }: DialogProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -32,7 +34,7 @@ export function Dialog({ open, title, onClose, children, footer }: DialogProps) 
   return (
     <dialog
       ref={ref}
-      className="dialog"
+      className={size === "full" ? "dialog dialog--full" : "dialog"}
       aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault();

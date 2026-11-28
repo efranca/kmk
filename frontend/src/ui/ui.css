@@ -237,3 +237,8 @@
 .segmented-menu__item::before { content: ""; display: inline-block; width: 1em; }
 .segmented-menu__item[aria-checked="true"]::before { content: "✓"; color: var(--accent); }
 .segmented-menu__item:hover, .segmented-menu__item:focus-visible { background: var(--surface-2); }
+
+/* a dialog that takes the whole screen (a document being read): edge to edge on every device, the body scrolls */
+.dialog.dialog--full { width: 100vw; height: 100dvh; max-width: 100vw; max-height: 100dvh; margin: 0; }
+.dialog--full .dialog__panel { width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; box-shadow: none; }
+.dialog--full .dialog__body { flex: 1; min-height: 0; }
