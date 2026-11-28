@@ -10,7 +10,7 @@ SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SELF_DIR/lib.sh"
 
 UNIT_DIR="${KMK_BACKUP_UNIT_DIR:-$HOME/.config/systemd/user}"
-UNITS=(kmk-backup.service kmk-backup.timer kmk-backup-alert.service)
+UNITS=(kmk-backup.service kmk-backup.timer kmk-backup-alert.service kmk-visit-photos-purge.service kmk-visit-photos-purge.timer)
 MODE=install; RENDER_DIR=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -34,19 +34,22 @@ case "$MODE" in
     echo "### commands"
     echo "systemctl --user daemon-reload"
     echo "systemctl --user enable --now kmk-backup.timer"
+    echo "systemctl --user enable --now kmk-visit-photos-purge.timer"
     ;;
   uninstall)
     systemctl --user disable --now kmk-backup.timer 2>/dev/null || true
+    systemctl --user disable --now kmk-visit-photos-purge.timer 2>/dev/null || true
     for u in "${UNITS[@]}"; do rm -f "$UNIT_DIR/$u"; done
     systemctl --user daemon-reload
-    echo "Backup timer removed. Existing backups were not touched."
+    echo "Backup and photo purge timers removed. Existing backups were not touched."
     ;;
   install)
     mkdir -p "$UNIT_DIR"
     for u in "${UNITS[@]}"; do render "$u" >"$UNIT_DIR/$u"; done
     systemctl --user daemon-reload
     systemctl --user enable --now kmk-backup.timer
-    systemctl --user list-timers kmk-backup.timer --no-pager || true
+    systemctl --user enable --now kmk-visit-photos-purge.timer
+    systemctl --user list-timers kmk-backup.timer kmk-visit-photos-purge.timer --no-pager || true
     echo
     echo "Installed. Check the last result any time with: $SELF_DIR/kmk-backup-status.sh"
     echo "Run a backup right now with: systemctl --user start kmk-backup.service"

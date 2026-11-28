@@ -87,7 +87,53 @@ FINAL="$KMK_BACKUP_DEST/daily/$NAME"
 tar -C "$WORK" -cf "$FINAL.partial" kmk.dump MANIFEST.txt || { rm -f "$FINAL.partial"; fail "cannot write the archive"; }
 mv -f "$FINAL.partial" "$FINAL"
 
-# ---- retention: only after a successful write ----
+# Remember the hash of what we wrote, in the state directory (outside the backup folder): the restore script only
+# trusts archives it can find in this list, so an archive someone else drops in the folder is not executed.
+mkdir -p "$KMK_BACKUP_STATE_DIR"
+printf '%s  %s\n' "$(sha256sum "$FINAL" | cut -d' ' -f1)" "$NAME" >>"$KMK_BACKUP_STATE_DIR/archives.sha256"
+
+# ---- photo snapshot (after the archive is safe, before any pruning: a failed run deletes nothing) ----
+# Each snapshot is a complete folder; --link-dest only shares unchanged files with the previous one to save space.
+SNAP_PATTERN='^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}$'
+MESSAGE="backup written"
+SNAP_NAME="${NAME#kmk-}"; SNAP_NAME="${SNAP_NAME%.tar}"
+PHOTOS_DIR="$KMK_BACKUP_DEST/photos"
+SNAP_MADE=0
+if [[ -z "$KMK_BACKUP_PHOTOS_SRC" ]]; then
+  log "photos: no source folder configured, skipping"
+elif [[ ! -d "$KMK_BACKUP_PHOTOS_SRC" ]]; then
+  log "photos: $KMK_BACKUP_PHOTOS_SRC does not exist, skipping"
+elif [[ -z "$(find "$KMK_BACKUP_PHOTOS_SRC" -type f -print -quit 2>/dev/null)" ]]; then
+  log "photos: $KMK_BACKUP_PHOTOS_SRC has no files, skipping"
+else
+  command -v rsync >/dev/null 2>&1 || fail "rsync is not installed: cannot back up the visit photos (install it, e.g. apt install rsync)"
+  mkdir -p "$PHOTOS_DIR" || fail "cannot create $PHOTOS_DIR"
+  chmod 700 "$PHOTOS_DIR" 2>/dev/null || true
+  PHOTOS_ABS="$(cd "$PHOTOS_DIR" && pwd)"
+  # Leftovers of an earlier crashed run (only folders named like a snapshot plus .partial).
+  for d in "$PHOTOS_ABS"/*.partial; do
+    [[ -d "$d" && ! -L "$d" ]] || continue
+    [[ "$(basename "$d" .partial)" =~ $SNAP_PATTERN ]] && rm -rf -- "$d"
+  done
+  PREV="$(ls -1 "$PHOTOS_ABS" | grep -E "$SNAP_PATTERN" | grep -vxF "$SNAP_NAME" | sort -r | head -n 1 || true)"
+  link_opt=()
+  if [[ -n "$PREV" && -d "$PHOTOS_ABS/$PREV" && ! -L "$PHOTOS_ABS/$PREV" ]]; then link_opt=(--link-dest="$PHOTOS_ABS/$PREV"); fi
+  PARTIAL="$PHOTOS_ABS/$SNAP_NAME.partial"
+  log "photos: snapshotting $KMK_BACKUP_PHOTOS_SRC ..."
+  if ! rsync -a "${link_opt[@]}" "$KMK_BACKUP_PHOTOS_SRC/" "$PARTIAL/" 2>"$WORK/rsync.err"; then
+    rm -rf -- "$PARTIAL"
+    fail "the photo snapshot failed (rsync): $(head -c 300 "$WORK/rsync.err")"
+  fi
+  # A snapshot with this very name can exist only if the same second was backed up twice: replace it, like the archive.
+  [[ -d "$PHOTOS_ABS/$SNAP_NAME" && ! -L "$PHOTOS_ABS/$SNAP_NAME" ]] && rm -rf -- "$PHOTOS_ABS/$SNAP_NAME"
+  mv -- "$PARTIAL" "$PHOTOS_ABS/$SNAP_NAME" || { rm -rf -- "$PARTIAL"; fail "cannot finish the photo snapshot"; }
+  photo_count="$(find "$PHOTOS_ABS/$SNAP_NAME" -type f | wc -l | tr -d ' ')"
+  MESSAGE="backup written (photos: $photo_count files)"
+  SNAP_MADE=1
+  log "photos: $photo_count files in $PHOTOS_ABS/$SNAP_NAME"
+fi
+
+# ---- retention: only after everything was written ----
 # Newest first BY NAME (the name carries the timestamp), never by modification time: a file with a future modification
 # time (clock skew, a copied folder) must not push the new backup out.
 prune() {
@@ -101,11 +147,18 @@ prune() {
 prune "$KMK_BACKUP_DEST/daily" "$KMK_BACKUP_KEEP_DAILY" "$FINAL"
 [[ -f "$FINAL" ]] || fail "internal error: the new backup is missing after pruning"
 
-# Remember the hash of what we wrote, in the state directory (outside the backup folder): the restore script only
-# trusts archives it can find in this list, so an archive someone else drops in the folder is not executed.
-mkdir -p "$KMK_BACKUP_STATE_DIR"
-printf '%s  %s\n' "$(sha256sum "$FINAL" | cut -d' ' -f1)" "$NAME" >>"$KMK_BACKUP_STATE_DIR/archives.sha256"
+# Snapshots: only names that look like a snapshot are ever considered, never the one just made.
+prune_snapshots() {
+  local dir=$1 keep=$2 n
+  [[ -d "$dir" ]] || return 0
+  ls -1 "$dir" | grep -E "$SNAP_PATTERN" | sort -r | tail -n +"$((keep + 1))" | while IFS= read -r n; do
+    [[ "$n" == "$SNAP_NAME" ]] && continue
+    [[ -d "$dir/$n" && ! -L "$dir/$n" ]] || continue
+    rm -rf -- "${dir:?}/$n"
+  done
+}
+if [[ "$SNAP_MADE" == 1 ]]; then prune_snapshots "$PHOTOS_DIR" "$KMK_BACKUP_KEEP_DAILY"; fi
 
 bytes="$(stat -c %s "$FINAL")"
-write_status ok "backup written" "$FINAL" "$bytes"
+write_status ok "$MESSAGE" "$FINAL" "$bytes"
 log "ok: $FINAL ($bytes bytes)"

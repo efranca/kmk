@@ -69,6 +69,7 @@ def setup(tmp_path):
         "KMK_BACKUP_SCRATCH_DB": SCRATCH,
         "KMK_BACKUP_STATE_DIR": str(s.state),
         "KMK_BACKUP_TMP": str(work),
+        "KMK_BACKUP_PHOTOS_SRC": str(tmp_path / "photos-src"),  # never the real folder; absent unless a test creates it
     }
     yield s
     if db_exists(SCRATCH):  # a failing test must not leave the scratch database behind
@@ -427,7 +428,10 @@ def test_units_are_rendered_with_the_repository_path(setup):
     r, out = render_units(setup)
     assert r.returncode == 0, r.stderr
     names = sorted(p.name for p in out.iterdir())
-    assert names == ["kmk-backup-alert.service", "kmk-backup.service", "kmk-backup.timer"]
+    assert names == [
+        "kmk-backup-alert.service", "kmk-backup.service", "kmk-backup.timer",
+        "kmk-visit-photos-purge.service", "kmk-visit-photos-purge.timer",
+    ]
     service = (out / "kmk-backup.service").read_text()
     timer = (out / "kmk-backup.timer").read_text()
     alert = (out / "kmk-backup-alert.service").read_text()
@@ -437,6 +441,20 @@ def test_units_are_rendered_with_the_repository_path(setup):
     assert "OnCalendar=*-*-* 02:30:00" in timer and "Persistent=true" in timer and "RandomizedDelaySec=10min" in timer
     assert all("@REPO@" not in (out / n).read_text() for n in names)
     assert os.access(REPO / "deploy/backup/kmk-backup.sh", os.X_OK) and os.access(REPO / "deploy/backup/notify-failure.sh", os.X_OK)
+
+
+def test_purge_units_are_rendered(setup):
+    r, out = render_units(setup)
+    assert r.returncode == 0, r.stderr
+    service = (out / "kmk-visit-photos-purge.service").read_text()
+    timer = (out / "kmk-visit-photos-purge.timer").read_text()
+    assert f"docker compose -f {REPO}/deploy/docker-compose.yml exec -T api python -m app.cli purge-visit-photos" in service
+    assert "Type=oneshot" in service
+    assert "OnCalendar=*-*-* 03:15:00" in timer and "Persistent=true" in timer and "RandomizedDelaySec=10min" in timer
+    assert "WantedBy=timers.target" in timer
+    dry = run("install.sh", {**setup.env, "KMK_BACKUP_UNIT_DIR": str(setup.tmp / "uu")}, "--dry-run").stdout
+    assert "kmk-visit-photos-purge.timer" in dry and "enable --now kmk-visit-photos-purge.timer" in dry
+    assert "enable --now kmk-backup.timer" in dry
 
 
 @pytest.mark.skipif(not shutil.which("systemd-analyze"), reason="systemd-analyze not available")
@@ -494,3 +512,91 @@ def test_repository_scripts_pass_the_bash_syntax_check():
         r = subprocess.run(["bash", "-n", str(path)], capture_output=True, text=True)
         assert r.returncode == 0, f"{path.name}: {r.stderr}"
         assert os.access(path, os.X_OK), f"{path.name} is not executable"
+
+
+# ======================= photo snapshots =======================
+
+def photo_snapshots(setup) -> list[Path]:
+    d = setup.dest / "photos"
+    return sorted(p for p in d.iterdir() if p.is_dir()) if d.exists() else []
+
+
+def make_photos(setup, files: dict[str, bytes]) -> Path:
+    src = Path(setup.env["KMK_BACKUP_PHOTOS_SRC"])
+    for name, data in files.items():
+        f = src / name
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_bytes(data)
+    return src
+
+
+def run_at(setup, when: str, **extra):
+    return run("kmk-backup.sh", {**setup.env, "KMK_BACKUP_NOW": when, **extra})
+
+
+def test_photos_are_snapshotted_with_hard_links(setup, add_user):
+    add_user()
+    src = make_photos(setup, {"a/1.jpg": b"one", "a/2.jpg": b"two"})
+    r = run_at(setup, "2026-11-23 02:30:00")
+    assert r.returncode == 0, r.stderr
+    assert status_of(setup)["message"] == "backup written (photos: 2 files)"
+    (src / "a" / "3.jpg").write_bytes(b"three")
+    r = run_at(setup, "2026-11-24 02:30:00")
+    assert r.returncode == 0, r.stderr
+    assert status_of(setup)["message"] == "backup written (photos: 3 files)"
+    first, second = photo_snapshots(setup)
+    assert first.name == "2026-11-23_023000" and second.name == "2026-11-24_023000"
+    assert (first / "a/1.jpg").stat().st_ino == (second / "a/1.jpg").stat().st_ino  # unchanged: one copy on disk
+    assert not (first / "a/3.jpg").exists() and (second / "a/3.jpg").read_bytes() == b"three"
+    # Each snapshot is complete on its own: removing the old one leaves the newer intact.
+    shutil.rmtree(first)
+    assert {p.name: p.read_bytes() for p in (second / "a").iterdir()} == {"1.jpg": b"one", "2.jpg": b"two", "3.jpg": b"three"}
+    assert not list((setup.dest / "photos").glob("*.partial"))
+    assert len(archives(setup)) == 2
+
+
+def test_photo_snapshots_follow_the_retention(setup, add_user):
+    add_user()
+    make_photos(setup, {"x.jpg": b"x"})
+    photos = setup.dest / "photos"
+    photos.mkdir(parents=True)
+    for d in ("2026-11-01_023000", "2026-11-02_023000", "2026-11-03_023000"):
+        (photos / d).mkdir()
+        (photos / d / "old.jpg").write_bytes(b"old")
+    (photos / "notes").mkdir()  # stray things are never removed
+    (photos / "README.txt").write_text("keep me")
+    (photos / "2026-10-01_023000.partial").mkdir()  # a crashed earlier run: cleaned
+    os.utime(photos / "2026-11-03_023000", (4102444800, 4102444800))  # a future mtime must not matter
+    r = run_at(setup, "2026-11-23 02:30:00", KMK_BACKUP_KEEP_DAILY="2")
+    assert r.returncode == 0, r.stderr
+    names = sorted(p.name for p in photos.iterdir())
+    assert names == ["2026-11-03_023000", "2026-11-23_023000", "README.txt", "notes"]
+
+
+def test_missing_photo_folder_is_not_a_failure(setup, add_user):
+    add_user()
+    r = run_at(setup, "2026-11-23 02:30:00")  # the folder does not exist
+    assert r.returncode == 0, r.stderr
+    assert status_of(setup)["result"] == "ok" and status_of(setup)["message"] == "backup written"
+    assert not (setup.dest / "photos").exists()
+    Path(setup.env["KMK_BACKUP_PHOTOS_SRC"]).mkdir()  # an empty folder
+    r = run_at(setup, "2026-11-24 02:30:00")
+    assert r.returncode == 0, r.stderr
+    assert status_of(setup)["message"] == "backup written" and photo_snapshots(setup) == []
+    r = run_at(setup, "2026-11-25 02:30:00", KMK_BACKUP_PHOTOS_SRC="")
+    assert r.returncode == 0, r.stderr and status_of(setup)["message"] == "backup written"
+
+
+def test_a_failed_photo_step_records_failed_and_deletes_nothing(setup, add_user, tmp_path):
+    add_user()
+    make_photos(setup, {"x.jpg": b"x"})
+    assert run_at(setup, "2026-11-22 02:30:00").returncode == 0
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    (bindir / "rsync").write_text("#!/bin/sh\nexit 23\n")
+    (bindir / "rsync").chmod(0o755)
+    r = run_at(setup, "2026-11-23 02:30:00", KMK_BACKUP_KEEP_DAILY="1", PATH=f"{bindir}:{os.environ['PATH']}")
+    assert r.returncode == 1
+    assert status_of(setup)["result"] == "failed" and "photo" in status_of(setup)["message"]
+    assert len(archives(setup)) == 2  # the new archive stays, the old one was not pruned
+    assert [p.name for p in photo_snapshots(setup)] == ["2026-11-22_023000"]  # no partial left, nothing pruned

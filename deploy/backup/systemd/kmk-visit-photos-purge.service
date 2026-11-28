@@ -1,0 +1,6 @@
+[Unit]
+Description=Delete kmk visit photos older than six months
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker compose -f @REPO@/deploy/docker-compose.yml exec -T api python -m app.cli purge-visit-photos

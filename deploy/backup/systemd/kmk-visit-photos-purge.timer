@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily purge of old kmk visit photos
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+# A run missed because the computer was off happens at the next start.
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target
