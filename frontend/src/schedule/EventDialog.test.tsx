@@ -55,6 +55,15 @@ describe("EventDialog for Staff", () => {
   });
 });
 
+describe("EventDialog for Staff, editing", () => {
+  it("does not show the People field on an existing event either", async () => {
+    setup({ kind: "item", item: swimmingOccurrence }, {});
+    await screen.findByDisplayValue("Swimming");
+    expect(screen.queryByText("People")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Leo" })).not.toBeInTheDocument();
+  });
+});
+
 describe("EventDialog: new event", () => {
   it("savingANewSwimmingEventPostsTheExpectedBody", async () => {
     const { api, onClose } = setup(newSwimming);

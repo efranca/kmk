@@ -21,14 +21,12 @@ interface TaskFieldsProps {
   autoFocus?: boolean;
   /** A new task: the icon follows the title ("Mop the floor" → 🧹) until one is picked by hand. */
   autoIcon?: boolean;
-  /** Staff: a task is for themselves, so the people cannot be changed. */
-  peopleLocked?: boolean;
-  /** Staff adding a task: it is for them, so the field is not shown at all. */
+  /** Staff: a task is for themselves (or shared by an administrator), so the field is not shown at all. */
   peopleHidden?: boolean;
 }
 
 /** The fields of a task, shared by every way of editing one. */
-export function TaskFields({ values, errors, onChange, autoFocus, autoIcon, peopleLocked, peopleHidden }: TaskFieldsProps) {
+export function TaskFields({ values, errors, onChange, autoFocus, autoIcon, peopleHidden }: TaskFieldsProps) {
   const { t } = useTranslation();
   const group = useId();
   const narrow = useNarrow();
@@ -69,9 +67,8 @@ export function TaskFields({ values, errors, onChange, autoFocus, autoIcon, peop
           moreLabel={(count) => t("schWhoMore", { count })}
           max={narrow ? 3 : 5}
           showNames
-          disabled={peopleLocked}
         />
-        {!peopleLocked && <p className="field__hint">{t("taskFieldPeopleHint")}</p>}
+        <p className="field__hint">{t("taskFieldPeopleHint")}</p>
       </div>}
 
       <div className="field">

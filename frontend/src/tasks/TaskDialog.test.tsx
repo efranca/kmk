@@ -74,6 +74,13 @@ describe("TaskDialog", () => {
     expect(await screen.findByRole("button", { name: "Bob Tremblay" })).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("Staff do not see the People field on an existing task either", async () => {
+    api();
+    renderWithProviders(<TaskDialog task={existing} defaultPeople={[]} onClose={() => {}} />);
+    await screen.findByDisplayValue(existing.title);
+    expect(screen.queryByText("People")).not.toBeInTheDocument();
+  });
+
   it("Staff make a task for themselves only: the People field is not offered, and the task is saved for them", async () => {
     const { calls } = api({ "POST /api/tasks": { task: existing } });
     renderWithProviders(<TaskDialog task={null} defaultPeople={[2]} onClose={() => {}} />);
