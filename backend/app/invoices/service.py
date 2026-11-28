@@ -1,8 +1,9 @@
 """Invoices: numbered, gap-free, created in one step from Agenda occurrences and manual lines, then read-only."""
 
+from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import Text, cast, func, or_, select, text
+from sqlalchemy import Text, cast, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -138,3 +139,60 @@ def create_invoice(db: Session, actor: User, data: InvoiceIn, ip: str) -> Invoic
     db.flush()
     audit.log(db, "invoice_created", actor_user_id=actor.id, ip=ip, details={"invoice_id": invoice.id, "number": number, "client_id": client.id})
     return invoice
+
+
+def _lock(db: Session) -> None:
+    db.execute(text("SELECT pg_advisory_xact_lock(hashtext('invoices'))"))
+
+
+def _touch(invoice: Invoice, actor: User) -> None:
+    invoice.updated_by, invoice.updated_at = actor.id, func.now()
+
+
+def mark_paid(db: Session, actor: User, invoice_id: int, paid_on: date, ip: str) -> Invoice:
+    invoice = get_invoice(db, actor, invoice_id)
+    if invoice.status != "unpaid":
+        raise ApiError(422, "bad_status")
+    if paid_on > billing.company_today():
+        raise ApiError(422, "bad_date")
+    invoice.status, invoice.paid_on = "paid", paid_on
+    _touch(invoice, actor)
+    db.flush()
+    audit.log(db, "invoice_paid", actor_user_id=actor.id, ip=ip, details={"invoice_id": invoice.id, "number": invoice.number})
+    return invoice
+
+
+def mark_unpaid(db: Session, actor: User, invoice_id: int, ip: str) -> Invoice:
+    invoice = get_invoice(db, actor, invoice_id)
+    if invoice.status != "paid":
+        raise ApiError(422, "bad_status")
+    invoice.status, invoice.paid_on = "unpaid", None
+    _touch(invoice, actor)
+    db.flush()
+    audit.log(db, "invoice_unpaid", actor_user_id=actor.id, ip=ip, details={"invoice_id": invoice.id, "number": invoice.number})
+    return invoice
+
+
+def cancel_invoice(db: Session, actor: User, invoice_id: int, ip: str) -> Invoice:
+    """The number is kept and never reused; the cleanings it listed become billable again."""
+    policy.check_invoices(actor)
+    _lock(db)
+    invoice = get_invoice(db, actor, invoice_id)
+    if invoice.status == "cancelled":
+        raise ApiError(422, "bad_status")
+    invoice.status, invoice.paid_on, invoice.cancelled_at = "cancelled", None, func.now()
+    _touch(invoice, actor)
+    db.execute(update(InvoiceLine).where(InvoiceLine.invoice_id == invoice.id).values(live=False))
+    document = db.get(Document, invoice.document_id) if invoice.document_id else None
+    if document is not None:
+        document.title = f"Facture {reference(invoice.number)} (annulée)"
+    db.flush()
+    db.refresh(invoice)
+    audit.log(db, "invoice_cancelled", actor_user_id=actor.id, ip=ip, details={"invoice_id": invoice.id, "number": invoice.number})
+    return invoice
+
+
+def pdf_bytes(db: Session, invoice: Invoice) -> bytes:
+    """The copy stored when the invoice was created; drawn again from the snapshot if that document was deleted."""
+    stored = db.get(DocumentFile, invoice.document_id) if invoice.document_id else None
+    return stored.data if stored is not None else pdf.render(pdf_snapshot(db, invoice))

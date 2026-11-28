@@ -191,3 +191,90 @@ def test_audit_row_written(boss, owner_engine):
     invoice_of(bill(c, h, cid, [{"description": "x", "amount": "1"}]))
     rows = sql(owner_engine, "SELECT details FROM audit_log WHERE action = 'invoice_created'")
     assert len(rows) == 1 and rows[0][0]["number"] == 7 and rows[0][0]["client_id"] == cid
+
+
+def manual(c, h, cid, amount="100"):
+    return invoice_of(bill(c, h, cid, [{"description": "x", "amount": amount}]))
+
+
+def test_mark_paid_and_undo(boss, owner_engine):
+    c, h = boss
+    cid = add(c, h).json()["client"]["id"]
+    inv = manual(c, h, cid)
+    r = c.post(f"/api/invoices/{inv['id']}/payment", json={"paid_on": "2026-11-20"}, headers=h)
+    assert r.status_code == 200, r.text
+    assert (r.json()["invoice"]["status"], r.json()["invoice"]["paid_on"]) == ("paid", "2026-11-20")
+    assert c.get("/api/invoices").json()["unpaid_total"] == "0.00"
+    again = c.post(f"/api/invoices/{inv['id']}/payment", json={"paid_on": "2026-11-21"}, headers=h)
+    assert (again.status_code, again.json()) == (422, {"error": "bad_status"})
+    other = manual(c, h, cid)
+    late = c.post(f"/api/invoices/{other['id']}/payment", json={"paid_on": "2099-01-01"}, headers=h)
+    assert (late.status_code, late.json()) == (422, {"error": "bad_date"})
+    assert c.post(f"/api/invoices/{other['id']}/payment", json={"paid_on": "2026-11-20", "x": 1}, headers=h).status_code == 422
+    undone = c.delete(f"/api/invoices/{inv['id']}/payment", headers=h)
+    assert undone.status_code == 200 and (undone.json()["invoice"]["status"], undone.json()["invoice"]["paid_on"]) == ("unpaid", None)
+    assert c.delete(f"/api/invoices/{inv['id']}/payment", headers=h).json() == {"error": "bad_status"}
+    assert c.get("/api/invoices").json()["unpaid_total"] == "200.00"
+    actions = [r[0] for r in sql(owner_engine, "SELECT action FROM audit_log WHERE action LIKE 'invoice_%' AND action <> 'invoice_created' ORDER BY id")]
+    assert actions == ["invoice_paid", "invoice_unpaid"]
+
+
+def test_cancel_frees_the_occurrences(boss):
+    c, h = boss
+    cid = add(c, h).json()["client"]["id"]
+    eid = past_event(c, h, cid)
+    first = invoice_of(bill(c, h, cid, [agenda(eid, "2025-11-06")]))
+    r = c.post(f"/api/invoices/{first['id']}/cancel", headers=h)
+    assert r.status_code == 200, r.text
+    got = r.json()["invoice"]
+    assert got["status"] == "cancelled" and got["cancelled_at"] and got["paid_on"] is None and got["number"] == 7
+    titles = {d["id"]: d["title"] for d in c.get("/api/documents").json()["documents"]}
+    assert titles[first["document_id"]] == "Facture 007 (annulée)"
+    again = c.post(f"/api/invoices/{first['id']}/cancel", headers=h)
+    assert (again.status_code, again.json()) == (422, {"error": "bad_status"})
+    assert c.post(f"/api/invoices/{first['id']}/payment", json={"paid_on": "2026-11-20"}, headers=h).json() == {"error": "bad_status"}
+    second = invoice_of(bill(c, h, cid, [agenda(eid, "2025-11-06")]))
+    assert second["number"] == 8  # the cancelled number is never reused
+    assert c.get("/api/invoices").json()["unpaid_total"] == "120.00"
+    paid = c.post(f"/api/invoices/{second['id']}/payment", json={"paid_on": "2026-11-20"}, headers=h)
+    assert paid.status_code == 200
+    cancelled = c.post(f"/api/invoices/{second['id']}/cancel", headers=h).json()["invoice"]
+    assert (cancelled["status"], cancelled["paid_on"]) == ("cancelled", None)  # a paid invoice can be cancelled too
+
+
+def test_pdf_download(boss):
+    c, h = boss
+    cid = add(c, h).json()["client"]["id"]
+    inv = manual(c, h, cid)
+    r = c.get(f"/api/invoices/{inv['id']}/pdf")
+    assert r.status_code == 200 and r.headers["content-type"] == "application/pdf" and r.content.startswith(b"%PDF")
+    assert 'filename="Facture-007.pdf"' in r.headers["content-disposition"] and r.headers["content-disposition"].startswith("attachment")
+    assert c.get("/api/invoices/99999/pdf").status_code == 404
+
+
+def test_snapshot_survives_client_changes(boss):
+    from test_clients_api import client_body
+
+    c, h = boss
+    cid = add(c, h, name="Ducarme", contact_name="Mike").json()["client"]["id"]
+    inv = manual(c, h, cid)
+    assert c.patch(f"/api/clients/{cid}", json=client_body(name="Renamed", contact_name=None, city="Montréal"), headers=h).status_code == 200
+    assert c.get(f"/api/invoices/{inv['id']}").json()["invoice"]["bill_name"] == "Ducarme / Mike"
+    assert c.delete(f"/api/clients/{cid}", headers=h).status_code == 204
+    kept = c.get("/api/invoices").json()["invoices"][0]
+    assert (kept["bill_name"], kept["bill_city"], kept["client_id"]) == ("Ducarme / Mike", "Québec", None)
+    assert c.delete(f"/api/documents/{inv['document_id']}", headers=h).status_code == 204
+    r = c.get(f"/api/invoices/{inv['id']}/pdf")  # the stored copy is gone: it is drawn again from the snapshot
+    assert r.status_code == 200 and r.content.startswith(b"%PDF")
+    assert c.get(f"/api/invoices/{inv['id']}").json()["invoice"]["document_id"] is None
+    assert c.post(f"/api/invoices/{inv['id']}/cancel", headers=h).status_code == 200  # still works without its document
+
+
+def test_staff_forbidden_on_payment_cancel_and_pdf(boss, staff):
+    c, h = boss
+    cid = add(c, h).json()["client"]["id"]
+    inv = manual(c, h, cid)
+    s, sh = staff
+    base = f"/api/invoices/{inv['id']}"
+    for r in (s.post(f"{base}/payment", json={"paid_on": "2026-11-20"}, headers=sh), s.delete(f"{base}/payment", headers=sh), s.post(f"{base}/cancel", headers=sh), s.get(f"{base}/pdf")):
+        assert (r.status_code, r.json()) == (403, {"error": "forbidden"})

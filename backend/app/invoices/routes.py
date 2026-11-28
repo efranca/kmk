@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Path, Query, Request
+from fastapi import APIRouter, Depends, Path, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.auth import policy
@@ -12,7 +12,7 @@ from app.auth.routes import request_ip
 from app.clients import service as clients
 from app.config import Settings
 from app.invoices import billing, service
-from app.invoices.schemas import InvoiceIn
+from app.invoices.schemas import InvoiceIn, PaymentIn
 from app.models import User, UserSession
 from app.schedule.recurrence import MAX_RANGE_DAYS
 from app.schedule.schemas import MAX_ID
@@ -58,3 +58,41 @@ def list_invoices(
 @router.get("/invoices/{invoice_id}")
 def read_invoice(invoice_id: InvoiceId, auth: tuple[User, UserSession] = Depends(guard(csrf=False)), db: Session = Depends(get_db)):
     return {"invoice": service.invoice_payload(db, service.get_invoice(db, auth[0], invoice_id))}
+
+
+@router.post("/invoices/{invoice_id}/payment")
+def pay_invoice(invoice_id: InvoiceId, body: PaymentIn, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    invoice = service.mark_paid(db, auth[0], invoice_id, body.paid_on, request_ip(request, settings))
+    payload = service.invoice_payload(db, invoice)
+    db.commit()
+    return {"invoice": payload}
+
+
+@router.delete("/invoices/{invoice_id}/payment")
+def unpay_invoice(invoice_id: InvoiceId, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    invoice = service.mark_unpaid(db, auth[0], invoice_id, request_ip(request, settings))
+    payload = service.invoice_payload(db, invoice)
+    db.commit()
+    return {"invoice": payload}
+
+
+@router.post("/invoices/{invoice_id}/cancel")
+def cancel_invoice(invoice_id: InvoiceId, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    invoice = service.cancel_invoice(db, auth[0], invoice_id, request_ip(request, settings))
+    payload = service.invoice_payload(db, invoice)
+    db.commit()
+    return {"invoice": payload}
+
+
+@router.get("/invoices/{invoice_id}/pdf")
+def download_pdf(invoice_id: InvoiceId, auth: tuple[User, UserSession] = Depends(guard(csrf=False)), db: Session = Depends(get_db)):
+    invoice = service.get_invoice(db, auth[0], invoice_id)
+    return Response(
+        content=service.pdf_bytes(db, invoice),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="Facture-{service.reference(invoice.number)}.pdf"',
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+        },
+    )

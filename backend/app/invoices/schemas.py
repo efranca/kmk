@@ -44,6 +44,12 @@ class LineIn(BaseModel):
         return self
 
 
+class PaymentIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    paid_on: date
+
+
 class InvoiceIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
