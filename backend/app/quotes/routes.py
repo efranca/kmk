@@ -12,7 +12,7 @@ from app.auth.routes import request_ip
 from app.config import Settings
 from app.models import User, UserSession
 from app.quotes import service
-from app.quotes.schemas import ManualQuoteIn, MessageIn, QuotePatch
+from app.quotes.schemas import ManualQuoteIn, MessageIn, QuoteEditIn, QuotePatch
 from app.schedule.schemas import MAX_ID
 
 router = APIRouter(prefix="/api/quotes")
@@ -61,6 +61,22 @@ def change_quote(
 ):
     policy.check_quotes(auth[0])
     quote = service.update_quote(db, auth[0], quote_id, body, request_ip(request, settings))
+    payload = service.quote_payload(db, quote)
+    db.commit()
+    return {"quote": payload}
+
+
+@router.put("/{quote_id}/request")
+def edit_quote(
+    quote_id: QuoteId,
+    body: QuoteEditIn,
+    request: Request,
+    auth: tuple[User, UserSession] = Depends(guard()),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings_dep),
+):
+    policy.check_quotes(auth[0])
+    quote = service.edit_quote(db, auth[0], quote_id, body, request_ip(request, settings))
     payload = service.quote_payload(db, quote)
     db.commit()
     return {"quote": payload}

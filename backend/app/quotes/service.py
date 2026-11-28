@@ -15,7 +15,7 @@ from app.config import Settings
 from app.emails import sender
 from app.models import Client, Event, Quote, QuoteMessage, QuotePhoto, Task, User
 from app.quotes import emails
-from app.quotes.schemas import ManualQuoteIn, MessageIn, QuotePatch
+from app.quotes.schemas import ManualQuoteIn, MessageIn, QuoteEditIn, QuotePatch
 from app.schedule.service import display_name
 
 CLOCK_SKEW = timedelta(minutes=2)
@@ -117,6 +117,32 @@ def enter_quote(db: Session, actor: User, data: ManualQuoteIn, ip: str) -> Quote
     db.add(quote)
     db.flush()
     audit.log(db, "quote_entered", actor_user_id=actor.id, ip=ip, details={"quote_id": quote.id})
+    return quote
+
+
+FORM_DETAIL_KEYS = ("city", "address", "property", "frequency", "bedrooms", "bathrooms", "area_sqft", "listing_url")
+
+
+def edit_quote(db: Session, actor: User, quote_id: int, data: QuoteEditIn, ip: str) -> Quote:
+    """Completes a saved quote's request data. What the customer wrote on the web form stays as sent; keys of `details`
+    that the form does not know are kept. The audit row names the changed fields, never their values."""
+    quote = get_quote(db, quote_id, lock=True)
+    sent_message = "message" in data.model_fields_set
+    if quote.source != "manual" and sent_message and data.message != quote.message:
+        raise ApiError(422, "message_locked")
+    details = {k: v for k, v in (quote.details or {}).items() if k not in FORM_DETAIL_KEYS}
+    details.update(data.details())
+    changed = [name for name, new in (("name", data.name), ("phone", data.phone), ("email", data.email or ""), ("locale", data.locale), ("kind", data.kind)) if getattr(quote, name) != new]
+    changed += [k for k in FORM_DETAIL_KEYS if (quote.details or {}).get(k) != details.get(k)]
+    if quote.source == "manual" and sent_message and data.message != quote.message:
+        changed.append("message")
+        quote.message = data.message
+    quote.name, quote.phone, quote.email, quote.locale, quote.kind = data.name, data.phone, data.email or "", data.locale, data.kind
+    quote.details = details
+    quote.updated_at = _now()
+    db.flush()
+    if changed:
+        audit.log(db, "quote_edited", actor_user_id=actor.id, ip=ip, details={"quote_id": quote.id, "fields": sorted(changed)})
     return quote
 
 

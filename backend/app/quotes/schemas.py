@@ -143,8 +143,8 @@ class QuoteIn(BaseModel):
         return out
 
 
-class ManualQuoteIn(BaseModel):
-    """A quote an admin enters by hand (a phone call, a visit): only the name and phone are needed, the rest is as much as is known."""
+class QuoteFieldsIn(BaseModel):
+    """The data of a quote an admin writes down or completes by hand: only the name, phone and type are needed, the rest is as much as is known."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -162,7 +162,6 @@ class ManualQuoteIn(BaseModel):
     area_sqft: int | None = Field(default=None, ge=1, le=1_000_000)
     message: str | None = None
     listing_url: str | None = None
-    client_id: int | None = Field(default=None, ge=1, le=1_000_000_000_000)
 
     @field_validator("name")
     @classmethod
@@ -220,7 +219,7 @@ class ManualQuoteIn(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _per_kind(self) -> "ManualQuoteIn":
+    def _per_kind(self) -> "QuoteFieldsIn":
         allowed = {"airbnb": (AIRBNB_PROPERTY, AIRBNB_FREQUENCY), "commercial": (COMMERCIAL_PROPERTY, COMMERCIAL_FREQUENCY), "post_construction": (POST_CONSTRUCTION_PROPERTY, POST_CONSTRUCTION_FREQUENCY)}[self.kind]
         if self.property is not None and self.property not in allowed[0]:
             raise ValueError("property")
@@ -236,6 +235,17 @@ class ManualQuoteIn(BaseModel):
             if getattr(self, key) is not None:
                 out[key] = getattr(self, key)
         return out
+
+
+class ManualQuoteIn(QuoteFieldsIn):
+    """A new quote entered by hand (a phone call, a visit): the same data, and the client it is for."""
+
+    client_id: int | None = Field(default=None, ge=1, le=1_000_000_000_000)
+
+
+class QuoteEditIn(QuoteFieldsIn):
+    """The whole form again, to complete a saved quote. `message` is told apart omitted vs sent (`model_fields_set`);
+    the linked client keeps its own control."""
 
 
 STATUSES = ("new", "replied", "customer_replied", "won", "lost")
