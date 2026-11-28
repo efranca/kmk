@@ -39,21 +39,32 @@ function page(visits: Visit[], extra: Record<string, unknown> = {}, options = {}
 }
 const card = async (title = "Ménage") => within(await screen.findByRole("article", { name: new RegExp(title) }));
 
-/** A stand-in for XMLHttpRequest (the photo upload): answers each send with the next status and body. */
-function fakeUpload(...answers: [number, unknown][]) {
-  const sent: { url: string; headers: Record<string, string>; body: unknown }[] = [];
+/** A stand-in for XMLHttpRequest (the photo upload): answers each send with the next status and body, or with a
+ * connection that times out or is aborted (then, as a stray late event, a load that must be ignored). */
+function fakeUpload(...answers: ([number, unknown] | "timeout" | "abort")[]) {
+  const sent: { url: string; headers: Record<string, string>; body: unknown; timeout: number }[] = [];
   class FakeXhr {
     upload: { onprogress?: (e: unknown) => void } = {};
-    onload?: () => void; onerror?: () => void;
-    status = 0; responseText = "";
+    onload?: () => void; onerror?: () => void; ontimeout?: () => void; onabort?: () => void;
+    status = 0; responseText = ""; timeout = 0;
     headers: Record<string, string> = {}; url = ""; withCredentials = false;
     open(_m: string, url: string) { this.url = url; }
     setRequestHeader(k: string, v: string) { this.headers[k] = v; }
     send(payload: unknown) {
-      sent.push({ url: this.url, headers: this.headers, body: payload });
-      const [status, body] = answers.shift() ?? [500, {}];
-      this.status = status; this.responseText = JSON.stringify(body);
-      queueMicrotask(() => { this.upload.onprogress?.({ lengthComputable: true, loaded: 1, total: 2 }); this.onload?.(); });
+      sent.push({ url: this.url, headers: this.headers, body: payload, timeout: this.timeout });
+      const answer = answers.shift() ?? [500, {}];
+      queueMicrotask(() => {
+        this.upload.onprogress?.({ lengthComputable: true, loaded: 1, total: 2 });
+        if (answer === "timeout" || answer === "abort") {
+          (answer === "timeout" ? this.ontimeout : this.onabort)?.();
+          this.status = 201; this.responseText = JSON.stringify({ visit: visit() });
+          this.onload?.(); // a late event after the failure: the upload has already settled
+          return;
+        }
+        const [status, body] = answer;
+        this.status = status; this.responseText = JSON.stringify(body);
+        this.onload?.();
+      });
     }
   }
   vi.stubGlobal("XMLHttpRequest", FakeXhr);
@@ -183,6 +194,29 @@ describe("photos", () => {
     fakeUpload([503, { error: "storage_full" }]);
     fireEvent.change(within((await card()).getByRole("group", { name: "Kitchen" })).getByLabelText(en.visAddPhoto), { target: { files: [picture()] } });
     expect(await screen.findByText(en.visErrStorageFull)).toBeInTheDocument();
+  });
+
+  it("gives up on an upload that times out, says so, reloads the visit and lets the person try again", async () => {
+    const api = page([visit()]);
+    const sent = fakeUpload("timeout");
+    const camera = within((await card()).getByRole("group", { name: "Kitchen" })).getByLabelText(en.visAddPhoto);
+    const loadsBefore = () => api.calls.filter((c) => c.path === "/api/visits/today").length;
+    await waitFor(() => expect(loadsBefore()).toBe(1));
+    fireEvent.change(camera, { target: { files: [picture()] } });
+    expect(await screen.findByText(en.visErrTimeout)).toBeInTheDocument();
+    expect(sent[0].timeout).toBeGreaterThan(0);
+    await waitFor(() => expect(within(screen.getByRole("group", { name: "Kitchen" })).getByLabelText(en.visAddPhoto)).toBeEnabled());
+    expect(screen.queryByText(/Sending the photo/)).toBeNull();
+    expect(screen.queryByText(en.visPhotoAdded)).toBeNull(); // the stray late load is ignored
+    await waitFor(() => expect(loadsBefore()).toBe(2)); // a photo that did arrive shows up before a retry
+  });
+
+  it("gives up on an aborted upload with the network message", async () => {
+    page([visit()]);
+    fakeUpload("abort");
+    fireEvent.change(within((await card()).getByRole("group", { name: "Kitchen" })).getByLabelText(en.visAddPhoto), { target: { files: [picture()] } });
+    expect(await screen.findByText(en.err_network)).toBeInTheDocument();
+    await waitFor(() => expect(within(screen.getByRole("group", { name: "Kitchen" })).getByLabelText(en.visAddPhoto)).toBeEnabled());
   });
 
   it("names a room typed under Other", async () => {

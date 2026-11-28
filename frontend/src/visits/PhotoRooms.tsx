@@ -91,9 +91,15 @@ export const PhotoRooms = forwardRef<HTMLHeadingElement, { visit: Visit; mode: P
       return;
     }
     setPreparing(false);
-    setProgress(0);
+    // Whatever the outcome (sent, refused, timed out, aborted), the progress starts again from zero; the mutation
+    // reloads the visit after a failure too, so a photo that did reach the server shows up before any retry.
     const send = async (reason?: string) => {
-      await upload.mutateAsync({ ...ref, photo, target, reason, onProgress: setProgress });
+      setProgress(0);
+      try {
+        await upload.mutateAsync({ ...ref, photo, target, reason, onProgress: setProgress });
+      } finally {
+        setProgress(0);
+      }
       setStatus(t("visPhotoAdded"));
     };
     if (mode === "correct") return askReason(t("visAddPhoto"), send);

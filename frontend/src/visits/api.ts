@@ -88,7 +88,13 @@ export const skipRoom = async (eventId: number, occurrenceDate: string, input: S
 export const removePhoto = async (photoId: number, reason: string | undefined, csrf: string) =>
   (await call<{ visit: Visit }>("DELETE", `/api/visit-photos/${photoId}`, csrf, reason === undefined ? undefined : { reason })).visit;
 
-/** Sends the prepared photo as the raw body and reports progress. `reason` (query) makes it a correction. Rejects with VisitFailure. */
+/** A photo that has not finished sending after this long is given up (a phone whose connection died silently would
+ * otherwise wait for good); the server drops a body that trickles in for more than 60 s, so this is longer. */
+export const PHOTO_UPLOAD_TIMEOUT_MS = 90_000;
+
+/** Sends the prepared photo as the raw body and reports progress. `reason` (query) makes it a correction. Rejects with
+ * VisitFailure: `timeout` when it takes too long, `network` when the connection fails or the request is aborted. The
+ * promise settles once: whatever the browser reports after the first outcome is ignored. */
 export function uploadPhoto(eventId: number, occurrenceDate: string, photo: Blob, target: PhotoTarget, reason: string | undefined, csrf: string, onProgress?: (fraction: number) => void): Promise<Visit> {
   const params = new URLSearchParams();
   if ("roomId" in target) params.set("room_id", String(target.roomId));
@@ -96,24 +102,35 @@ export function uploadPhoto(eventId: number, occurrenceDate: string, photo: Blob
   if (reason !== undefined) params.set("reason", reason);
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    let settled = false;
+    const settle = (outcome: () => void) => {
+      if (settled) return;
+      settled = true;
+      xhr.upload.onprogress = null;
+      outcome();
+    };
     xhr.open("PUT", `${visitPath(eventId, occurrenceDate)}/photos?${params}`);
     xhr.withCredentials = true;
+    xhr.timeout = PHOTO_UPLOAD_TIMEOUT_MS;
     xhr.setRequestHeader("X-CSRF-Token", csrf);
     xhr.setRequestHeader("Content-Type", photo.type);
     xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+      if (!settled && e.lengthComputable) onProgress?.(e.loaded / e.total);
     };
-    xhr.onerror = () => reject(new VisitFailure(0, "network"));
-    xhr.onload = () => {
-      let data: unknown = {};
-      try {
-        data = JSON.parse(xhr.responseText);
-      } catch {
-        // a proxy's page, not ours
-      }
-      if (xhr.status >= 200 && xhr.status < 300) return resolve((data as { visit: Visit }).visit);
-      reject(failure(xhr.status, data));
-    };
+    xhr.onerror = () => settle(() => reject(new VisitFailure(0, "network")));
+    xhr.onabort = () => settle(() => reject(new VisitFailure(0, "network")));
+    xhr.ontimeout = () => settle(() => reject(new VisitFailure(0, "timeout")));
+    xhr.onload = () =>
+      settle(() => {
+        let data: unknown = {};
+        try {
+          data = JSON.parse(xhr.responseText);
+        } catch {
+          // a proxy's page, not ours
+        }
+        if (xhr.status >= 200 && xhr.status < 300) resolve((data as { visit: Visit }).visit);
+        else reject(failure(xhr.status, data));
+      });
     xhr.send(photo);
   });
 }
