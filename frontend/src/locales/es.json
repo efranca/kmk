@@ -735,5 +735,19 @@
   "err_already_billed": "Una de esas limpiezas ya está en otra factura.",
   "err_occurrence_not_billable": "Una de esas limpiezas no se puede facturar (aún no ocurrió, se canceló o es de otro cliente).",
   "err_duplicate_line": "La misma limpieza aparece dos veces.",
-  "err_client_not_found": "Ese cliente ya no existe."
+  "err_client_not_found": "Ese cliente ya no existe.",
+  "clientTabInvoices": "Facturas",
+  "invBill": "Facturar",
+  "invBillTitle": "Crear una factura",
+  "invPeriodFrom": "Desde",
+  "invPeriodTo": "Hasta",
+  "invIncludeLine": "Incluir {{date}}",
+  "invLineDescription": "Descripción",
+  "invLineAmount": "Monto",
+  "invRemoveLine": "Quitar esta línea",
+  "invAddLine": "Añadir una línea",
+  "invDateField": "Fecha de la factura",
+  "invCreate": "Crear la factura",
+  "invCreated": "Factura {{ref}} creada.",
+  "invNothingToBill": "Ninguna limpieza terminada para facturar en este período."
 }

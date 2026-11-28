@@ -25,7 +25,7 @@ export function useBillable(clientId: number, from: string, to: string, enabled 
 }
 
 /** Every change refreshes the invoices and the client pages (they list their invoices). */
-function useInvoiceMutation<V>(run: (variables: V, csrf: string) => Promise<unknown>) {
+function useInvoiceMutation<V, R>(run: (variables: V, csrf: string) => Promise<R>) {
   const { csrfToken } = useSession();
   const qc = useQueryClient();
   return useMutation({

@@ -735,5 +735,19 @@
   "err_already_billed": "One of those cleanings is already on another invoice.",
   "err_occurrence_not_billable": "One of those cleanings cannot be billed (not past, cancelled, or another client's).",
   "err_duplicate_line": "The same cleaning is listed twice.",
-  "err_client_not_found": "That client no longer exists."
+  "err_client_not_found": "That client no longer exists.",
+  "clientTabInvoices": "Invoices",
+  "invBill": "Bill",
+  "invBillTitle": "Create an invoice",
+  "invPeriodFrom": "From",
+  "invPeriodTo": "To",
+  "invIncludeLine": "Include {{date}}",
+  "invLineDescription": "Description",
+  "invLineAmount": "Amount",
+  "invRemoveLine": "Remove this line",
+  "invAddLine": "Add a line",
+  "invDateField": "Invoice date",
+  "invCreate": "Create the invoice",
+  "invCreated": "Invoice {{ref}} created.",
+  "invNothingToBill": "No finished cleaning to bill in this period."
 }

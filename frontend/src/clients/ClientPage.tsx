@@ -5,6 +5,9 @@ import { useRoute } from "../route";
 import { useSession } from "../session";
 import { Button, IconButton } from "../ui/Button";
 import { ErrorNotice, Loading } from "../ui/Feedback";
+import { BillDialog } from "../invoices/BillDialog";
+import { formatMoney } from "../invoices/money";
+import { STATUS_KEYS } from "../invoices/labels";
 import { PageHeader } from "../ui/PageHeader";
 import { Segmented } from "../ui/Segmented";
 import type { Property } from "./api";
@@ -15,18 +18,19 @@ import { PropertyCard } from "./PropertyCard";
 import { PropertyDialog } from "./PropertyDialog";
 import { useClient } from "./hooks";
 
-type Tab = "details" | "properties" | "documents" | "tasks" | "events" | "quotes";
-const TABS: Tab[] = ["details", "properties", "documents", "tasks", "events", "quotes"];
-const TAB_KEYS: Record<Tab, string> = { details: "clientTabDetails", properties: "clientTabProperties", documents: "clientTabDocuments", tasks: "clientTabTasks", events: "clientTabEvents", quotes: "clientTabQuotes" };
+type Tab = "details" | "properties" | "documents" | "tasks" | "events" | "quotes" | "invoices";
+const TABS: Tab[] = ["details", "properties", "documents", "tasks", "events", "quotes", "invoices"];
+const TAB_KEYS: Record<Tab, string> = { details: "clientTabDetails", properties: "clientTabProperties", documents: "clientTabDocuments", tasks: "clientTabTasks", events: "clientTabEvents", quotes: "clientTabQuotes", invoices: "clientTabInvoices" };
 
 /** One client: the details, and what is linked to them (documents, tasks, Agenda items, quotes). */
 export function ClientPage({ id }: { id: number }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { navigate } = useRoute();
   const canManage = useSession().user.role !== "user";
   const { data: client, isPending, isError, error, refetch } = useClient(id);
   const [tab, setTab] = useState<Tab>("details");
   const [editing, setEditing] = useState(false);
+  const [billing, setBilling] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | "new" | null>(null);
 
   const back = <IconButton icon="chev-left" label={t("clientsTitle")} onClick={() => navigate("/clients")} />;
@@ -37,9 +41,10 @@ export function ClientPage({ id }: { id: number }) {
   const tasks = client.tasks ?? [];
   const events = client.events ?? [];
   const quotes = client.quotes ?? [];
+  const invoices = client.invoices ?? [];
   const tabs = canManage ? TABS : (["details", "properties", "events"] as Tab[]); // Staff: the details and their own Schedule, nothing else
   const properties = client.properties ?? [];
-  const counts: Record<Tab, number> = { details: 0, properties: properties.length, documents: documents.length, tasks: tasks.length, events: events.length, quotes: quotes.length };
+  const counts: Record<Tab, number> = { details: 0, properties: properties.length, documents: documents.length, tasks: tasks.length, events: events.length, quotes: quotes.length, invoices: invoices.length };
   const empty = <p className="status">{t("clientNothingLinked")}</p>;
 
   return (
@@ -66,7 +71,25 @@ export function ClientPage({ id }: { id: number }) {
         {tab === "quotes" && (quotes.length === 0 ? empty : (
           <ul className="client-links">{quotes.map((x) => <li key={x.id}><button type="button" onClick={() => navigate(`/quotes/${x.id}`)}>{x.reference}</button><small>{x.submitted_at?.slice(0, 10) ?? ""}</small></li>)}</ul>
         ))}
+        {tab === "invoices" && (
+          <>
+            {invoices.length === 0 ? empty : (
+              <ul className="client-links client-invoices">
+                {invoices.map((x) => (
+                  <li key={x.id}>
+                    <a href={`/invoices/${x.id}`} onClick={(e) => { e.preventDefault(); navigate(`/invoices/${x.id}`); }}>{x.reference}</a>
+                    <small>{x.issued_on}</small>
+                    <span>{formatMoney(x.total, i18n.language)}</span>
+                    <span className={`invoice-pill invoice-pill--${x.status}`}>{t(STATUS_KEYS[x.status])}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Button icon="invoice" variant="primary" onClick={() => setBilling(true)}>{t("invBill")}</Button>
+          </>
+        )}
       </section>
+      {billing && <BillDialog clientId={client.id} onClose={() => setBilling(false)} onCreated={(invoiceId) => navigate(`/invoices/${invoiceId}`)} />}
       {editingProperty && <PropertyDialog key={editingProperty === "new" ? "new" : editingProperty.id} clientId={client.id} property={editingProperty === "new" ? null : editingProperty} onClose={() => setEditingProperty(null)} />}
       {editing && <ClientDialog client={client} onClose={() => setEditing(false)} onDeleted={() => navigate("/clients")} />}
     </div>
