@@ -7,7 +7,7 @@ from app.auth.deps import get_db, get_settings_dep
 from app.auth.guard import guard
 from app.auth.routes import request_ip
 from app.clients import service
-from app.clients.schemas import ClientIn, PropertyIn
+from app.clients.schemas import ClientIn, PropertyIn, RoomsIn
 from app.config import Settings
 from app.models import User, UserSession
 from app.schedule.schemas import MAX_ID
@@ -52,7 +52,7 @@ def remove_client(client_id: ClientId, request: Request, auth: tuple[User, UserS
 @router.post("/{client_id}/properties", status_code=201)
 def add_property(client_id: ClientId, body: PropertyIn, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
     prop = service.add_property(db, auth[0], client_id, body, request_ip(request, settings))
-    payload = service.property_payload(prop, auth[0])
+    payload = service.property_payload_for(db, prop, auth[0])
     db.commit()
     return {"property": payload}
 
@@ -63,9 +63,17 @@ properties_router = APIRouter(prefix="/api/properties")
 @properties_router.patch("/{property_id}")
 def change_property(property_id: ClientId, body: PropertyIn, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
     prop = service.update_property(db, auth[0], property_id, body, request_ip(request, settings))
-    payload = service.property_payload(prop, auth[0])
+    payload = service.property_payload_for(db, prop, auth[0])
     db.commit()
     return {"property": payload}
+
+
+@properties_router.put("/{property_id}/rooms")
+def change_rooms(property_id: ClientId, body: RoomsIn, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    rooms = service.set_rooms(db, auth[0], property_id, body, request_ip(request, settings))
+    payload = [{"id": r.id, "name": r.name} for r in rooms]
+    db.commit()
+    return {"rooms": payload}
 
 
 @properties_router.delete("/{property_id}", status_code=204)

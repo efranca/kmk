@@ -105,6 +105,7 @@ class PropertyIn(BaseModel):
     listing_url: str | None = None
     access_notes: str | None = None
     visit_price: Decimal | None = None
+    photos_required: bool = False
 
     @field_validator("visit_price", mode="before")
     @classmethod
@@ -141,3 +142,24 @@ class PropertyIn(BaseModel):
         if out is not None and not WEB_LINK.match(out):  # only web links: it becomes a link people tap
             raise ValueError("listing_url")
         return out
+
+
+class RoomIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: Annotated[int, Field(ge=1, le=MAX_ID)] | None = None
+    name: str
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str) -> str:
+        out = _clean(v, 60, "name")
+        if out is None:
+            raise ValueError("the name is required")
+        return out
+
+
+class RoomsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rooms: list[RoomIn] = Field(max_length=30)

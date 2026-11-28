@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.auth import audit, policy
 from app.auth.errors import ApiError
-from app.clients.schemas import ClientIn, PropertyIn
+from app.clients.schemas import ClientIn, PropertyIn, RoomsIn
 from app.invoices import money
-from app.models import Client, Document, Event, EventPerson, Invoice, Property, Quote, Task, User
+from app.models import Client, Document, Event, EventPerson, Invoice, Property, PropertyRoom, Quote, Task, User
 
 FIELDS = ("name", "kinds", "contact_name", "email", "phone", "address", "city", "notes")
 LIST_LIMIT = 500
@@ -59,12 +59,22 @@ def list_clients(db: Session, actor: User, q: str | None) -> list[dict]:
     return [client_payload(c, actor) for c in db.scalars(query.order_by(func.lower(Client.name), Client.id).limit(LIST_LIMIT))]
 
 
-PROPERTY_FIELDS = ("name", "kind", "address", "city", "listing_url", "access_notes", "visit_price")
+PROPERTY_FIELDS = ("name", "kind", "address", "city", "listing_url", "access_notes", "visit_price", "photos_required")
 
 
-def property_payload(p: Property, actor: User | None = None) -> dict:
-    """The price per visit is for administrators only (`actor=None` means the caller already checked)."""
-    out = {**{f: getattr(p, f) for f in PROPERTY_FIELDS}, "id": p.id, "client_id": p.client_id}
+def rooms_by_property(db: Session, property_ids: list[int]) -> dict[int, list[dict]]:
+    """The rooms of several properties in one query, each list in display order."""
+    out: dict[int, list[dict]] = {}
+    if property_ids:
+        for r in db.scalars(select(PropertyRoom).where(PropertyRoom.property_id.in_(property_ids)).order_by(PropertyRoom.property_id, PropertyRoom.position)):
+            out.setdefault(r.property_id, []).append({"id": r.id, "name": r.name})
+    return out
+
+
+def property_payload(p: Property, actor: User | None = None, rooms: list[dict] | None = None) -> dict:
+    """The price per visit is for administrators only (`actor=None` means the caller already checked).
+    `rooms` comes from `rooms_by_property` (this function reads no database)."""
+    out = {**{f: getattr(p, f) for f in PROPERTY_FIELDS}, "id": p.id, "client_id": p.client_id, "rooms": rooms or []}
     if actor is None or policy.can_manage_clients(actor):
         out["visit_price"] = money.as_json(p.visit_price)
     else:
@@ -73,7 +83,45 @@ def property_payload(p: Property, actor: User | None = None) -> dict:
 
 
 def _properties_of(db: Session, client_id: int, actor: User | None = None) -> list[dict]:
-    return [property_payload(p, actor) for p in db.scalars(select(Property).where(Property.client_id == client_id).order_by(Property.id))]
+    props = list(db.scalars(select(Property).where(Property.client_id == client_id).order_by(Property.id)))
+    rooms = rooms_by_property(db, [p.id for p in props])
+    return [property_payload(p, actor, rooms.get(p.id)) for p in props]
+
+
+def property_payload_for(db: Session, p: Property, actor: User | None = None) -> dict:
+    return property_payload(p, actor, rooms_by_property(db, [p.id]).get(p.id))
+
+
+ROOMS_MAX = 30
+
+
+def set_rooms(db: Session, actor: User, property_id: int, data: RoomsIn, ip: str) -> list[PropertyRoom]:
+    """Replace the room list: ids that are sent are kept (and renamed), the others are deleted, new ones are inserted."""
+    policy.check_clients(actor)
+    _get_property(db, property_id)
+    db.execute(select(Property.id).where(Property.id == property_id).with_for_update())  # one editor at a time
+    current = {r.id: r for r in db.scalars(select(PropertyRoom).where(PropertyRoom.property_id == property_id))}
+    sent = [r.id for r in data.rooms if r.id is not None]
+    if len(set(sent)) != len(sent) or any(i not in current for i in sent):
+        raise ApiError(422, "room_not_found")
+    for rid, room in current.items():
+        if rid not in sent:
+            db.delete(room)
+    for room in current.values():  # park the kept ones out of the way of UNIQUE (property_id, position)
+        room.position += 1000
+    db.flush()
+    out: list[PropertyRoom] = []
+    for pos, item in enumerate(data.rooms):
+        if item.id is None:
+            room = PropertyRoom(property_id=property_id, name=item.name, position=pos)
+            db.add(room)
+        else:
+            room = current[item.id]
+            room.name, room.position = item.name, pos
+        out.append(room)
+    db.flush()
+    audit.log(db, "property_rooms_changed", actor_user_id=actor.id, ip=ip, details={"property_id": property_id, "count": len(out)})
+    return out
 
 
 def check_property(db: Session, actor: User, property_id: int | None, client_id: int | None) -> None:
