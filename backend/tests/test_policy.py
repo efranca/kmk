@@ -5,7 +5,7 @@ from app.auth.errors import ApiError
 from app.models import User
 
 ALL = set(policy.ACTIONS)
-SELF_DESTRUCTIVE = {"disable", "delete", "set_role", "reset_mfa"}
+SELF_DESTRUCTIVE = {"disable", "delete", "purge", "set_role", "reset_mfa"}
 
 
 def user(id, role="user", status="active", mfa=False, password=True):
@@ -39,7 +39,7 @@ def expected(actor_role, target_role, same):
     out["view"] = None
     if actor_role == "admin":
         if target_role == "user":
-            for a in ALL - {"set_role"}:
+            for a in ALL - {"set_role", "purge"}:  # purging is the super admin only
                 out[a] = None
         if same:
             for a in SELF_DESTRUCTIVE:

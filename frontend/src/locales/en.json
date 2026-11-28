@@ -753,5 +753,11 @@
   "quoteEdit": "Edit",
   "quoteEditTitle": "Edit the quote",
   "quoteEditDone": "Quote updated",
-  "err_message_locked": "The customer's description cannot be changed."
+  "err_message_locked": "The customer's description cannot be changed.",
+  "act_purge": "Delete for good",
+  "adminPurgeWarning": "Delete this account for good? It cannot be restored. What the person made stays, without their name.",
+  "invPurge": "Delete for good",
+  "invPurgeYes": "Yes, delete for good",
+  "invPurgeConfirm": "Delete invoice {{ref}} for good, with its lines and its PDF? This cannot be undone.",
+  "invPurgeDone": "Invoice deleted."
 }

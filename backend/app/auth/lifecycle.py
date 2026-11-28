@@ -79,6 +79,14 @@ def delete(db: Session, target: User) -> None:
     target.avatar_updated_at = None
 
 
+def purge(db: Session, target: User) -> None:
+    """Deletes an already-deleted account for good. What the person made stays (the database sets its author to NULL)."""
+    if target.status != "deleted":
+        raise ApiError(409, "invalid_state")
+    db.delete(target)
+    db.flush()
+
+
 def restore(db: Session, target: User) -> None:
     if target.status != "deleted":
         raise ApiError(409, "invalid_state")

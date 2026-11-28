@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useRoute } from "../route";
+import { useSession } from "../session";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
 import { ErrorNotice, Loading } from "../ui/Feedback";
@@ -9,7 +10,7 @@ import { Icon } from "../ui/Icon";
 import { PageHeader } from "../ui/PageHeader";
 import { useToast } from "../ui/toastContext";
 import { pdfUrl } from "./api";
-import { useCancelInvoice, useInvoice, useMarkUnpaid } from "./hooks";
+import { useCancelInvoice, useInvoice, useMarkUnpaid, usePurgeInvoice } from "./hooks";
 import { formatDay, STATUS_KEYS } from "./labels";
 import { formatMoney } from "./money";
 import { PaidDialog } from "./PaidDialog";
@@ -23,14 +24,24 @@ function Actions({ invoice }: { invoice: Invoice }) {
   const toast = useToast();
   const unpay = useMarkUnpaid();
   const cancel = useCancelInvoice();
-  const [dialog, setDialog] = useState<"paid" | "send" | "cancel" | null>(null);
+  const purge = usePurgeInvoice();
+  const { navigate } = useRoute();
+  const { user } = useSession();
+  const [dialog, setDialog] = useState<"paid" | "send" | "cancel" | "purge" | null>(null);
   const live = invoice.status !== "cancelled";
   const failure = unpay.error ?? cancel.error;
+  const canPurge = user.role === "superadmin" && !live;
 
   async function doCancel() {
     await cancel.mutateAsync(invoice.id);
     toast(t("invCancelDone"));
     setDialog(null);
+  }
+
+  async function doPurge() {
+    await purge.mutateAsync(invoice.id);
+    toast(t("invPurgeDone"));
+    navigate("/invoices");
   }
 
   return (
@@ -40,6 +51,7 @@ function Actions({ invoice }: { invoice: Invoice }) {
       {live && invoice.status === "paid" && <Button icon="undo" busy={unpay.isPending} onClick={() => swallow(unpay.mutateAsync(invoice.id).then(() => toast(t("invUnpaidDone"))))}>{t("invMarkUnpaid")}</Button>}
       {live && <Button icon="send" onClick={() => setDialog("send")}>{t("invSend")}</Button>}
       {live && <Button variant="danger" icon="trash" onClick={() => setDialog("cancel")}>{t("invCancel")}</Button>}
+      {canPurge && <Button variant="danger" icon="trash" onClick={() => setDialog("purge")}>{t("invPurge")}</Button>}
       {failure && <ErrorNotice error={failure} />}
       {dialog === "paid" && <PaidDialog invoiceId={invoice.id} onClose={() => setDialog(null)} />}
       {dialog === "send" && <SendDialog invoice={invoice} onClose={() => setDialog(null)} />}
@@ -49,6 +61,13 @@ function Actions({ invoice }: { invoice: Invoice }) {
       >
         <p>{t("invCancelConfirm", { ref: invoice.reference })}</p>
         {cancel.error && <ErrorNotice error={cancel.error} />}
+      </Dialog>
+      <Dialog
+        open={dialog === "purge"} title={t("invPurge")} onClose={() => setDialog(null)}
+        footer={<><Button variant="ghost" onClick={() => setDialog(null)}>{t("cancel")}</Button><Button variant="danger" icon="trash" busy={purge.isPending} onClick={() => swallow(doPurge())}>{t("invPurgeYes")}</Button></>}
+      >
+        <p>{t("invPurgeConfirm", { ref: invoice.reference })}</p>
+        {purge.error && <ErrorNotice error={purge.error} />}
       </Dialog>
     </div>
   );

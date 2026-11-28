@@ -84,6 +84,14 @@ def cancel_invoice(invoice_id: InvoiceId, request: Request, auth: tuple[User, Us
     return {"invoice": payload}
 
 
+@router.delete("/invoices/{invoice_id}", status_code=204)
+def purge_invoice(invoice_id: InvoiceId, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    policy.check_invoice_purge(auth[0])
+    service.purge_invoice(db, auth[0], invoice_id, request_ip(request, settings))
+    db.commit()
+    return Response(status_code=204)
+
+
 @router.get("/invoices/{invoice_id}/pdf")
 def download_pdf(invoice_id: InvoiceId, auth: tuple[User, UserSession] = Depends(guard(csrf=False)), db: Session = Depends(get_db)):
     invoice = service.get_invoice(db, auth[0], invoice_id)

@@ -37,6 +37,7 @@ def call(c, h, action, user_id, **extra):
         "enable": "enable",
         "delete": "delete",
         "restore": "restore",
+        "purge": "purge",
     }[action]
     return c.post(f"{base}/{path}", headers=h)
 
@@ -137,7 +138,7 @@ def test_admin_cannot_touch_admins_or_the_superadmin(make_client, add_user, add_
     add_mfa_user("mfaadm", role="admin")
     add_user("root", "root@example.com", role="superadmin")
     for name in ("adm2", "mfaadm", "root"):
-        for action in ("edit", "resend_invite", "reset_password", "reset_mfa", "disable", "enable", "delete", "restore", "set_role"):
+        for action in ("edit", "resend_invite", "reset_password", "reset_mfa", "disable", "enable", "delete", "restore", "purge", "set_role"):
             r = call(c, h, action, uid(owner_engine, name))
             assert (r.status_code, r.json()) == (403, {"error": "forbidden"}), (name, action)
 
@@ -424,3 +425,36 @@ def test_a_name_edit_is_audited_without_the_name(make_client, add_user, owner_en
     assert "Qwertyuiop" not in blob and "Zxcvbnm" not in blob  # no name anywhere in audit rows or logs
     updated = [d for a, d in rows if a == "user_updated"]
     assert updated and '"name"' in updated[-1]  # the field name is recorded
+
+
+# ---- delete for good (super admin only) ----
+
+def test_only_the_superadmin_deletes_a_person_for_good(make_client, add_user, owner_engine):
+    c, h = signed_in(make_client, add_user, "admin")
+    root_c, root_h = signed_in(make_client, add_user, "superadmin")
+    add_user("bob", "bob@example.com")
+    add_user("adm2", "adm2@example.com", role="admin")
+    bob, adm2 = uid(owner_engine, "bob"), uid(owner_engine, "adm2")
+    assert call(c, h, "purge", bob).status_code == 403  # an admin cannot, even on a plain user
+    assert call(root_c, root_h, "purge", bob).json() == {"error": "invalid_state"}  # only an account already deleted
+    assert call(root_c, root_h, "delete", bob).status_code == 200
+    assert "purge" in next(u for u in root_c.get(URL).json()["users"] if u["id"] == bob)["actions"]
+    assert "purge" not in next(u for u in c.get(URL).json()["users"] if u["id"] == bob)["actions"]
+    assert call(c, h, "purge", bob).status_code == 403
+    assert call(root_c, root_h, "purge", bob).status_code == 200
+    assert sql(owner_engine, "SELECT count(*) FROM users WHERE username = 'bob'")[0][0] == 0
+    assert sql(owner_engine, "SELECT count(*) FROM audit_log WHERE action = 'user_purged'")[0][0] == 1
+    assert call(root_c, root_h, "delete", adm2).status_code == 200
+    assert call(root_c, root_h, "purge", adm2).status_code == 200  # a deleted admin too (only the super admin can)
+    assert call(root_c, root_h, "purge", uid(owner_engine, "root")).json() == {"error": "cannot_target_self"}
+
+
+def test_purging_a_person_keeps_what_they_made(make_client, add_user, owner_engine):
+    root_c, root_h = signed_in(make_client, add_user, "superadmin")
+    add_user("bob", "bob@example.com", role="admin")
+    bob = uid(owner_engine, "bob")
+    sql(owner_engine, "INSERT INTO task_categories (name, created_by) VALUES ('Keep', :u)", u=bob)
+    sql(owner_engine, "INSERT INTO document_categories (name, created_by) VALUES ('Keep', :u)", u=bob)
+    assert call(root_c, root_h, "delete", bob).status_code == 200
+    assert call(root_c, root_h, "purge", bob).status_code == 200
+    assert sql(owner_engine, "SELECT created_by FROM task_categories WHERE name = 'Keep'")[0][0] is None

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { clientKeys } from "../clients/hooks";
 import { useSession } from "../session";
-import { cancelInvoice, createInvoice, getInvoice, listBillable, listInvoices, markPaid, markUnpaid, sendInvoice } from "./api";
+import { cancelInvoice, purgeInvoice, createInvoice, getInvoice, listBillable, listInvoices, markPaid, markUnpaid, sendInvoice } from "./api";
 import type { InvoiceInput, InvoiceStatus } from "./types";
 
 export const invoiceKeys = {
@@ -38,4 +38,5 @@ export const useCreateInvoice = () => useInvoiceMutation((input: InvoiceInput, c
 export const useMarkPaid = () => useInvoiceMutation(({ id, paidOn }: { id: number; paidOn: string }, csrf) => markPaid(id, paidOn, csrf));
 export const useMarkUnpaid = () => useInvoiceMutation((id: number, csrf) => markUnpaid(id, csrf));
 export const useCancelInvoice = () => useInvoiceMutation((id: number, csrf) => cancelInvoice(id, csrf));
+export const usePurgeInvoice = () => useInvoiceMutation((id: number, csrf) => purgeInvoice(id, csrf));
 export const useSendInvoice = () => useInvoiceMutation(({ id, to }: { id: number; to: string }, csrf) => sendInvoice(id, to, csrf));

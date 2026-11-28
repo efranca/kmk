@@ -753,5 +753,11 @@
   "quoteEdit": "Editar",
   "quoteEditTitle": "Editar o orçamento",
   "quoteEditDone": "Orçamento atualizado",
-  "err_message_locked": "A descrição do cliente não pode ser alterada."
+  "err_message_locked": "A descrição do cliente não pode ser alterada.",
+  "act_purge": "Excluir definitivamente",
+  "adminPurgeWarning": "Excluir esta conta definitivamente? Não poderá ser restaurada. O que a pessoa criou permanece, sem o nome dela.",
+  "invPurge": "Excluir definitivamente",
+  "invPurgeYes": "Sim, excluir definitivamente",
+  "invPurgeConfirm": "Excluir definitivamente a fatura {{ref}}, com suas linhas e seu PDF? Isto não pode ser desfeito.",
+  "invPurgeDone": "Fatura excluída."
 }

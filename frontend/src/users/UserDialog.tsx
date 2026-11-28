@@ -14,11 +14,11 @@ const GROUPS: { id: string; actions: string[] }[] = [
   { id: "main", actions: ["edit"] },
   { id: "account", actions: ["set_role", "resend_invite", "enable", "restore"] },
   { id: "security", actions: ["reset_password", "reset_mfa"] },
-  { id: "danger", actions: ["disable", "delete"] },
+  { id: "danger", actions: ["disable", "delete", "purge"] },
 ];
 
 // Actions that need a "confirm" step before they are sent.
-const CONFIRMED = new Set(["reset_password", "reset_mfa", "disable", "delete", "set_role"]);
+const CONFIRMED = new Set(["reset_password", "reset_mfa", "disable", "delete", "purge", "set_role"]);
 
 /** One person's details and what the signed-in admin may do with them (the server's `actions` list decides). */
 export default function UserDialog({
@@ -55,7 +55,7 @@ export default function UserDialog({
       case "set_role":
         return adminSetRole(csrfToken, user.id, user.role === "admin" ? "user" : "admin");
       default:
-        return adminAct(csrfToken, user.id, action as "disable" | "enable" | "delete" | "restore");
+        return adminAct(csrfToken, user.id, action as "disable" | "enable" | "delete" | "restore" | "purge");
     }
   }
 
@@ -151,6 +151,7 @@ export default function UserDialog({
         </form>
       ) : pending ? (
         <div className="row">
+          {pending === "purge" && <p>{t("adminPurgeWarning")}</p>}
           <Button variant="danger" onClick={confirm}>{t("confirm")}</Button>
           <Button variant="ghost" onClick={() => setPending(null)}>{t("adminCancel")}</Button>
         </div>

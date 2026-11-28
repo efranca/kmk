@@ -221,6 +221,11 @@ def delete_user(user_id: int, request: Request, actor: User = Depends(admin_acto
     return simple_action("delete", "user_deleted", lifecycle.delete, user_id, request, actor, db, settings)
 
 
+@router.post("/users/{user_id}/purge")
+def purge_user(user_id: int, request: Request, actor: User = Depends(admin_actor), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    return simple_action("purge", "user_purged", lifecycle.purge, user_id, request, actor, db, settings)
+
+
 @router.post("/users/{user_id}/restore")
 def restore_user(user_id: int, request: Request, actor: User = Depends(admin_actor), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
     return simple_action("restore", "user_restored", lifecycle.restore, user_id, request, actor, db, settings)

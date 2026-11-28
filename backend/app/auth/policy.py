@@ -9,10 +9,10 @@ powers may reset their own password, and the super admin may edit their own acco
 from app.auth.errors import ApiError
 from app.models import User
 
-ACTIONS = ("view", "edit", "resend_invite", "reset_password", "reset_mfa", "disable", "enable", "delete", "restore", "set_role")
+ACTIONS = ("view", "edit", "resend_invite", "reset_password", "reset_mfa", "disable", "enable", "delete", "restore", "purge", "set_role")
 
 PRIVILEGED = ("admin", "superadmin")
-SELF_DESTRUCTIVE = frozenset({"disable", "delete", "set_role", "reset_mfa"})
+SELF_DESTRUCTIVE = frozenset({"disable", "delete", "purge", "set_role", "reset_mfa"})
 
 
 def authority_error(actor: User, target: User, action: str) -> ApiError | None:
@@ -28,6 +28,8 @@ def authority_error(actor: User, target: User, action: str) -> ApiError | None:
         return None  # the super admin may fix their own name and language (nobody else may edit the super admin)
     if target.role == "superadmin":
         return ApiError(403, "forbidden")
+    if action == "purge":
+        return None if actor.role == "superadmin" else ApiError(403, "forbidden")  # deleting for good: the super admin only
     if action == "set_role":
         return None if actor.role == "superadmin" and target.role in ("user", "admin") else ApiError(403, "forbidden")
     if target.role == "admin":
@@ -64,7 +66,7 @@ def state_allows(target: User, action: str) -> bool:
         return status == "disabled"
     if action == "delete":
         return status != "deleted"
-    if action == "restore":
+    if action in ("restore", "purge"):
         return status == "deleted"
     if action in ("edit", "set_role"):
         return status != "deleted"
@@ -164,6 +166,12 @@ def check_clients(actor: User) -> None:
 
 def check_quote_delete(actor: User) -> None:
     """Deleting a customer's request (and its photos and conversation) is for the super admin only."""
+    if actor.role != "superadmin":
+        raise ApiError(403, "forbidden")
+
+
+def check_invoice_purge(actor: User) -> None:
+    """Deleting an invoice for good (its lines and stored PDF too) is for the super admin only."""
     if actor.role != "superadmin":
         raise ApiError(403, "forbidden")
 

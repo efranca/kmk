@@ -753,5 +753,11 @@
   "quoteEdit": "Modifier",
   "quoteEditTitle": "Modifier la soumission",
   "quoteEditDone": "Soumission mise à jour",
-  "err_message_locked": "La description du client ne peut pas être modifiée."
+  "err_message_locked": "La description du client ne peut pas être modifiée.",
+  "act_purge": "Supprimer définitivement",
+  "adminPurgeWarning": "Supprimer ce compte définitivement ? Il ne pourra pas être restauré. Ce que la personne a créé reste, sans son nom.",
+  "invPurge": "Supprimer définitivement",
+  "invPurgeYes": "Oui, supprimer définitivement",
+  "invPurgeConfirm": "Supprimer définitivement la facture {{ref}}, ses lignes et son PDF ? Cette action est irréversible.",
+  "invPurgeDone": "Facture supprimée."
 }

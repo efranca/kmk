@@ -276,7 +276,7 @@ async function adminCall(csrfToken: string, method: string, path: string, body?:
 
 export const adminInvite = (csrf: string, v: { name: string; username: string; email: string; locale: string; role: "user" | "admin" }) =>
   adminCall(csrf, "POST", "users", v);
-export const adminAct = (csrf: string, id: number, action: "invite" | "reset" | "disable" | "enable" | "delete" | "restore" | "reset-mfa") =>
+export const adminAct = (csrf: string, id: number, action: "invite" | "reset" | "disable" | "enable" | "delete" | "restore" | "purge" | "reset-mfa") =>
   adminCall(csrf, "POST", `users/${id}/${action}`);
 export const adminSetRole = (csrf: string, id: number, role: "user" | "admin") => adminCall(csrf, "POST", `users/${id}/role`, { role });
 export const adminSettings = (csrf: string, id: number, v: Partial<AdminUser["settings"]>) => adminCall(csrf, "PATCH", `users/${id}/settings`, v);

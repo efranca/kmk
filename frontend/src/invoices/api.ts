@@ -15,6 +15,7 @@ export const listBillable = async (clientId: number, from: string, to: string) =
 export const createInvoice = async (input: InvoiceInput, csrf: string) => (await request<{ invoice: Invoice }>("POST", "/api/invoices", csrf, input)).invoice;
 export const markPaid = async (id: number, paidOn: string, csrf: string) => (await request<{ invoice: Invoice }>("POST", `/api/invoices/${id}/payment`, csrf, { paid_on: paidOn })).invoice;
 export const markUnpaid = async (id: number, csrf: string) => (await request<{ invoice: Invoice }>("DELETE", `/api/invoices/${id}/payment`, csrf)).invoice;
+export const purgeInvoice = async (id: number, csrf: string) => { await request("DELETE", `/api/invoices/${id}`, csrf); };
 export const cancelInvoice = async (id: number, csrf: string) => (await request<{ invoice: Invoice }>("POST", `/api/invoices/${id}/cancel`, csrf)).invoice;
 export const sendInvoice = async (id: number, to: string, csrf: string) => (await request<{ invoice: Invoice }>("POST", `/api/invoices/${id}/send`, csrf, { to })).invoice;
 export const pdfUrl = (id: number) => `/api/invoices/${id}/pdf`;

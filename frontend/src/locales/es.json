@@ -753,5 +753,11 @@
   "quoteEdit": "Editar",
   "quoteEditTitle": "Editar la cotización",
   "quoteEditDone": "Cotización actualizada",
-  "err_message_locked": "La descripción del cliente no se puede cambiar."
+  "err_message_locked": "La descripción del cliente no se puede cambiar.",
+  "act_purge": "Eliminar definitivamente",
+  "adminPurgeWarning": "¿Eliminar esta cuenta definitivamente? No se podrá restaurar. Lo que la persona creó permanece, sin su nombre.",
+  "invPurge": "Eliminar definitivamente",
+  "invPurgeYes": "Sí, eliminar definitivamente",
+  "invPurgeConfirm": "¿Eliminar definitivamente la factura {{ref}}, sus líneas y su PDF? No se puede deshacer.",
+  "invPurgeDone": "Factura eliminada."
 }

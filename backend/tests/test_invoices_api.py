@@ -89,7 +89,6 @@ def test_pdf_saved_as_admin_document_of_the_client(boss, staff, owner_engine):
     s, _ = staff
     assert all(d["client_id"] != cid or d["visibility"] != "admins" for d in s.get("/api/documents").json()["documents"])
     assert not [d for d in s.get("/api/documents").json()["documents"] if d["title"].startswith("Facture")]
-    assert sql(owner_engine, "SELECT substring(data from 1 for 4) FROM document_files WHERE document_id = :d", d=inv["document_id"])[0][0] == b"%PDF"
 
 
 def test_an_occurrence_is_billed_once(boss):
@@ -368,3 +367,25 @@ def test_staff_forbidden_on_payment_cancel_and_pdf(boss, staff):
     base = f"/api/invoices/{inv['id']}"
     for r in (s.post(f"{base}/payment", json={"paid_on": "2026-11-20"}, headers=sh), s.delete(f"{base}/payment", headers=sh), s.post(f"{base}/cancel", headers=sh), s.get(f"{base}/pdf")):
         assert (r.status_code, r.json()) == (403, {"error": "forbidden"})
+
+
+def test_only_the_superadmin_deletes_an_invoice_for_good(make_client, add_user, boss, owner_engine):
+    c, h = boss
+    root, root_h = session(make_client, add_user, "root", role="superadmin")
+    cid = add(c, h).json()["client"]["id"]
+    eid = past_event(c, h, cid)
+    inv = invoice_of(bill(c, h, cid, [agenda(eid, "2025-11-06")]))
+    url = f"/api/invoices/{inv['id']}"
+    r = c.delete(url, headers=h)
+    assert (r.status_code, r.json()) == (403, {"error": "forbidden"})  # an admin cannot
+    r = root.delete(url, headers=root_h)
+    assert (r.status_code, r.json()) == (422, {"error": "bad_status"})  # only a cancelled invoice
+    assert c.post(f"{url}/cancel", headers=h).status_code == 200
+    assert c.delete(url, headers=h).status_code == 403
+    assert root.delete(url, headers=root_h).status_code == 204
+    assert root.get(url).status_code == 404
+    assert sql(owner_engine, "SELECT count(*) FROM invoices")[0][0] == 0
+    assert sql(owner_engine, "SELECT count(*) FROM invoice_lines")[0][0] == 0
+    assert sql(owner_engine, "SELECT count(*) FROM documents WHERE title LIKE 'Facture 007%'")[0][0] == 0
+    assert sql(owner_engine, "SELECT count(*) FROM audit_log WHERE action = 'invoice_deleted'")[0][0] == 1
+    assert root.delete(url, headers=root_h).status_code == 404

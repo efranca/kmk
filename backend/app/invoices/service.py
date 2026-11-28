@@ -200,6 +200,23 @@ def cancel_invoice(db: Session, actor: User, invoice_id: int, ip: str) -> Invoic
     return invoice
 
 
+def purge_invoice(db: Session, actor: User, invoice_id: int, ip: str) -> None:
+    """Deletes a cancelled invoice for good: its lines and the stored PDF go too. Its number is not renumbered."""
+    _lock(db)
+    invoice = get_invoice(db, actor, invoice_id)
+    if invoice.status != "cancelled":
+        raise ApiError(422, "bad_status")
+    number, document_id = invoice.number, invoice.document_id
+    db.delete(invoice)  # the lines go with it (ON DELETE CASCADE)
+    db.flush()
+    if document_id is not None:
+        document = db.get(Document, document_id)
+        if document is not None:
+            db.delete(document)  # its file goes with it
+    audit.log(db, "invoice_deleted", actor_user_id=actor.id, ip=ip, details={"invoice_id": invoice_id, "number": number})
+    db.flush()
+
+
 def pdf_bytes(db: Session, invoice: Invoice) -> bytes:
     """The copy stored when the invoice was created; drawn again from the snapshot if that document was deleted."""
     stored = db.get(DocumentFile, invoice.document_id) if invoice.document_id else None

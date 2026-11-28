@@ -11,7 +11,7 @@ The product plan is `scope.md`; what is actually built is described in `docs/`.
 
 - `backend/app/` application code. `auth/` holds routes, the guard, services, rate limiting, audit, tokens, MFA. `emails/` is the mail layer. `mfa.py` and `security.py` are pure helpers. `cli.py` is the server-side admin tool.
 - `backend/app/schedule/` the shared calendar: `recurrence.py` (repeat rule, `rrule`), `occurrences.py` (expansion with one-off changes), `service.py`, `routes.py`; `ics.py` (iCalendar writer) and `feed.py` (the personal `.ics` link: account routes and the public token route).
-- `backend/alembic/versions/` migrations (`0001` to `0022`). `backend/tests/` is the test suite.
+- `backend/alembic/versions/` migrations (`0001` to `0023`). `backend/tests/` is the test suite.
 - `backend/app/quotes/` quote requests: `public_routes.py` + `intake.py` (the open form's API), `arrival.py` (task, Agenda item, notice, push), `service.py` + `routes.py` (the admins' area), `emails.py`. `backend/app/push/` Web Push. `backend/app/system_settings.py` the company-wide settings (super admin).
 - `backend/app/clients/` the clients (`schemas.py`, `service.py`, `routes.py`); tasks, events, documents and quotes carry an optional `client_id`.
 - `backend/app/invoices/` invoices: `money.py` (amounts), `billing.py` (which cleanings can be billed), `pdf.py` + `assets/` (the French PDF, logo and fonts), `service.py` (numbering, create, pay, cancel, send), `emails.py`, `schemas.py`, `routes.py`. The price per visit is `properties.visit_price`; the PDF is stored as an admins-only Document linked to the client.
