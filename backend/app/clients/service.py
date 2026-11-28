@@ -71,9 +71,10 @@ def rooms_by_property(db: Session, property_ids: list[int]) -> dict[int, list[di
     return out
 
 
-def property_payload(p: Property, actor: User | None = None, rooms: list[dict] | None = None) -> dict:
+def property_payload(p: Property, actor: User | None, rooms: list[dict] | None) -> dict:
     """The price per visit is for administrators only (`actor=None` means the caller already checked).
-    `rooms` comes from `rooms_by_property` (this function reads no database)."""
+    `rooms` comes from `rooms_by_property` (this function reads no database); it is required so no caller forgets it
+    (`None`, as `rooms.get(id)` gives for a property without rooms, means none)."""
     out = {**{f: getattr(p, f) for f in PROPERTY_FIELDS}, "id": p.id, "client_id": p.client_id, "rooms": rooms or []}
     if actor is None or policy.can_manage_clients(actor):
         out["visit_price"] = money.as_json(p.visit_price)

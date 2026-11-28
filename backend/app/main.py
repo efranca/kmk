@@ -89,7 +89,7 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
                 response = await call_next(request)
         else:
             response = await call_next(request)
-        if path.startswith(("/api/auth", "/api/admin", "/api/schedule", "/api/tasks", "/api/documents", "/api/document-categories", "/api/settings", "/api/public/quotes", "/api/push", "/api/quotes", "/api/visits")):
+        if path.startswith(("/api/auth", "/api/admin", "/api/schedule", "/api/tasks", "/api/documents", "/api/document-categories", "/api/settings", "/api/public/quotes", "/api/push", "/api/quotes", "/api/visits", "/api/visit-photos")):
             response.headers.setdefault("Cache-Control", "no-store")  # a route may be stricter, as the document files are
         return response
 

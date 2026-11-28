@@ -136,9 +136,13 @@ def purge_visit_photos() -> int:
     from app.visits import purge
 
     settings = get_settings()
+    root = settings.visit_photos_dir
+    if not root or not Path(root).is_absolute():  # never sweep the working directory
+        print("error: VISIT_PHOTOS_DIR must be an absolute path; nothing was deleted", file=sys.stderr)
+        return 2
     engine = make_engine(settings.database_url)
     with Session(engine) as db:
-        result = purge.run(db, Path(settings.visit_photos_dir), datetime.now(COMPANY_TZ).date())
+        result = purge.run(db, Path(root), datetime.now(COMPANY_TZ).date())
     print(f"purged={result['purged']} orphans={result['orphans']}")
     return 0
 

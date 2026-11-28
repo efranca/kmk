@@ -173,6 +173,28 @@ def test_missing_folder_is_fine(owner_engine, tmp_path, app_url):
     assert run(app_url, tmp_path / "nope") == {"purged": 0, "orphans": 0}
 
 
+@pytest.mark.parametrize("bad", ["", "relative/photos", "."])
+def test_an_empty_or_relative_root_is_refused(owner_engine, tmp_path, app_url, monkeypatch, capsys, bad):
+    """An empty VISIT_PHOTOS_DIR would be Path('') == '.': the sweep must never run on the working directory."""
+    monkeypatch.chdir(tmp_path)
+    shard = tmp_path / "ab"
+    shard.mkdir()
+    stray = shard / ("a" + "b" * 31)  # looks like an orphan photo of the working directory
+    stray.write_bytes(b"x")
+    age(stray, 7200)
+    with pytest.raises(ValueError):
+        run(app_url, bad)
+    monkeypatch.setenv("VISIT_PHOTOS_DIR", bad)
+    get_settings.cache_clear()
+    try:
+        assert cli.main(["purge-visit-photos"]) != 0
+    finally:
+        get_settings.cache_clear()
+    out = capsys.readouterr()
+    assert out.out == "" and "absolute" in out.err
+    assert stray.exists()
+
+
 def test_cli_runs_the_purge(owner_engine, tmp_path, monkeypatch, capsys):
     v = add_visit(owner_engine, date(2000, 1, 1))
     add_photo(owner_engine, tmp_path, v)

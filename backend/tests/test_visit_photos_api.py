@@ -258,6 +258,11 @@ def test_failed_insert_deletes_the_file(team, monkeypatch):
     assert storage.all_ids(team.root) == set()
 
 
+def test_photo_error_answers_are_not_cached(team):
+    for r in (team.ana[0].get("/api/visit-photos/999999"), team.ana[0].get("/api/visit-photos/0"), team.ana[0].delete("/api/visit-photos/999999", headers=team.ana[1])):
+        assert r.status_code in (404, 422) and r.headers["cache-control"] == "no-store", (r.status_code, r.headers.get("cache-control"))
+
+
 def test_storage_refuses_bad_ids_and_deletes_quietly(tmp_path):
     for bad in ("../x", "A" * 32, "ab", "0" * 31 + "/", ""):
         with pytest.raises(ValueError):

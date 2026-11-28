@@ -75,3 +75,13 @@ def test_photos_required_is_saved(boss):
     r = c.patch(f"/api/properties/{pid}", json=prop_body(photos_required=True), headers=h)
     assert r.status_code == 200 and r.json()["property"]["photos_required"] is True
     assert c.get(f"/api/clients/{cid}").json()["client"]["properties"][0]["photos_required"] is True
+
+
+def test_every_property_payload_is_given_its_rooms():
+    """`rooms` has no default: a caller that forgets it would show an empty room list after a save."""
+    import inspect
+
+    from app.clients.service import property_payload
+
+    params = inspect.signature(property_payload).parameters
+    assert params["rooms"].default is inspect.Parameter.empty and params["actor"].default is inspect.Parameter.empty

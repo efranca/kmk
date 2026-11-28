@@ -106,6 +106,10 @@ def _sweep(db: Session, root: Path) -> int:
 
 
 def run(db: Session, root: Path, today: date) -> dict:
+    """`root` must be an absolute path: an empty setting would be `Path("")`, the working directory, and the sweep
+    would then delete files there (`ValueError` instead)."""
+    if not str(root) or not Path(root).is_absolute():
+        raise ValueError("the visit photo folder must be an absolute path")
     purged = _purge_old(db, root, today)
     orphans = _sweep(db, root)
     return {"purged": purged, "orphans": orphans}

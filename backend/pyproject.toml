@@ -16,7 +16,7 @@ dependencies = [
   "python-dateutil>=2.9",
   "pywebpush>=2.0",
   "fpdf2>=2.8",
-  "Pillow>=10",
+  "Pillow>=10.0.1",  # libwebp CVE-2023-4863 is fixed from 10.0.1
 ]
 
 [project.optional-dependencies]
