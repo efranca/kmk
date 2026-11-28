@@ -1,21 +1,25 @@
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Path, Query, Request
 from sqlalchemy.orm import Session
 
 from app.auth import policy
-from app.auth.deps import get_db
+from app.auth.deps import get_db, get_settings_dep
 from app.auth.errors import ApiError
 from app.auth.guard import guard
+from app.auth.routes import request_ip
 from app.clients import service as clients
-from app.invoices import billing
+from app.config import Settings
+from app.invoices import billing, service
+from app.invoices.schemas import InvoiceIn
 from app.models import User, UserSession
 from app.schedule.recurrence import MAX_RANGE_DAYS
 from app.schedule.schemas import MAX_ID
 
 router = APIRouter(prefix="/api")
 ClientId = Annotated[int, Path(ge=1, le=MAX_ID)]
+InvoiceId = Annotated[int, Path(ge=1, le=MAX_ID)]
 
 
 @router.get("/clients/{client_id}/billable")
@@ -31,3 +35,26 @@ def list_billable(
     if to < from_ or (to - from_).days + 1 > MAX_RANGE_DAYS:
         raise ApiError(422, "bad_range")
     return {"occurrences": billing.billable(db, client_id, from_, to, billing.company_today())}
+
+
+@router.post("/invoices", status_code=201)
+def create_invoice(body: InvoiceIn, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    invoice = service.create_invoice(db, auth[0], body, request_ip(request, settings))
+    payload = service.invoice_payload(db, invoice)
+    db.commit()
+    return {"invoice": payload}
+
+
+@router.get("/invoices")
+def list_invoices(
+    status: Annotated[Literal["unpaid", "paid", "cancelled"] | None, Query()] = None,
+    q: Annotated[str | None, Query(max_length=100)] = None,
+    auth: tuple[User, UserSession] = Depends(guard(csrf=False)),
+    db: Session = Depends(get_db),
+):
+    return service.list_invoices(db, auth[0], status, q)
+
+
+@router.get("/invoices/{invoice_id}")
+def read_invoice(invoice_id: InvoiceId, auth: tuple[User, UserSession] = Depends(guard(csrf=False)), db: Session = Depends(get_db)):
+    return {"invoice": service.invoice_payload(db, service.get_invoice(db, auth[0], invoice_id))}
