@@ -51,6 +51,8 @@ cd deploy && docker compose down             # stop and remove the containers (t
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | empty | **private key: yes** | Web Push keys (see "Quote requests" below). Empty = no push is sent. Changing the pair turns every device's notifications off |
 | `VAPID_SUBJECT` | `mailto:admin@kmk-entretien.ca` | no | contact the push services may use |
 
+`VISIT_PHOTOS_DIR` (default `/data/visit-photos`, the folder inside the API container where visit photos are written) is not set in `deploy/.env`: the compose file fixes it for the `api` service and mounts `./data/visit-photos` there (the volume is on `api` only, not on `migrate` or Caddy). Details in "Visit photos" below.
+
 Further settings exist in `backend/app/config.py` with safe defaults (rate limits `rl_ip_max`=10, `rl_identifier_max`=5, `rl_window_minutes`=15,
 `session_days`=5, `invite_hours`=48, `reset_minutes`=30, `allowed_origins`, `trusted_proxy_ips`, `mfa_issuer`); set them as upper-case environment variables if needed.
 For local backend development and tests there is `backend/.env` (also git-ignored) with `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `TEST_DATABASE_URL`,
@@ -103,8 +105,8 @@ Verified and automatic, **not encrypted**. Scripts and units are in `deploy/back
 
 **Install and check:**
 ```bash
-deploy/backup/install.sh                          # installs and starts the timer; --dry-run shows what it would do, --uninstall removes it
-systemctl --user list-timers kmk-backup.timer     # next run
+deploy/backup/install.sh                          # installs and starts both timers (five units: backup service, timer and failure alert, photo purge service and timer); --dry-run shows what it would do, --uninstall removes them
+systemctl --user list-timers kmk-backup.timer kmk-visit-photos-purge.timer   # next runs
 systemctl --user start kmk-backup.service         # run a backup right now
 deploy/backup/kmk-backup-status.sh                # last result and its age; exit code 1 if failed or older than 36 hours (--max-age-hours N)
 journalctl --user -u kmk-backup.service -e        # the log of the last runs
@@ -139,12 +141,71 @@ PY
 9. Start: `cd deploy && docker compose up -d` (the migrate step is a no-op when the revision is current), check `curl -s https://app.kmk-entretien.ca/api/health` and sign in.
 10. Securely delete `~/kmk-restore` (`shred -u` the dump), and run a new backup (`systemctl --user start kmk-backup.service`).
 
+**Visit photos are backed up separately** (the database archive does not hold them): see "Visit photos" below, including how to restore them. `kmk-restore.sh` and the disaster steps above bring back the database only.
+
 **Known limit:** `infrastructure/backups/` is on the same disk as the system and the database. The backups survive mistakes and a bad migration, but not a disk failure, theft or fire (and a reinstall that wipes the project folder takes them too). An off-site copy is a future step; because the archives are **not encrypted**, encrypt them first (for example with `gpg --symmetric`) before copying them anywhere.
 The shared project scripts (`/home/evandro/projects/shared/scripts/pg-backup.sh`) are not used by kmk.
 
 ## Documents: disk, backups and limits
 
 Document files are stored in the database, so the database and **every one of the 14 kept backups** grow with the library (at most 2 GB of files, times the copies kept by the backup rotation). Check free space on the host (`df -h /`) before large uploads; the library cap is `MAX_LIBRARY_BYTES` in `backend/app/documents/limits.py` (raise it deliberately, and consider moving backups off this disk first). Only `PUT /api/documents/{id}/file` accepts a large body (Caddy, 51 MiB), and `PUT .../preview` a 128 KB one; PDF previews use the pdf.js worker, a same-origin `.mjs` asset that Caddy serves as JavaScript (checked with the real Caddyfile); the API container's `mem_limit` is 1536m because one upload holds a few copies of the file (at most 2 uploads at once). After a Caddyfile change auto-deploy restarts Caddy by itself; by hand: `docker compose restart caddy`.
+
+## Visit photos (check-in and check-out)
+
+Photos of visits are **files on disk**, not rows in the database: the database keeps one row per photo (visit, room, size, SHA-256) and the file is `deploy/data/visit-photos/<first two characters of its id>/<id>` (random 32-character ids, never a name anyone typed). The folder is git-ignored (`deploy/data/`) and is mounted into the `api` container at `/data/visit-photos` (`VISIT_PHOTOS_DIR`). Photos are served only by the API, behind the sign-in and the visit's visibility rule; Caddy never serves the folder.
+
+**Prepare the folder BEFORE the first deploy.** If the folder does not exist, Docker creates it owned by root and the API (uid 10001) cannot write to it. The photos must be writable by the container (uid 10001) and readable by the host user that runs the backup; files the container creates are mode 640 and folders 750, so give the folder the **host user's group** and the setgid bit, and everything created inside inherits that group:
+
+```bash
+mkdir -p deploy/data/visit-photos
+sudo chown 10001:$(id -gn) deploy/data/visit-photos
+sudo chmod 2750 deploy/data/visit-photos
+ls -ld deploy/data/visit-photos        # drwxr-s--- 10001 <your group> ...
+```
+
+Why: without the host group the files would belong to uid 10001 alone and the nightly backup (which runs as you) could not read them. An existing folder the backup cannot read is a **failed** backup, never a silent skip.
+
+**Limits and disk.** One photo is at most 600 KB (the phone makes about 120 KB). Caddy lets only `PUT /api/visits/<id>/<date>/photos` carry a body up to 768 KB (`@visitphoto` in `deploy/caddy/Caddyfile`; every other API body stays at 64 KB), so **after the Caddyfile change run `docker compose restart caddy`**. The API refuses an upload with `503 storage_full` when the folder's disk has less than 1 GiB free (`MIN_FREE_BYTES` in `backend/app/visits/limits.py`). Photos are kept 6 months (183 days after the visit's date), so the folder holds about (photos per day) x 120 KB x 183: for example 50 photos a day is about 6 MB a day and about 1.1 GB for the six months. Backups add roughly one more copy of the photos (see below). Check `df -h /` monthly (routine in golive.md).
+
+**The purge (6 months).** `kmk-visit-photos-purge.timer` runs `kmk-visit-photos-purge.service` daily at 03:15 (up to 10 minutes later; a run missed while the computer was off happens at the next start). It runs inside the API container: `docker compose -f deploy/docker-compose.yml exec -T api python -m app.cli purge-visit-photos`, which deletes the files of photos of visits older than 183 days (the row stays, marked purged, so counts and history remain), deletes files no row knows about (and stale `.tmp` files, only when older than an hour), and prints one line: `purged=N orphans=M`. By hand:
+
+```bash
+cd deploy && docker compose exec -T api python -m app.cli purge-visit-photos
+systemctl --user list-timers kmk-visit-photos-purge.timer
+journalctl --user -u kmk-visit-photos-purge.service -e        # what the last runs printed
+```
+
+The purge does not touch the backup snapshots: a photo purged today still sits in the snapshots until the 14th newest one rolls off.
+
+**Backing up the photos.** Each run of `kmk-backup.sh`, after the database archive is safely written, makes a snapshot of the photo folder in `infrastructure/backups/photos/<timestamp>/` (the same timestamp as the archive `kmk-<timestamp>.tar`) with `rsync`; unchanged files are hard links to the previous snapshot, so the snapshots together cost about one copy plus the new photos. The newest 14 snapshots are kept. Rules: a folder with no files, or a folder that does not exist, is skipped without a snapshot (so snapshots exist **only on days with photos**); an unreadable folder or unreadable file, a missing `rsync`, or a failed copy **fails the whole run** (status failed, desktop notification) and **nothing is deleted** (no pruning); rsync exit code 24 (a file vanished while copying, for example removed at that moment) is accepted. `KMK_BACKUP_PHOTOS_SRC` points the source somewhere else (empty = skip). The status line of a good run says `backup written (photos: N files)`. The snapshots are plain files like the archives: do not copy them off this machine unencrypted.
+
+**Restoring photos.** `kmk-restore.sh` and the disaster steps restore the database only; they do **not** restore photos. After the database is back (or after losing the photo folder):
+1. Pick the snapshot: snapshots exist only on days with photos, so take the newest one **at or before the timestamp of the archive you restored** (`ls infrastructure/backups/photos`; names are `YYYY-MM-DD_HHMMSS`). Photos taken after that moment have no row in the restored database and are simply not needed; rows whose file is missing show no picture (the API answers `404` for it).
+2. Stop the API, copy the content back and fix owner and mode, so uid 10001 can write again and your backup user can read:
+```bash
+cd deploy && docker compose stop api
+mkdir -p data/visit-photos
+rsync -a ../infrastructure/backups/photos/<snapshot>/ data/visit-photos/
+sudo chown -R 10001:$(id -gn) data/visit-photos
+sudo find data/visit-photos -type d -exec chmod 2750 {} +
+sudo find data/visit-photos -type f -exec chmod 640 {} +
+docker compose up -d
+```
+3. Open a visit that has photos and check they show; run a backup (`systemctl --user start kmk-backup.service`) and check the status line says the photo files were counted.
+
+**Deploy steps for the owner, in order** (the code is finished and tested; nothing below has been run on the live system):
+1. Check the disk: `df -h /` (the guard stops uploads under 1 GiB free).
+2. Migrate (creates the visits tables, as the owner role): `cd deploy && docker compose run --rm migrate`, then `docker exec postgres psql -U postgres -d kmk -Atc "select version_num from alembic_version"` must print `0024`.
+3. Create the folder with the commands above (mkdir, `sudo chown 10001:$(id -gn)`, `sudo chmod 2750`).
+4. Build the frontend and start: `cd frontend && npm run build`, then `cd deploy && docker compose up -d --build`. Check `docker compose ps` shows `kmk-api` healthy and `docker compose exec api ls -ld /data/visit-photos` shows the folder (owner `10001`).
+5. `cd deploy && docker compose restart caddy` (the Caddyfile has the new photo rule). Check `docker logs kmk-caddy --tail 20` has no error.
+6. Install the timers: `deploy/backup/install.sh` (or `--dry-run` first). Check `systemctl --user list-timers kmk-backup.timer kmk-visit-photos-purge.timer` shows both with a next run. Install `rsync` first if `rsync --version` fails.
+7. Check Settings > About shows version `0.6.<n>`.
+8. Make a test visit (below), then run a first backup: `systemctl --user start kmk-backup.service`, then `deploy/backup/kmk-backup-status.sh` says OK with `photos: N files`, and `ls infrastructure/backups/photos` shows the snapshot.
+9. Rehearse the restore, including photos: `deploy/backup/kmk-restore.sh <newest archive>` (prints `RESTORE OK`), and the photo copy above into a scratch folder (`rsync -a infrastructure/backups/photos/<snapshot>/ /tmp/photos-check/` and compare the file count).
+10. Run the purge by hand once: it should print `purged=0 orphans=0`.
+
+**What to test on real phones before relying on it** (not tried on real devices while building): an Agenda item for a client's property with you and a colleague listed; check in yourself and the colleague; take **portrait** photos with the camera on an iPhone and on an Android phone (open the visit's photo after uploading: it must be upright, not rotated; the browser is asked to follow the picture's own orientation and this was not verified on real devices); choose a photo from the gallery; try a bad-signal upload (airplane mode in the middle: the button must recover and a retry must work); check the photo carries no location (save it from the browser and look at its properties); check out with "photos required" on and off; make a correction. Also confirm in the browser that the photo shows (no CSP problem).
 
 ## Container limits, logs and health
 
@@ -239,5 +300,11 @@ Before doing it, make sure the key is backed up and `reset-mfa` works for you. T
 | MFA endpoints answer `503 mfa_unavailable` | `MFA_ENCRYPTION_KEY` missing, or different from the key that encrypted the stored secrets |
 | Codes from the authenticator app are rejected | the host clock is off, or the code was already used (a code works once) |
 | Backend tests fail with "remaining connection slots are reserved" | the shared Postgres is out of connections; the test fixtures use non-pooled connections for this reason, do not add long-lived engines to tests |
+| Uploading a visit photo answers `503 storage_full` | the disk under `deploy/data/visit-photos` has less than 1 GiB free (or the folder cannot be read): `df -h /`, free space (old backups, Docker images: `docker system df`); photos older than 6 months leave by the nightly purge |
+| A visit photo upload answers `503` with `busy`, or the photo never arrives | at most 2 photos are processed at once and a photo has 60 seconds to arrive: retry; if every upload fails check `docker logs kmk-api --tail 50` and that Caddy was restarted after the Caddyfile change (`@visitphoto`, 768KB) |
+| Every photo upload fails with a permission error in `docker logs kmk-api` | the folder is not writable by uid 10001: `ls -ld deploy/data/visit-photos`, then redo `sudo chown 10001:$(id -gn)` and `sudo chmod 2750` on it (see Visit photos) |
+| The backup status says failed with "photo folder ... cannot be read" (photos NOT backed up) | the backup user cannot read the folder or a file in it (the folder was created by Docker as root, or files have the wrong group): fix owner, group and mode as in Visit photos (`sudo chown -R 10001:$(id -gn)`, setgid `2750` folders, `640` files), then run the backup again; a failed photo step deletes nothing |
+| The backup status says failed with "rsync is not installed" | `sudo apt install rsync`, then run the backup again |
+| `kmk-visit-photos-purge.service` fails | `journalctl --user -u kmk-visit-photos-purge.service -e`: usually the stack is down (`docker compose exec` cannot reach the `api` container); start it with `cd deploy && docker compose up -d` and run the purge by hand (`docker compose exec -T api python -m app.cli purge-visit-photos`); the timer tries again the next day on its own |
 | `pg-new-db.sh` / `pg-backup.sh` fail on a missing `.env` | see the Database section (kmk's own backup does not use them) |
 | `pip install` takes minutes | some Python packages build from source on Python 3.14; wait, or use Python 3.13 for the virtualenv |

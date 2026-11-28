@@ -22,6 +22,10 @@ Background: [operations.md](operations.md) (running the system), [security.md](s
 | 12 | Home page | the Dashboard ("My events", "All events") replaced the placeholder Welcome page; check that colleagues do not put anything in event titles or notes that other employees should not read (everyone sees every event) | decided |
 | 13 | Cloudflare | route `app` → `http://localhost:8081` exists; "Always Use HTTPS" on (`curl -sI http://app.kmk-entretien.ca/` shows a `301`) | confirmed |
 | 14 | A reboot is survivable (optional) | reboot the computer, then `docker compose -f deploy/docker-compose.yml ps` and `systemctl --user list-timers kmk-backup.timer` | everything came back by itself |
+| 15 | Visits: the photo folder is ready | `ls -ld deploy/data/visit-photos` shows owner `10001`, your group, `drwxr-s---` (steps in operations.md, "Visit photos"); `docker compose restart caddy` was run after the Caddyfile change | done before the first deploy of the visits module |
+| 16 | Visits: both timers are installed | `systemctl --user list-timers kmk-backup.timer kmk-visit-photos-purge.timer` | both have a next run (backup about 02:30, purge 03:15) |
+| 17 | Visits: photos are in the backup and a restore was rehearsed | `ls infrastructure/backups/photos` shows a snapshot; `deploy/backup/kmk-backup-status.sh` says `photos: N files`; the photo copy-back was tried into a scratch folder | a snapshot exists and its file count matches the folder |
+| 18 | Visits: a real test visit | on a real iPhone and Android phone: check in with a colleague, a portrait photo (upright?), a bad-signal upload, check-out, a correction, then the report and its CSV as an admin | everything worked and photos look right |
 
 ## 2. Pilot
 
@@ -42,9 +46,9 @@ Fix what you learn, then continue.
 | When | What |
 | --- | --- |
 | Weekly | `deploy/backup/kmk-backup-status.sh` (should say OK, newer than 36 hours); glance at the open sessions and failed-login queries below |
-| Monthly | free disk space (`df -h /`); `docker ps` health; `docker logs kmk-api` for errors |
+| Monthly | free disk space (`df -h /`; photos and their snapshots grow with use, uploads stop under 1 GiB free); `docker ps` health; `docker logs kmk-api` for errors |
 | Before every deploy | `scripts/audit-deps.sh`; both test suites |
-| Every three months | rehearse a restore (check 3); check the password manager still has the `deploy/.env` secrets |
+| Every three months | rehearse a restore (check 3, and the photo copy-back, check 17); check the password manager still has the `deploy/.env` secrets |
 | When people leave | disable the account on the admin page (this signs them out at once); delete it later if you wish |
 
 ## 5. Reading the audit log
