@@ -166,3 +166,13 @@ def check_quote_delete(actor: User) -> None:
     """Deleting a customer's request (and its photos and conversation) is for the super admin only."""
     if actor.role != "superadmin":
         raise ApiError(403, "forbidden")
+
+
+def can_manage_invoices(actor: User) -> bool:
+    """Who bills clients and reads invoices and prices: admins and the super admin (never Staff)."""
+    return actor.role in PRIVILEGED
+
+
+def check_invoices(actor: User) -> None:
+    if not can_manage_invoices(actor):
+        raise ApiError(403, "forbidden")

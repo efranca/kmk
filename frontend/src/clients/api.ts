@@ -29,6 +29,8 @@ export type Property = {
   city: string | null;
   listing_url: string | null;
   access_notes: string | null;
+  /** Administrators only (money string, "120.00"): the price of one visit, used to bill. Staff never get it. */
+  visit_price?: string | null;
 };
 export type PropertyInput = Omit<Property, "id" | "client_id">;
 
@@ -38,6 +40,8 @@ export type ClientDetail = Client & {
   events?: { id: number; title: string; start_date: string; start_time: string | null }[];
   documents?: { id: number; title: string; content_type: string | null }[];
   quotes?: { id: number; reference: string; status: string; kind: string; submitted_at: string | null }[];
+  /** Administrators only. */
+  invoices?: { id: number; reference: string; issued_on: string; total: string; status: "unpaid" | "paid" | "cancelled" }[];
 };
 
 /** The body of POST and PATCH /api/clients. `quote_id` (create only) links the quote this client comes from. */

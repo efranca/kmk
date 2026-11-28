@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import type { User } from "./api";
 import Layout, { type LayoutPage } from "./app/Layout";
 
-export type ShellPage = "welcome" | "schedule" | "tasks" | "documents" | "clients" | "quotes" | "account" | "admin" | "devices" | "settings" | "notfound";
+export type ShellPage = "welcome" | "schedule" | "tasks" | "documents" | "clients" | "quotes" | "invoices" | "account" | "admin" | "devices" | "settings" | "notfound";
 
-const PAGE_TO_LAYOUT: Record<ShellPage, LayoutPage> = { welcome: "dashboard", schedule: "schedule", tasks: "tasks", documents: "documents", clients: "clients", quotes: "quotes", account: "account", settings: "settings", admin: "admin", devices: "devices", notfound: "other" };
+const PAGE_TO_LAYOUT: Record<ShellPage, LayoutPage> = { welcome: "dashboard", schedule: "schedule", tasks: "tasks", documents: "documents", clients: "clients", quotes: "quotes", invoices: "invoices", account: "account", settings: "settings", admin: "admin", devices: "devices", notfound: "other" };
 
 /** Frame for signed-in pages (see app/Layout): navigation by role, the account menu, and the page area. */
 export default function Shell({

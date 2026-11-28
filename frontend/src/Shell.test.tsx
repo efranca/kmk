@@ -226,6 +226,33 @@ describe("navigation by role", () => {
     expect(screen.queryByRole("heading", { name: frCA.deviceTitle })).toBeNull();
   });
 
+  it("sends Staff who type /invoices (or an invoice's address) to the Dashboard, without any invoice request", async () => {
+    for (const path of ["/invoices", "/invoices/7"]) {
+      visit(path);
+      const fn = mockApi({ "GET /api/auth/me": signedIn("user") });
+      const { unmount } = render(<App />);
+      await screen.findByRole("link", { name: frCA.navDashboard });
+      expect(screen.queryByRole("heading", { name: frCA.invTitle })).toBeNull();
+      expect(fn.mock.calls.filter(([u]) => String(u).startsWith("/api/invoices"))).toHaveLength(0);
+      unmount();
+    }
+  });
+
+  it("sends someone who is not signed in from /invoices to the sign-in page", async () => {
+    visit("/invoices/7");
+    mockApi({});
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Connexion");
+  });
+
+  it("opens the invoices for an admin from the nav, with Invoices marked as the current page", async () => {
+    mockApi({ "GET /api/auth/me": signedIn("admin"), "GET /api/invoices": () => res(200, { invoices: [], unpaid_total: "0.00" }) });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("link", { name: frCA.invTitle }));
+    expect(await screen.findByRole("heading", { level: 1, name: frCA.invTitle })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: frCA.invTitle })).toHaveAttribute("aria-current", "page");
+  });
+
   it("opens the admin page for an admin from the nav", async () => {
     const fn = mockApi({ "GET /api/auth/me": signedIn("admin") });
     render(<App />);

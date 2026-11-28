@@ -1,3 +1,4 @@
+import base64
 import logging
 
 import httpx
@@ -13,7 +14,8 @@ def send_email(message: EmailMessage, settings: Settings, transport: httpx.BaseT
     if settings.email_backend == "resend":
         return _send_resend(message, settings, transport)
     # Development backend: the whole message, link included, goes to the log. Never use it with real users.
-    log.info("DEV EMAIL to=%s from=%s reply_to=%s subject=%s\n%s", message.to, message.sender or settings.email_from, message.reply_to, message.subject, message.text)
+    files = ", ".join(f"{name} ({len(data)} bytes)" for name, data in message.attachments) or "none"
+    log.info("DEV EMAIL to=%s from=%s reply_to=%s subject=%s attachments=%s\n%s", message.to, message.sender or settings.email_from, message.reply_to, message.subject, files, message.text)
     return True
 
 
@@ -30,6 +32,8 @@ def _send_resend(message: EmailMessage, settings: Settings, transport: httpx.Bas
     }
     if message.reply_to:
         payload["reply_to"] = [message.reply_to]
+    if message.attachments:
+        payload["attachments"] = [{"filename": name, "content": base64.b64encode(data).decode()} for name, data in message.attachments]
     try:
         with httpx.Client(transport=transport, timeout=10.0) as client:
             response = client.post(RESEND_URL, headers={"Authorization": f"Bearer {settings.resend_api_key}"}, json=payload)

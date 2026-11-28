@@ -36,6 +36,9 @@ const PATHS = {
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   login: '<path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H10"/><path d="M14 8l4 4-4 4M18 12H8"/>',
   account: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/>',
+  invoice: '<path d="M6 3.5h12a1 1 0 0 1 1 1V21l-3-2-3 2-3-2-3 2V4.5a1 1 0 0 1 1-1z"/><path d="M9 8h6M9 11.5h6M9 15h3"/>',
+  send: '<path d="m4 11.5 16-7-6 15-2.5-6z"/><path d="m11.5 13.5 3-3"/>',
+  download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>',
 } as const;
 
 export type IconName = keyof typeof PATHS;

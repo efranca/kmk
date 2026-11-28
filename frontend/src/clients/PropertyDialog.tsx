@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
+import { parseMoney } from "../invoices/money";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
 import { ErrorNotice } from "../ui/Feedback";
@@ -24,16 +25,18 @@ export function PropertyDialog({ clientId, property, onClose, onSaved }: { clien
   const [city, setCity] = useState(property?.city ?? "");
   const [listing, setListing] = useState(property?.listing_url ?? "");
   const [notes, setNotes] = useState(property?.access_notes ?? "");
+  const [price, setPrice] = useState(property?.visit_price ?? "");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const listingBad = listing.trim() !== "" && !/^https?:\/\/[^\s/]+\.[^\s/]+/i.test(listing.trim());
+  const priceBad = price.trim() !== "" && parseMoney(price) === null;
   const failure = save.error ?? remove.error;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!name.trim() || listingBad) return;
+    if (!name.trim() || listingBad || priceBad) return;
     const clean = (v: string) => v.trim() || null;
     try {
-      const saved = await save.mutateAsync({ id: property?.id, input: { name: name.trim(), kind, address: clean(address), city: clean(city), listing_url: clean(listing), access_notes: clean(notes) } });
+      const saved = await save.mutateAsync({ id: property?.id, input: { name: name.trim(), kind, address: clean(address), city: clean(city), listing_url: clean(listing), access_notes: clean(notes), visit_price: price.trim() ? parseMoney(price) : null } });
       toast(t("propSaved"));
       onSaved?.(saved);
       onClose();
@@ -59,7 +62,7 @@ export function PropertyDialog({ clientId, property, onClose, onSaved }: { clien
       {property && confirmDelete && <Button variant="danger" icon="trash" busy={remove.isPending} onClick={() => void doDelete()}>{t("propDeleteConfirm")}</Button>}
       <span className="dialog__spacer" />
       <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
-      <Button type="submit" form="property-form" variant="primary" busy={save.isPending} disabled={!name.trim() || listingBad}>{t("save")}</Button>
+      <Button type="submit" form="property-form" variant="primary" busy={save.isPending} disabled={!name.trim() || listingBad || priceBad}>{t("save")}</Button>
     </>
   );
 
@@ -73,6 +76,7 @@ export function PropertyDialog({ clientId, property, onClose, onSaved }: { clien
         <TextField label={t("clientFieldAddress")} value={address} maxLength={200} onChange={(e) => setAddress(e.target.value)} />
         <TextField label={t("clientFieldCity")} value={city} maxLength={60} onChange={(e) => setCity(e.target.value)} />
         <TextField label={t("propFieldListing")} type="url" inputMode="url" placeholder="https://www.airbnb.com/rooms/…" value={listing} maxLength={300} error={listingBad ? t("propErrListing") : null} onChange={(e) => setListing(e.target.value)} />
+        <TextField label={t("invVisitPrice")} hint={t("invVisitPriceHint")} inputMode="decimal" placeholder="120.00" value={price} maxLength={12} error={priceBad ? t("invAmountInvalid") : null} onChange={(e) => setPrice(e.target.value)} />
         <TextAreaField label={t("propFieldAccess")} hint={t("propAccessHint")} rows={3} value={notes} maxLength={2000} onChange={(e) => setNotes(e.target.value)} />
       </form>
       {failure && <ErrorNotice error={failure} />}

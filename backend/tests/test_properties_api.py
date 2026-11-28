@@ -103,3 +103,24 @@ def test_deleting_a_client_deletes_its_properties(boss, owner_engine):
     add_prop(c, h, cid)
     assert c.delete(f"/api/clients/{cid}", headers=h).status_code == 204
     assert sql(owner_engine, "SELECT count(*) FROM properties")[0][0] == 0
+
+
+def test_visit_price_is_saved_and_admin_only(make_client, add_user, owner_engine):
+    add_user("tom", "tom@example.com")
+    boss = session(make_client, add_user, "boss", role="admin")
+    staff = session(make_client, add_user, "zoe")
+    c, h = boss
+    s, _ = staff
+    cid = add(c, h).json()["client"]["id"]
+    r = add_prop(c, h, cid, visit_price="120.50")
+    assert r.status_code == 201, r.text
+    pid = r.json()["property"]["id"]
+    assert r.json()["property"]["visit_price"] == "120.50"
+    assert c.get(f"/api/clients/{cid}").json()["client"]["properties"][0]["visit_price"] == "120.50"
+    assert c.patch(f"/api/properties/{pid}", json=prop_body(visit_price=None), headers=h).json()["property"]["visit_price"] is None
+    assert c.patch(f"/api/properties/{pid}", json=prop_body(visit_price="-5"), headers=h).status_code == 422
+    assert c.patch(f"/api/properties/{pid}", json=prop_body(visit_price="1.234"), headers=h).status_code == 422
+    assert c.patch(f"/api/properties/{pid}", json=prop_body(visit_price="150"), headers=h).json()["property"]["visit_price"] == "150.00"
+    create_event(c, h, client_id=cid, people=[uid(owner_engine, "zoe")])
+    got = s.get(f"/api/clients/{cid}").json()["client"]
+    assert got["properties"] and all("visit_price" not in p for p in got["properties"])

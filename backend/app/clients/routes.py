@@ -52,7 +52,7 @@ def remove_client(client_id: ClientId, request: Request, auth: tuple[User, UserS
 @router.post("/{client_id}/properties", status_code=201)
 def add_property(client_id: ClientId, body: PropertyIn, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
     prop = service.add_property(db, auth[0], client_id, body, request_ip(request, settings))
-    payload = service.property_payload(prop)
+    payload = service.property_payload(prop, auth[0])
     db.commit()
     return {"property": payload}
 
@@ -63,7 +63,7 @@ properties_router = APIRouter(prefix="/api/properties")
 @properties_router.patch("/{property_id}")
 def change_property(property_id: ClientId, body: PropertyIn, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
     prop = service.update_property(db, auth[0], property_id, body, request_ip(request, settings))
-    payload = service.property_payload(prop)
+    payload = service.property_payload(prop, auth[0])
     db.commit()
     return {"property": payload}
 

@@ -72,6 +72,43 @@ describe("properties", () => {
     expect(api.calls.find((c) => c.method === "POST")!.body).toMatchObject({ name: "Cottage", kind: "airbnb", listing_url: "https://www.airbnb.com/rooms/9", address: null });
   });
 
+  it("saves the price per visit as a money string, or null when empty, and refuses a bad one", async () => {
+    const api = mockApi({ "GET /api/clients/5": { client }, "POST /api/clients/5/properties": { property: beach } });
+    renderWithProviders(<ClientPage id={5} />, admin);
+    fireEvent.click(await screen.findByRole("radio", { name: /Properties/ }));
+    fireEvent.click(screen.getByRole("button", { name: "New property" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    fireEvent.change(dialog.getByLabelText("Name"), { target: { value: "Cottage" } });
+    fireEvent.change(dialog.getByLabelText(/Price per visit/), { target: { value: "-5" } });
+    fireEvent.click(dialog.getByRole("button", { name: "Save" }));
+    expect(await dialog.findByText("Enter an amount like 120 or 120.50.")).toBeInTheDocument();
+    expect(api.calls.some((c) => c.method === "POST")).toBe(false);
+    fireEvent.change(dialog.getByLabelText(/Price per visit/), { target: { value: "120,5" } });
+    fireEvent.click(dialog.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(api.calls.some((c) => c.method === "POST")).toBe(true));
+    expect(api.calls.find((c) => c.method === "POST")!.body).toMatchObject({ name: "Cottage", visit_price: "120.50" });
+  });
+
+  it("sends a null price when the field is empty", async () => {
+    const api = mockApi({ "GET /api/clients/5": { client }, "POST /api/clients/5/properties": { property: beach } });
+    renderWithProviders(<ClientPage id={5} />, admin);
+    fireEvent.click(await screen.findByRole("radio", { name: /Properties/ }));
+    fireEvent.click(screen.getByRole("button", { name: "New property" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    fireEvent.change(dialog.getByLabelText("Name"), { target: { value: "Cottage" } });
+    fireEvent.click(dialog.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(api.calls.some((c) => c.method === "POST")).toBe(true));
+    expect(api.calls.find((c) => c.method === "POST")!.body).toMatchObject({ visit_price: null });
+  });
+
+  it("shows the price on the property card for an administrator", async () => {
+    mockApi({ "GET /api/clients/5": { client: { ...client, properties: [{ ...beach, visit_price: "120.00" }, office] } } });
+    renderWithProviders(<ClientPage id={5} />, admin);
+    fireEvent.click(await screen.findByRole("radio", { name: /Properties/ }));
+    expect(within(screen.getByRole("article", { name: "Beach house" })).getByText(/\$120\.00/)).toBeInTheDocument();
+    expect(within(screen.getByRole("article", { name: "Office" })).queryByText(/\$/)).toBeNull();
+  });
+
   it("lets Staff read the properties but not change them", async () => {
     const { notes: _n, ...view } = client;
     mockApi({ "GET /api/clients/5": { client: { ...view, tasks: undefined, documents: undefined, quotes: undefined } } });

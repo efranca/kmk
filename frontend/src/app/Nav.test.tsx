@@ -73,6 +73,21 @@ describe("the navigation on a phone", () => {
 });
 
 
+describe("the Invoices entry", () => {
+  beforeEach(() => phone(900));
+  it("is for admins and the super admin, after Quotes", () => {
+    render(nav({ isAdmin: true, isSuperAdmin: false }));
+    const link = screen.getByRole("link", { name: "Invoices" });
+    expect(link).toHaveAttribute("href", "/invoices");
+    const names = screen.getAllByRole("link").map((l) => l.textContent ?? "");
+    expect(names.findIndex((n) => /Invoices/.test(n))).toBe(names.findIndex((n) => /Quotes/.test(n)) + 1);
+  });
+  it("is not shown to Staff", () => {
+    render(nav({ isAdmin: false, isSuperAdmin: false, hasClients: true }));
+    expect(screen.queryByRole("link", { name: "Invoices" })).toBeNull();
+  });
+});
+
 describe("the Quotes entry", () => {
   beforeEach(() => phone(900));
   it("is for admins and the super admin, with the number to handle", () => {
