@@ -92,7 +92,8 @@ def test_today_lists_my_visits_only(team):
     assert (v["id"], v["state"], v["occurrence_date"], v["date"]) == (None, "not_started", TODAY, TODAY)
     assert (v["client_name"], v["property_name"], v["property_id"]) == ("Tremblay", "Beach house", team.pid)
     assert (v["photos_required"], v["rooms"], v["people"], v["photos"], v["skips"], v["corrections"]) == (False, [], [], [], [], [])
-    assert (v["closed_at"], v["closed_by_name"], v["closed_without_photos"], v["corrected"], v["can_correct_until"]) == (None, None, False, False, None)
+    assert (v["closed_at"], v["closed_by_name"], v["closed_without_photos"], v["corrected"]) == (None, None, False, False)
+    assert v["can_correct_until"] == "2026-11-07T05:00:00+00:00"  # a listed person may check in late until then (Task 5)
     assert sorted(p["name"] for p in v["listed"]) == ["ana", "bruno", "carla"]
     assert [v["title"] for v in today(team.dan)] == ["Dan's"]
     assert today(team.boss) == []  # admins see every visit, but "today" is the ones that list me

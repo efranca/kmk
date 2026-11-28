@@ -1,4 +1,4 @@
-"""`/api/visits`: the visits of today, one visit, check-in and check-out.
+"""`/api/visits`: the visits of today, one visit, check-in and check-out, photos and room skips, corrections.
 
 Static paths (`/today`, and later the report) are registered before the `/{event_id}/{occurrence_date}` routes: FastAPI
 tries routes in order, and the parametrized one would answer 422 for them otherwise.
@@ -21,9 +21,9 @@ from app.models import User, UserSession
 from app.schedule.schemas import MAX_ID
 from app.auth.errors import ApiError
 from app.documents import uploads
-from app.visits import photos, service
-from app.visits.limits import MAX_PHOTO_BYTES, ROOM_NAME_MAX
-from app.visits.schemas import CheckInIn, CheckOutIn, SkipIn
+from app.visits import corrections, photos, service
+from app.visits.limits import MAX_PHOTO_BYTES, REASON_MAX, ROOM_NAME_MAX
+from app.visits.schemas import CheckInIn, CheckOutIn, CorrectionIn, PhotoRemoveIn, SkipIn
 
 PHOTO_READ_SECONDS = 60  # a photo that takes longer than this to arrive is dropped
 
@@ -63,11 +63,18 @@ def check_out(event_id: EventId, occurrence_date: date, body: CheckOutIn, reques
     return {"visit": payload}
 
 
+@router.post("/{event_id}/{occurrence_date}/corrections", status_code=201)
+def post_correction(event_id: EventId, occurrence_date: date, body: CorrectionIn, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    payload = corrections.apply(db, auth[0], event_id, occurrence_date, body, service.now(), request_ip(request, settings))
+    db.commit()
+    return {"visit": payload}
+
+
 # ---- photos and room skips --------------------------------------------------------------------------------------
 
 
-def _before_body(db: Session, settings: Settings, actor: User, event_id: int, occurrence_date: date, room_id: int | None, other_name: str | None) -> None:
-    photos.precheck(db, actor, event_id, occurrence_date, room_id, other_name)  # 404 / 403 / 409 / 422 before reading anything
+def _before_body(db: Session, settings: Settings, actor: User, event_id: int, occurrence_date: date, room_id: int | None, other_name: str | None, reason: str | None) -> None:
+    photos.precheck(db, actor, event_id, occurrence_date, room_id, other_name, reason, service.now())  # 404 / 403 / 409 / 422 before reading anything
     photos.ensure_space(settings)  # and 503 before the body is read
     db.rollback()  # do not hold a database connection open while the photo streams in
 
@@ -79,6 +86,7 @@ async def put_photo(
     request: Request,
     room_id: Annotated[int | None, Query(ge=1, le=MAX_ID)] = None,
     other_name: Annotated[str | None, Query(max_length=ROOM_NAME_MAX * 4)] = None,
+    reason: Annotated[str | None, Query(max_length=REASON_MAX * 4)] = None,  # a correction, once the visit is closed
     auth: tuple[User, UserSession] = Depends(guard()),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
@@ -86,7 +94,7 @@ async def put_photo(
     actor = auth[0]
     # Everything that touches the database or the disk runs in the thread pool: waiting for the visit's row lock on the
     # event loop would freeze every request, and the lock may be released only by work that needs the loop.
-    await run_in_threadpool(_before_body, db, settings, actor, event_id, occurrence_date, room_id, other_name)
+    await run_in_threadpool(_before_body, db, settings, actor, event_id, occurrence_date, room_id, other_name, reason)
     photos.slots.acquire()
     try:
         try:
@@ -99,13 +107,13 @@ async def put_photo(
     finally:
         photos.slots.release()
     ip = request_ip(request, settings)
-    payload = await run_in_threadpool(photos.add, db, settings, actor, event_id, occurrence_date, data, content_type, room_id, other_name, service.now(), ip)
+    payload = await run_in_threadpool(photos.add, db, settings, actor, event_id, occurrence_date, data, content_type, room_id, other_name, service.now(), ip, reason)
     return {"visit": payload}
 
 
 @router.post("/{event_id}/{occurrence_date}/skips", status_code=201)
 def post_skip(event_id: EventId, occurrence_date: date, body: SkipIn, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
-    payload = photos.skip(db, auth[0], event_id, occurrence_date, body.room_id, body.reason, service.now(), request_ip(request, settings))
+    payload = photos.skip(db, auth[0], event_id, occurrence_date, body.room_id, body.reason, service.now(), request_ip(request, settings), body.correction_reason)
     return {"visit": payload}
 
 
@@ -120,5 +128,6 @@ def get_photo(photo_id: PhotoId, auth: tuple[User, UserSession] = Depends(guard(
 
 
 @photo_router.delete("/{photo_id}")
-def delete_photo(photo_id: PhotoId, request: Request, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
-    return {"visit": photos.remove(db, settings, auth[0], photo_id, service.now(), request_ip(request, settings))}
+def delete_photo(photo_id: PhotoId, request: Request, body: PhotoRemoveIn | None = None, auth: tuple[User, UserSession] = Depends(guard()), db: Session = Depends(get_db), settings: Settings = Depends(get_settings_dep)):
+    reason = body.reason if body is not None else None  # a correction, once the visit is closed
+    return {"visit": photos.remove(db, settings, auth[0], photo_id, service.now(), request_ip(request, settings), reason)}

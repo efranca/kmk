@@ -194,6 +194,17 @@ def can_see_visit(actor: User, listed_ids: frozenset[int], checked_in_ids: froze
 
 
 def check_visit_admin(actor: User) -> None:
-    """The "Visits done" report and anything about every visit at once: admins and the super admin."""
+    """The "Visits done" report, anything about every visit at once, and reopening a closed visit: admins and the super admin."""
     if actor.role not in PRIVILEGED:
         raise ApiError(403, "forbidden")
+
+
+def can_correct_any_visit(actor: User) -> bool:
+    """Admins and the super admin correct any visit at any time (spec section 10)."""
+    return actor.role in PRIVILEGED
+
+
+def can_correct_visit(actor: User, checked_in_ids: frozenset[int], within_window: bool) -> bool:
+    """Who corrects a visit after the fact: admins always; anyone else only when they were checked in on it (active or
+    withdrawn) and the correction window (`visits.corrections.window_end`) is not over."""
+    return can_correct_any_visit(actor) or (actor.id in checked_in_ids and within_window)

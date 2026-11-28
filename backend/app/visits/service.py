@@ -18,7 +18,7 @@ from app.auth import audit, policy
 from app.auth.errors import ApiError
 from app.clients.service import rooms_by_property
 from app.invoices.billing import occurrence_of
-from app.models import Client, Event, EventException, EventPerson, Property, PropertyRoom, User, Visit, VisitPerson, VisitPhoto, VisitRoomSkip
+from app.models import Client, Event, EventException, EventPerson, Property, PropertyRoom, User, Visit, VisitCorrection, VisitPerson, VisitPhoto, VisitRoomSkip
 from app.schedule.occurrences import Occurrence, expand
 from app.schedule.service import COMPANY_TZ, display_name, event_data, exception_data
 
@@ -126,6 +126,29 @@ def _photos_and_skips(db: Session, visit: Visit) -> tuple[list[dict], int, list[
     return photos, len(all_photos), skips
 
 
+def _corrections(db: Session, visit: Visit) -> list[dict]:
+    """The corrections of a visit, newest first; `actor_name` is the copy taken when the correction was made."""
+    out = []
+    for c in db.scalars(select(VisitCorrection).where(VisitCorrection.visit_id == visit.id).order_by(VisitCorrection.created_at.desc(), VisitCorrection.id.desc())):
+        details = dict(c.details or {})
+        actor_name = details.pop("actor_name", None)
+        out.append({"kind": c.kind, "actor_name": actor_name, "reason": c.reason, "created_at": _iso(c.created_at), "details": details})
+    return out
+
+
+def _correct_until(actor: User, all_rows: list[VisitPerson], listed: frozenset[int], day: date) -> str | None:
+    """Until when this person may correct the visit: `None` for admins (never limited) and for someone who may not
+    correct it at all; else the end of the window, for whoever was checked in (even withdrawn) and, on a visit never
+    started, for a listed person (a late check-in of themselves)."""
+    from app.visits.corrections import window_end  # corrections imports this module
+
+    if policy.can_correct_any_visit(actor):
+        return None
+    if actor.id in {r.user_id for r in all_rows} or (not all_rows and actor.id in listed):
+        return _iso(window_end(day))
+    return None
+
+
 def visit_payload(db: Session, actor: User, event: Event | None, occurrence: Occurrence | None, visit: Visit | None, listed: frozenset[int], occurrence_date: date) -> dict:
     """One visit as the pages show it. Before the first check-in it is the occurrence with `"id": None`."""
     property_id = visit.property_id if visit is not None else event.property_id
@@ -137,13 +160,15 @@ def visit_payload(db: Session, actor: User, event: Event | None, occurrence: Occ
         client_name, property_name, day = (client.name if client else None), (prop.name if prop else None), occurrence.date
     title = occurrence.title if occurrence is not None else event.title if event is not None else property_name
 
-    rows = [r for r in _rows(db, visit.id) if r.withdrawn_at is None] if visit is not None else []
+    all_rows = _rows(db, visit.id) if visit is not None else []
+    rows = [r for r in all_rows if r.withdrawn_at is None]  # only active people are shown (withdrawn rows stay as proof)
     users = _names(db, set(listed) | {r.checked_in_by for r in rows if r.checked_in_by is not None} | ({visit.closed_by} if visit is not None and visit.closed_by else set()))
     name_of = lambda user_id: display_name(users[user_id]) if user_id in users else None  # noqa: E731
     listed_users = sorted((users[i] for i in listed if i in users), key=lambda u: names.sort_key(u.name, u.username))
 
     photos, photo_total, skips = _photos_and_skips(db, visit) if visit is not None else ([], 0, [])
     state = "not_started" if visit is None else "closed" if visit.closed_at is not None else "in_progress"
+    corrections = _corrections(db, visit) if visit is not None else []
     return {
         "id": visit.id if visit is not None else None,
         "event_id": visit.event_id if visit is not None else event.id,
@@ -170,12 +195,12 @@ def visit_payload(db: Session, actor: User, event: Event | None, occurrence: Occ
         "closed_at": _iso(visit.closed_at) if visit is not None else None,
         "closed_by_name": name_of(visit.closed_by) if visit is not None and visit.closed_by is not None else None,
         "closed_without_photos": bool(visit.closed_without_photos) if visit is not None else False,
-        "corrected": False,  # Task 5
+        "corrected": bool(corrections),
         "photos": photos,
         "photo_count_total": photo_total,
         "skips": skips,
-        "corrections": [],  # Task 5
-        "can_correct_until": None,  # Task 5
+        "corrections": corrections,
+        "can_correct_until": _correct_until(actor, all_rows, listed, day),
     }
 
 
