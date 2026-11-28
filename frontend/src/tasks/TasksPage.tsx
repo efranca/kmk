@@ -57,7 +57,8 @@ export function TasksPage() {
   const [view, setView] = useTasksView();
   const { prefs, update } = usePreferences();
   const showChips = prefs.show_task_categories; // off until the person turns them on; it follows their account
-  const showPeople = prefs.show_task_people; // on until they hide the faces; hidden faces cannot filter, so every task shows
+  const isStaff = user.role === "user";
+  const showPeople = isStaff || prefs.show_task_people; // Staff always have their faces; admins can hide them (hidden faces cannot filter, so every task shows)
   const picked = showPeople ? pickedInUrl : [];
   const toggle = useToggleTask();
   const move = useSetTaskStatus();
@@ -72,7 +73,7 @@ export function TasksPage() {
   const byId = new Map(members.map((p) => [p.id, p]));
   const active = members.filter((p) => p.active !== false);
   // Staff only get the faces of the people they share a task with (the server already sends them only their own tasks).
-  const selectable = user.role === "user" ? peopleInCommon(active, (all.data ?? []).map((x) => x.people), user.id, pickedInUrl) : active;
+  const selectable = isStaff ? peopleInCommon(active, (all.data ?? []).map((x) => x.people), user.id, pickedInUrl) : active;
   const categoryById = new Map((categories.data ?? []).map((c) => [c.id, c]));
   const ofPicked = (tasks: Task[]) => (picked.length > 0 ? tasks.filter((x) => x.people.some((id) => picked.includes(id))) : tasks);
 
@@ -137,7 +138,7 @@ export function TasksPage() {
             <ViewMenuButton view={view} onView={setView} canManage={canManageCategories(user)}
               toggles={[
                 { id: "categories", label: t("taskShowCategories"), checked: showChips, onChange: (on) => update({ show_task_categories: on }) },
-                { id: "people", label: t("taskShowPeople"), checked: showPeople, onChange: (on) => update({ show_task_people: on }) },
+                ...(isStaff ? [] : [{ id: "people", label: t("taskShowPeople"), checked: showPeople, onChange: (on: boolean) => update({ show_task_people: on }) }]),
               ]} managing={managing} onManage={() => { setSearchOpen(false); setText(""); setManaging(!managing); }}
               onClear={clearable > 0 && (view === "board" || status === "completed") && !searching ? () => setClearing(true) : undefined} />
             <IconButton icon="plus" variant="primary" label={t("taskNew")} onClick={() => setEditing("new")} />

@@ -44,11 +44,12 @@ export function SchedulePage() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
   const { view, date, people: pickedInUrl, q, today, set } = useScheduleView();
+  const { user } = useSession();
   const { prefs, update } = usePreferences();
-  const showPeople = prefs.show_schedule_people; // hidden faces cannot filter, so every event shows
+  const isStaff = user.role === "user";
+  const showPeople = isStaff || prefs.show_schedule_people; // Staff always have their faces; admins can hide them (hidden faces cannot filter, so every event shows)
   const people = showPeople ? pickedInUrl : [];
   const narrow = useNarrow();
-  const { user } = useSession();
   const moveEvent = useMoveEvent();
   const everyone = usePeople();
   const [searchOpen, setSearchOpen] = useState(q.length > 0);
@@ -60,7 +61,6 @@ export function SchedulePage() {
   const [from, to] = visibleRange(view, date, firstDay, narrow);
   const range = useOccurrences(from, to, { people });
   // Staff only get the faces of the people they share an event with: read from the range without the people filter, so picking a face does not shrink the list.
-  const isStaff = user.role === "user";
   const unfiltered = useOccurrences(from, to, { enabled: isStaff });
   const faces = (everyone.data ?? []).filter((p) => p.active !== false);
   // Tasks with a due date are only asked for, and drawn, while the switch is on.
@@ -106,7 +106,7 @@ export function SchedulePage() {
             <ViewMenuButton views={[]} canManage={false} managing={false} menuLabel={t("schOptions")}
               toggles={[
                 { id: "tasks", label: t("schShowTasks"), checked: showTasks, onChange: setShowTasks },
-                { id: "people", label: t("schShowPeople"), checked: showPeople, onChange: (on) => update({ show_schedule_people: on }) },
+                ...(isStaff ? [] : [{ id: "people", label: t("schShowPeople"), checked: showPeople, onChange: (on: boolean) => update({ show_schedule_people: on }) }]),
               ]} />
             <IconButton icon="plus" variant="primary" label={t("schAdd")} onClick={() => onCreate(view === "day" ? date : today)} />
           </>

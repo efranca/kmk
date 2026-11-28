@@ -4,7 +4,7 @@ import { useLocation } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { DEFAULT_PREFERENCES } from "../preferences";
-import { mockApi, occurrence, person, renderWithProviders, reply, resetLanguage, useEnglish } from "../testUtils";
+import { mockApi, occurrence, person, renderWithProviders, reply, resetLanguage, testUser, useEnglish } from "../testUtils";
 import { todayIn, COMPANY_TIME_ZONE } from "./scheduleDates";
 import { SchedulePage } from "./SchedulePage";
 import type { Task } from "../tasks/types";
@@ -17,7 +17,7 @@ function Probe() {
   return <output data-testid="url">{useLocation().search}</output>;
 }
 
-function setup(items: Occurrence[], route = "/schedule?view=week&date=2026-11-12") {
+function setup(items: Occurrence[], route = "/schedule?view=week&date=2026-11-12", session: object = {}) {
   const api = mockApi({
     "GET /api/schedule/events": ({ url }) => {
       const q = url.searchParams.get("q");
@@ -26,7 +26,7 @@ function setup(items: Occurrence[], route = "/schedule?view=week&date=2026-11-12
     "GET /api/schedule/people": () => ({ people: [alice, leo] }),
     "PATCH /api/me/preferences": () => ({ preferences: {} }),
   });
-  const view = renderWithProviders(<><SchedulePage /><Probe /></>, { route });
+  const view = renderWithProviders(<><SchedulePage /><Probe /></>, { route, session });
   return { api, ...view };
 }
 
@@ -153,8 +153,17 @@ describe("SchedulePage faces for Staff", () => {
 
 describe("SchedulePage people filter", () => {
   const shared = { ...swimming, people: [1, 2] }; // Staff can only pick people they share an event with
-  it("the gear menu hides the faces and saves the choice to the account", async () => {
-    const { api } = setup([swimming]);
+  it("the gear menu has no people switch for Staff, who always see their faces", async () => {
+    setup([swimming]);
+    await screen.findByText("Swimming");
+    await userEvent.click(await screen.findByRole("button", { name: "Options" }));
+    expect(screen.getByRole("menuitemcheckbox", { name: "Show tasks" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitemcheckbox", { name: "Show people filter" })).not.toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Show" })).toBeInTheDocument();
+  });
+
+  it("the gear menu hides the faces and saves the choice to the account (admins)", async () => {
+    const { api } = setup([swimming], undefined, { user: { ...testUser, role: "admin" } });
     await screen.findByText("Swimming");
     const item = await menuSwitch("Show people filter");
     expect(item).toHaveAttribute("aria-checked", "true");
@@ -170,7 +179,7 @@ describe("SchedulePage people filter", () => {
       "GET /api/schedule/events": () => ({ occurrences: [swimming] }),
       "GET /api/schedule/people": () => ({ people: [alice, leo] }),
     });
-    renderWithProviders(<SchedulePage />, { route: "/schedule?view=week&date=2026-11-12&people=2", preferences: { ...DEFAULT_PREFERENCES, show_schedule_people: false } });
+    renderWithProviders(<SchedulePage />, { route: "/schedule?view=week&date=2026-11-12&people=2", session: { user: { ...testUser, role: "admin" } }, preferences: { ...DEFAULT_PREFERENCES, show_schedule_people: false } });
     await screen.findByText("Swimming");
     expect(api.calls.some((c) => c.path === "/api/schedule/events" && c.query.includes("people="))).toBe(false);
   });

@@ -250,10 +250,21 @@ describe("TasksPage", () => {
     });
   });
 
-  describe("people filter button", () => {
-    it("shows the faces by default; the button hides them and saves the choice to the account", async () => {
+  describe("people filter switch", () => {
+    const admin = { user: { id: 1, username: "a", name: "A", email: "a@x.ca", role: "admin" as const, locale: "en" as const } };
+    it("is not offered to Staff, who always see their faces", async () => {
+      api([task({ title: "Open one" })]);
+      renderWithProviders(<TasksPage />, { route: "/tasks", preferences: { ...DEFAULT_PREFERENCES, show_task_people: false } });
+      await screen.findByText("Open one");
+      fireEvent.click(screen.getByRole("button", { name: "View and categories" }));
+      expect(screen.queryByRole("menuitemcheckbox", { name: "Show people filter" })).not.toBeInTheDocument();
+      expect(screen.getByRole("menuitemcheckbox", { name: "Show category chips" })).toBeInTheDocument();
+      expect(screen.getByRole("group", { name: "Show" })).toBeInTheDocument();
+    });
+
+    it("shows the faces by default; the switch hides them and saves the choice to the account", async () => {
       const { calls } = api([task({ title: "Open one" })]);
-      page();
+      renderWithProviders(<TasksPage />, { route: "/tasks", session: admin });
       await screen.findByText("Open one");
       const button = menuToggle("Show people filter");
       expect(button).toHaveAttribute("aria-checked", "true");
@@ -266,7 +277,7 @@ describe("TasksPage", () => {
 
     it("stops filtering by people while the faces are hidden", async () => {
       api([task({ title: "For Bob", people: [2] }), task({ title: "For Alice", people: [1] })]);
-      renderWithProviders(<TasksPage />, { route: "/tasks?people=2", preferences: { ...DEFAULT_PREFERENCES, show_task_people: false } });
+      renderWithProviders(<TasksPage />, { route: "/tasks?people=2", session: admin, preferences: { ...DEFAULT_PREFERENCES, show_task_people: false } });
       expect(await screen.findByText("For Bob")).toBeInTheDocument();
       expect(screen.getByText("For Alice")).toBeInTheDocument();
     });
