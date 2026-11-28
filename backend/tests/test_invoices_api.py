@@ -219,6 +219,37 @@ def test_mark_paid_and_undo(boss, owner_engine):
     assert actions == ["invoice_paid", "invoice_unpaid"]
 
 
+@pytest.mark.parametrize("undo", [False, True])
+def test_payment_changes_wait_for_other_invoice_changes(boss, owner_engine, undo):
+    """Pay, undo and cancel take turns (one lock), so a payment cannot slip in after a cancel that was already deciding."""
+    import threading
+
+    from sqlalchemy import text
+
+    c, h = boss
+    cid = add(c, h).json()["client"]["id"]
+    inv = manual(c, h, cid)
+    if undo:
+        assert c.post(f"/api/invoices/{inv['id']}/payment", json={"paid_on": "2026-11-20"}, headers=h).status_code == 200
+    out = {}
+
+    def change():
+        if undo:
+            out["r"] = c.delete(f"/api/invoices/{inv['id']}/payment", headers=h)
+        else:
+            out["r"] = c.post(f"/api/invoices/{inv['id']}/payment", json={"paid_on": "2026-11-20"}, headers=h)
+
+    with owner_engine.connect() as holder:  # stands for a cancel (or a new invoice) that is in the middle of its work
+        with holder.begin():
+            holder.execute(text("SELECT pg_advisory_xact_lock(hashtext('invoices'))"))
+            worker = threading.Thread(target=change)
+            worker.start()
+            worker.join(0.8)
+            assert worker.is_alive(), "the change did not wait for the lock"
+    worker.join(10)
+    assert not worker.is_alive() and out["r"].status_code == 200
+
+
 def test_cancel_frees_the_occurrences(boss):
     c, h = boss
     cid = add(c, h).json()["client"]["id"]

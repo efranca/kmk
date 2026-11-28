@@ -116,10 +116,13 @@ def _first_page(pdf: _Pdf, inv: PdfInvoice) -> float:
     _text(pdf, MARGIN, 52, 80, 5, "FACTURER À", style="B", size=8, color=TEAL)
     _text(pdf, TOTALS_X, 52, 70, 5, "POUR", style="B", size=8, color=TEAL)
     billed = [inv.bill_name, inv.bill_address, inv.bill_city, f"Téléphone : {inv.bill_phone}" if inv.bill_phone else None]
+    pdf.set_font(FONT, "", 10.5)
+    pdf.set_text_color(*INK)
     y = 59.0
     for line in filter(None, (_clean(x) if x else None for x in billed)):
-        _text(pdf, MARGIN, y, TOTALS_X - MARGIN - 4, 7, line)
-        y += 7
+        pdf.set_xy(MARGIN, y)
+        pdf.multi_cell(TOTALS_X - MARGIN - 4, 7, line, new_x="LEFT", new_y="NEXT")  # a long name or address wraps inside its column
+        y = pdf.get_y()
     _text(pdf, TOTALS_X, 59, 70, 7, COMPANY_NAME)
     return _table_header(pdf, max(y, 59 + 7) + 9)
 

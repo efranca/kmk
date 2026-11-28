@@ -100,7 +100,7 @@ def create_invoice(db: Session, actor: User, data: InvoiceIn, ip: str) -> Invoic
     if len(set(pairs)) != len(pairs):
         raise ApiError(422, "duplicate_line")
 
-    db.execute(text("SELECT pg_advisory_xact_lock(hashtext('invoices'))"))  # one invoice at a time: gap-free numbers, no double billing
+    _lock(db)  # one invoice change at a time: gap-free numbers, no double billing
     today = billing.company_today()
     for event_id, original in pairs:
         event = db.get(Event, event_id)
@@ -154,6 +154,8 @@ def _touch(invoice: Invoice, actor: User) -> None:
 
 
 def mark_paid(db: Session, actor: User, invoice_id: int, paid_on: date, ip: str) -> Invoice:
+    policy.check_invoices(actor)
+    _lock(db)  # takes turns with a cancel, which would otherwise decide on a status that has just changed
     invoice = get_invoice(db, actor, invoice_id)
     if invoice.status != "unpaid":
         raise ApiError(422, "bad_status")
@@ -167,6 +169,8 @@ def mark_paid(db: Session, actor: User, invoice_id: int, paid_on: date, ip: str)
 
 
 def mark_unpaid(db: Session, actor: User, invoice_id: int, ip: str) -> Invoice:
+    policy.check_invoices(actor)
+    _lock(db)
     invoice = get_invoice(db, actor, invoice_id)
     if invoice.status != "paid":
         raise ApiError(422, "bad_status")

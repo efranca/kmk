@@ -57,5 +57,17 @@ def test_long_invoice_breaks_pages():
     assert text.rindex("COÛT TOTAL") > text.rindex("Maison 39")  # the totals come after the last line
 
 
+def test_a_long_billed_to_block_stays_in_its_column():
+    """The billed-to block wraps inside its own column instead of running under the "POUR" column."""
+    long_name = " ".join(["Longnom"] * 25)
+    long_address = " ".join(["Longrue"] * 28)
+    pdf = render(invoice([PdfLine("x", Decimal("1"))], bill_name=long_name, bill_address=long_address))
+    boxes = subprocess.run(["pdftotext", "-bbox", "-", "-"], input=pdf, capture_output=True, check=True).stdout.decode()
+    words = [(m.group(3), float(m.group(2))) for m in re.finditer(r'<word xMin="([\d.]+)" yMin="[\d.]+" xMax="([\d.]+)" yMax="[\d.]+">([^<]*)</word>', boxes)]
+    column_edge = 110 * 72 / 25.4  # where the POUR column starts, in points
+    assert [x for word, x in words if word in ("Longnom", "Longrue") and x > column_edge] == []
+    assert any(word == "KMK" and x >= column_edge for word, x in words)  # the company block is where it should be
+
+
 def test_amounts_over_a_thousand_use_a_space():
     assert "1 234,50 $" in text_of(render(invoice([PdfLine("x", Decimal("1234.50"))])))
