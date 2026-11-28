@@ -252,6 +252,43 @@ def test_all_scope_deletes_the_series(alice):
     assert listing(c) == []
 
 
+def add_visit_row(owner_engine, event_id, day):
+    sql(owner_engine, "INSERT INTO visits (event_id, occurrence_date, visit_date, property_name) VALUES (:e, :d, :d, 'Maison')", e=event_id, d=day)
+
+
+def test_an_item_with_recorded_visits_cannot_be_deleted(alice, owner_engine):
+    """Ruling R15: deleting the row would leave its visits (and their photos) with no way back; cancelling occurrences
+    and ending the series stay possible."""
+    c, h = alice
+    single = create(c, h).json()["event"]["id"]
+    series = create(c, h, recurrence=WEEKLY_THU).json()["event"]["id"]
+    add_visit_row(owner_engine, single, "2026-11-05")
+    add_visit_row(owner_engine, series, "2026-11-12")
+    refused = (409, {"error": "event_has_visits"})
+    for eid, params in (
+        (single, {}), (single, {"scope": "this", "occurrence_date": "2026-11-05"}),  # a single event: "this" is all of it
+        (series, {}), (series, {"scope": "following", "occurrence_date": "2026-11-05"}),  # from the first date: all of it
+    ):
+        r = c.delete(f"/api/schedule/events/{eid}", params=params, headers=h)
+        assert (r.status_code, r.json()) == refused, (eid, params)
+    assert sql(owner_engine, "SELECT count(*) FROM events")[0][0] == 2
+    assert sql(owner_engine, "SELECT count(*) FROM audit_log WHERE action = 'event_deleted'")[0][0] == 0
+    # cancelling one occurrence (even the one with the visit) and ending the series from a later date still work
+    assert c.delete(f"/api/schedule/events/{series}", params={"scope": "this", "occurrence_date": "2026-11-12"}, headers=h).status_code == 200
+    assert c.delete(f"/api/schedule/events/{series}", params={"scope": "following", "occurrence_date": "2026-11-26"}, headers=h).status_code == 200
+    assert [o["date"] for o in listing(c) if o["event_id"] == series] == ["2026-11-05", "2026-11-19"]
+    assert sorted(r[0] for r in sql(owner_engine, "SELECT event_id FROM visits")) == sorted([single, series])
+
+
+def test_an_item_without_visits_is_still_deleted(alice, owner_engine):
+    c, h = alice
+    other = create(c, h).json()["event"]["id"]
+    add_visit_row(owner_engine, other, "2026-11-05")  # visits elsewhere do not matter
+    eid = create(c, h, recurrence=WEEKLY_THU).json()["event"]["id"]
+    assert c.delete(f"/api/schedule/events/{eid}", headers=h).status_code == 200
+    assert sql(owner_engine, "SELECT count(*) FROM events WHERE id = :e", e=eid)[0][0] == 0
+
+
 def test_event_detail_has_rule_people_reminders_and_exceptions(alice):
     c, h = alice
     eid = create(c, h, recurrence=WEEKLY_THU, reminders=[{"amount": 2, "unit": "hours"}]).json()["event"]["id"]

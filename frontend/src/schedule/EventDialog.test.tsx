@@ -249,6 +249,22 @@ describe("EventDialog: an existing repeating event", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
+  it("says why a whole series with recorded visits cannot be deleted", async () => {
+    const onClose = vi.fn();
+    mockApi({
+      "GET /api/schedule/people": () => ({ people: [alice, leo] }),
+      [`GET ${E}/1`]: () => ({ event: swimmingEvent }),
+      [`DELETE ${E}/1`]: () => ({ ok: false, status: 409, json: async () => ({ error: "event_has_visits" }) }),
+    });
+    renderWithProviders(<EventDialog target={{ kind: "item", item: swimmingOccurrence }} onClose={onClose} />, { session: adminSession });
+    await screen.findByDisplayValue("Swimming");
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await userEvent.click(await screen.findByRole("radio", { name: "All events" }));
+    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("already has recorded visits and cannot be deleted");
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("cancellingTheScopeQuestionGoesBackToTheForm", async () => {
     const { api } = setup({ kind: "item", item: swimmingOccurrence });
     await screen.findByDisplayValue("Swimming");
@@ -328,6 +344,23 @@ describe("EventDialog: a single event", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
     await waitFor(() => expect(api.calls.some((c) => c.method === "DELETE")).toBe(true));
     expect(api.calls.find((c) => c.method === "DELETE")!.query).toBe("?scope=all");
+  });
+
+  it("says why an item with recorded visits cannot be deleted", async () => {
+    const onClose = vi.fn();
+    mockApi({
+      "GET /api/schedule/people": () => ({ people: [alice] }),
+      [`GET ${E}/1`]: () => ({ event: single }),
+      [`DELETE ${E}/1`]: () => ({ ok: false, status: 409, json: async () => ({ error: "event_has_visits" }) }),
+    });
+    renderWithProviders(<EventDialog target={{ kind: "item", item: occurrence({ event_id: 1, title: "Swimming", date: "2026-11-05", original_date: "2026-11-05" }) }} onClose={onClose} />);
+    await screen.findByDisplayValue("Swimming");
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This item already has recorded visits and cannot be deleted. Cancel the occurrences or end the series instead.",
+    );
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("savingASingleEventNeverAsksForScope", async () => {

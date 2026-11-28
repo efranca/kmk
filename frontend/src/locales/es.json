@@ -273,6 +273,7 @@
   "err_no_occurrence": "La regla de repetición no tiene ninguna fecha a partir de este día.",
   "err_occurrence_date_required": "Indica a qué ocurrencia se aplica.",
   "err_not_an_occurrence": "El evento no se realiza en esa fecha.",
+  "err_event_has_visits": "Este elemento ya tiene visitas registradas y no se puede eliminar. Cancela las ocurrencias o termina la serie.",
   "err_invalid_people": "El filtro de personas no es válido.",
   "undo": "Deshacer",
   "dashMyEvents": "Mis eventos",

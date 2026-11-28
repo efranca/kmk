@@ -7,7 +7,7 @@ import unicodedata
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from app import names
@@ -15,7 +15,7 @@ from app.clients.service import check_client, check_property
 from app.auth import audit, policy
 from app.auth.errors import ApiError
 from app.auth.avatars_url import avatar_url
-from app.models import Event, EventException, EventPerson, EventReminder, ReminderDismissal, User
+from app.models import Event, EventException, EventPerson, EventReminder, ReminderDismissal, User, Visit
 from app.schedule.occurrences import EventData, ExceptionData, Occurrence, expand, own_dates
 from app.schedule.recurrence import MAX_RANGE_DAYS, RecurrenceRule, first_date_on_or_after, series_dates
 from app.schedule.schemas import EventIn
@@ -397,11 +397,21 @@ def update_event(db: Session, actor: User, event_id: int, data: EventIn, ip: str
     return result
 
 
+def has_visits(db: Session, event_id: int) -> bool:
+    """Whether visits were recorded on this Agenda item (one query on `visits.event_id`)."""
+    return bool(db.scalar(select(exists().where(Visit.event_id == event_id))))
+
+
 def delete_event(db: Session, actor: User, event_id: int, scope: str, occurrence_date: date | None, ip: str) -> None:
+    """Deleting the whole item is refused once it has recorded visits (`409 event_has_visits`, ruling R15): its visits
+    are reached through it, so they and their photos would become unreachable. Cancelling an occurrence and ending the
+    series from a later date stay possible (the row stays)."""
     event = get_event(db, event_id, actor)
     policy.check_event(actor, event.created_by, _people_of(db, [event.id])[event.id], event.created_by in _staff_creators(db, [event]))
     effective = _effective_scope(event, scope, occurrence_date)
     if effective == "all":
+        if has_visits(db, event.id):
+            raise ApiError(409, "event_has_visits")
         db.execute(delete(Event).where(Event.id == event.id))
     elif effective == "this":
         db.merge(EventException(event_id=event.id, original_date=occurrence_date, cancelled=True))

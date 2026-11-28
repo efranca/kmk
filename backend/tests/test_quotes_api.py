@@ -115,6 +115,18 @@ def test_first_reply_emails_completes_the_task_and_removes_the_event(ana, owner_
     assert c.get("/api/quotes").json()["counts"] == {"new": 0, "customer_replied": 0, "replied": 1}
 
 
+def test_first_reply_keeps_an_event_that_has_visits(ana, owner_engine, configured, outbox):
+    """Ruling R15: an Agenda item with recorded visits is never deleted (the visits would lose their way back)."""
+    c, h = ana
+    qid = new_quote(c)["id"]
+    (eid,) = sql(owner_engine, "SELECT event_id FROM quotes WHERE id = :q", q=qid)[0]
+    sql(owner_engine, "INSERT INTO visits (event_id, occurrence_date, visit_date, property_name) VALUES (:e, '2026-11-05', '2026-11-05', 'Maison')", e=eid)
+    assert reply(c, h, qid).status_code == 201
+    assert sql(owner_engine, "SELECT count(*) FROM events WHERE id = :e", e=eid)[0][0] == 1
+    assert sql(owner_engine, "SELECT event_id FROM visits")[0][0] == eid
+    assert sql(owner_engine, "SELECT event_id FROM quotes")[0][0] is None  # the quote lets go of it all the same
+
+
 def test_pasted_reply_then_our_reply_flow(ana, owner_engine, configured, outbox):
     c, h = ana
     qid = new_quote(c)["id"]

@@ -273,6 +273,7 @@
   "err_no_occurrence": "La règle de répétition n’a aucune date à partir de ce jour.",
   "err_occurrence_date_required": "Indiquez à quelle occurrence cela s’applique.",
   "err_not_an_occurrence": "L’événement n’a pas lieu à cette date.",
+  "err_event_has_visits": "Cet élément a déjà des visites enregistrées et ne peut pas être supprimé. Annulez plutôt les occurrences ou terminez la série.",
   "err_invalid_people": "Le filtre de personnes n’est pas valide.",
   "undo": "Annuler",
   "dashMyEvents": "Mes événements",

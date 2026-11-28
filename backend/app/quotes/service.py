@@ -16,7 +16,7 @@ from app.emails import sender
 from app.models import Client, Event, Quote, QuoteMessage, QuotePhoto, Task, User
 from app.quotes import emails
 from app.quotes.schemas import ManualQuoteIn, MessageIn, QuoteEditIn, QuotePatch
-from app.schedule.service import display_name
+from app.schedule.service import display_name, has_visits
 
 CLOCK_SKEW = timedelta(minutes=2)
 
@@ -172,7 +172,8 @@ def _apply_reply_rules(db: Session, quote: Quote, message: QuoteMessage, actor: 
                     task.status, task.completed_at, task.completed_by = "completed", _now(), actor.id
                     task.updated_by, task.updated_at = actor.id, _now()
             if quote.event_id is not None:
-                db.execute(delete(Event).where(Event.id == quote.event_id))
+                if not has_visits(db, quote.event_id):  # an item someone recorded visits on stays (ruling R15)
+                    db.execute(delete(Event).where(Event.id == quote.event_id))
                 quote.event_id = None
         if quote.status in ("new", "customer_replied"):
             quote.status = "replied"

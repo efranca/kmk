@@ -315,10 +315,12 @@ def test_visit_survives_agenda_changes(team, owner_engine):
     assert (after["property_name"], after["client_name"], after["property_id"]) == ("Beach house", "Tremblay", None)
     assert [p["name"] for p in after["people"]] == ["ana", "bruno"]
 
-    assert c.delete(f"/api/schedule/events/{team.eid}", headers=h).status_code == 200
+    r = c.delete(f"/api/schedule/events/{team.eid}", headers=h)  # ruling R15: an item with visits is not deleted
+    assert (r.status_code, r.json()) == (409, {"error": "event_has_visits"})
     assert c.delete(f"/api/clients/{team.cid}", headers=h).status_code == 204
     row = sql(owner_engine, "SELECT event_id, property_id, client_id, property_name, client_name, visit_date FROM visits WHERE id = :v", v=v["id"])
-    assert [tuple(r) for r in row] == [(None, None, None, "Beach house", "Tremblay", date(2026, 11, 5))]
+    assert [tuple(r) for r in row] == [(team.eid, None, None, "Beach house", "Tremblay", date(2026, 11, 5))]
+    assert ok(read(team.boss, team))["client_name"] == "Tremblay"  # still reachable, and closable
     names = sql(owner_engine, "SELECT user_name FROM visit_people WHERE visit_id = :v AND withdrawn_at IS NULL ORDER BY id", v=v["id"])
     assert [r[0] for r in names] == ["ana", "bruno"]
 
