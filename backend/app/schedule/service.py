@@ -475,3 +475,8 @@ def dismiss_reminder(db: Session, user: User, event_id: int, occurrence_date: da
     get_event(db, event_id, user)
     db.merge(ReminderDismissal(user_id=user.id, event_id=event_id, occurrence_date=occurrence_date))
     db.flush()
+
+
+# Public names for the invoices (which expand events the same way the Agenda does).
+event_data = _data
+exception_data = _exception_data
