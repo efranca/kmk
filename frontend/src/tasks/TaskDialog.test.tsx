@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { COMPANY_TIME_ZONE, addDays, todayIn } from "../schedule/scheduleDates";
-import { mockApi, renderWithProviders, resetLanguage, useEnglish } from "../testUtils";
+import { mockApi, renderWithProviders, resetLanguage, testUser, useEnglish } from "../testUtils";
 import { TaskDialog } from "./TaskDialog";
 import type { Task } from "./types";
 
@@ -33,7 +33,7 @@ describe("TaskDialog", () => {
   it("creates a task with the fields that were filled in", async () => {
     const { calls } = api({ "POST /api/tasks": { task: existing } });
     const onClose = vi.fn();
-    renderWithProviders(<TaskDialog task={null} defaultPeople={[]} onClose={onClose} />);
+    renderWithProviders(<TaskDialog task={null} defaultPeople={[]} onClose={onClose} />, { session: { user: { ...testUser, role: "admin" } } });
     fireEvent.change(await screen.findByLabelText("Title"), { target: { value: "Mop the floor" } });
     fireEvent.click(await screen.findByRole("button", { name: "Bob Tremblay" }));
     fireEvent.click(screen.getByRole("button", { name: "Tomorrow" }));
@@ -70,8 +70,17 @@ describe("TaskDialog", () => {
 
   it("a new task starts with the people that were picked on the page", async () => {
     api();
-    renderWithProviders(<TaskDialog task={null} defaultPeople={[2]} onClose={() => {}} />);
+    renderWithProviders(<TaskDialog task={null} defaultPeople={[2]} onClose={() => {}} />, { session: { user: { ...testUser, role: "admin" } } });
     expect(await screen.findByRole("button", { name: "Bob Tremblay" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("Staff make a task for themselves only: their own face is picked and the people cannot change", async () => {
+    api();
+    renderWithProviders(<TaskDialog task={null} defaultPeople={[2]} onClose={() => {}} />);
+    const bob = await screen.findByRole("button", { name: "Bob Tremblay" });
+    expect(bob).toHaveAttribute("aria-pressed", "false");
+    expect(bob).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Alice Roy" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("does not save a blank title and says why", async () => {

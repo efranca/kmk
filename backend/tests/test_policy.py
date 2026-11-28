@@ -200,7 +200,7 @@ def test_check_event_raises_forbidden():
         ("user", True, False, True, True, True),
         ("user", False, True, True, True, True),
         ("user", False, False, True, False, False),
-        ("user", False, False, False, False, True),  # whole-team task: anyone ticks it, only creator or admin edits it
+        ("user", False, False, False, False, False),  # on no one's list and not the creator: neither
         ("user", True, False, False, True, True),
         ("admin", False, False, True, True, True),
         ("superadmin", False, False, False, True, True),
@@ -214,6 +214,15 @@ def test_task_change_rules(role, creator, listed, has_people, can_change, can_st
     assert policy.can_set_task_status(actor, creator_id, people) is can_status
 
 
+def test_staff_only_move_and_complete_what_an_administrator_made():
+    actor = user(5)
+    assert policy.can_change_task(actor, 1, frozenset({5}), creator_is_staff=False) is False
+    assert policy.can_set_task_status(actor, 1, frozenset({5})) is True
+    assert policy.can_change_event(actor, 1, frozenset({5}), creator_is_staff=False) is False
+    assert policy.can_change_event(actor, 1, frozenset({5}), creator_is_staff=True) is True
+    assert policy.can_change_task(user(9, role="admin"), 1, frozenset(), creator_is_staff=False) is True
+
+
 def test_check_task_raises_forbidden():
     with pytest.raises(ApiError) as e:
         policy.check_task(user(4), 1, frozenset({2}))
@@ -221,7 +230,9 @@ def test_check_task_raises_forbidden():
     policy.check_task(user(2), 1, frozenset({2}))
     with pytest.raises(ApiError):
         policy.check_task_status(user(4), 1, frozenset({2}))
-    policy.check_task_status(user(4), 1, frozenset())
+    with pytest.raises(ApiError):
+        policy.check_task_status(user(4), 1, frozenset())  # not on it and not the creator: no longer open to anyone
+    policy.check_task_status(user(2), 1, frozenset({2}))
 
 
 @pytest.mark.parametrize("role,allowed", [("user", False), ("admin", True), ("superadmin", True)])

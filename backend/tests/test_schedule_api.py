@@ -38,7 +38,7 @@ def titles_by_date(c, **kw):
 
 @pytest.fixture
 def alice(make_client, add_user):
-    return session(make_client, add_user, "alice")
+    return session(make_client, add_user, "alice", role="admin")  # admins can make events for anyone; Staff only for themselves
 
 
 def test_list_returns_only_range(alice):
@@ -66,7 +66,7 @@ def test_everyone_event_has_empty_people(alice):
 def test_color_resolved_from_lowest_person_id(make_client, add_user, owner_engine):
     from app.schedule.service import PALETTE
 
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     add_user("bob", "bob@example.com")
     a, b = uid(owner_engine, "alice"), uid(owner_engine, "bob")
     create(c, h, people=[b, a])
@@ -99,7 +99,7 @@ def test_to_before_from_is_422(alice):
 
 
 def test_unlisted_plain_user_cannot_patch_or_delete(make_client, add_user, owner_engine):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     add_user("bob", "bob@example.com")
     ec, eh = session(make_client, add_user, "carol")
     eid = create(c, h, people=[uid(owner_engine, "bob")]).json()["event"]["id"]
@@ -108,13 +108,15 @@ def test_unlisted_plain_user_cannot_patch_or_delete(make_client, add_user, owner
     assert listing(c)[0]["title"] == "Visit"
 
 
-def test_listed_person_may_change_event(make_client, add_user, owner_engine):
-    c, h = session(make_client, add_user, "alice")
+def test_listed_staff_cannot_change_an_admin_made_event_but_can_change_their_own(make_client, add_user, owner_engine):
+    c, h = session(make_client, add_user, "alice", role="admin")
     bc, bh = session(make_client, add_user, "bob")
-    eid = create(c, h, people=[uid(owner_engine, "bob")]).json()["event"]["id"]
-    r = bc.patch(f"/api/schedule/events/{eid}", json=body(title="Renamed", people=[uid(owner_engine, "bob")]), headers=bh)
-    assert r.status_code == 200
-    assert listing(c)[0]["title"] == "Renamed"
+    bob = uid(owner_engine, "bob")
+    eid = create(c, h, people=[bob]).json()["event"]["id"]
+    assert bc.patch(f"/api/schedule/events/{eid}", json=body(title="Renamed", people=[bob]), headers=bh).status_code == 403
+    mine = create(bc, bh, title="Bob's own").json()["event"]["id"]
+    assert bc.patch(f"/api/schedule/events/{mine}", json=body(title="Renamed", people=[bob]), headers=bh).status_code == 200
+    assert "Renamed" in [o["title"] for o in listing(c)]
 
 
 def test_unknown_event_is_404(alice):
@@ -126,7 +128,7 @@ def test_unknown_event_is_404(alice):
 
 
 def test_everyone_event_non_creator_plain_user_is_403(make_client, add_user):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     bc, bh = session(make_client, add_user, "bob")
     eid = create(c, h).json()["event"]["id"]
     assert bc.patch(f"/api/schedule/events/{eid}", json=body(title="x"), headers=bh).status_code == 404
@@ -134,7 +136,7 @@ def test_everyone_event_non_creator_plain_user_is_403(make_client, add_user):
 
 
 def test_admin_can_change_any_event(make_client, add_user):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     ac, ah = session(make_client, add_user, "boss", role="admin")
     eid = create(c, h).json()["event"]["id"]
     assert ac.patch(f"/api/schedule/events/{eid}", json=body(title="By admin"), headers=ah).status_code == 200
@@ -144,7 +146,7 @@ def test_admin_can_change_any_event(make_client, add_user):
 
 @pytest.mark.parametrize("status", ["disabled", "invited", "deleted"])
 def test_cannot_add_inactive_user(make_client, add_user, owner_engine, status):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     add_user("bob", "bob@example.com", status=status, password=None if status == "invited" else "Abcdef1!")
     r = create(c, h, people=[uid(owner_engine, "bob")])
     assert (r.status_code, r.json()) == (422, {"error": "unknown_person"})
@@ -152,7 +154,7 @@ def test_cannot_add_inactive_user(make_client, add_user, owner_engine, status):
 
 
 def test_event_of_disabled_user_still_lists(make_client, add_user, owner_engine):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     add_user("bob", "bob@example.com")
     bob = uid(owner_engine, "bob")
     create(c, h, people=[bob])
@@ -185,7 +187,7 @@ def test_this_scope_moves_one_occurrence(alice):
 
 
 def test_this_scope_rejects_people_change(make_client, add_user, owner_engine):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     add_user("bob", "bob@example.com")
     eid = create(c, h, recurrence=WEEKLY_THU).json()["event"]["id"]
     r = c.patch(
@@ -269,7 +271,7 @@ def test_search_ignores_case_and_accents(alice):
 
 
 def test_search_matches_notes_and_person_names(make_client, add_user, owner_engine):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     add_user("maria", "maria@example.com")
     sql(owner_engine, "UPDATE users SET name = 'María Silva' WHERE username = 'maria'")
     create(c, h, title="A", people=[uid(owner_engine, "maria")])
@@ -279,7 +281,7 @@ def test_search_matches_notes_and_person_names(make_client, add_user, owner_engi
 
 
 def test_people_filter_keeps_those_on_it_and_everyone_events(make_client, add_user, owner_engine):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     add_user("bob", "bob@example.com")
     a, b = uid(owner_engine, "alice"), uid(owner_engine, "bob")
     create(c, h, title="mine", people=[a])
@@ -330,7 +332,7 @@ def test_end_before_the_first_occurrence_rejected(alice):
 def test_people_lists_active_users_first_and_flags_inactive_ones(make_client, add_user, owner_engine):
     from app.schedule.service import PALETTE
 
-    c, _ = session(make_client, add_user, "alice")
+    c, _ = session(make_client, add_user, "alice", role="admin")
     add_user("bob", "bob@example.com")
     add_user("gone", "gone@example.com", status="disabled")
     add_user("new", "new@example.com", status="invited", password=None)
@@ -344,7 +346,7 @@ def test_people_lists_active_users_first_and_flags_inactive_ones(make_client, ad
 
 
 def test_editing_an_event_whose_person_was_later_disabled_still_works(make_client, add_user, owner_engine):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     add_user("bob", "bob@example.com")
     a, b = uid(owner_engine, "alice"), uid(owner_engine, "bob")
     eid = create(c, h, people=[a, b]).json()["event"]["id"]
@@ -359,7 +361,7 @@ def test_editing_an_event_whose_person_was_later_disabled_still_works(make_clien
 
 
 def test_splitting_a_series_keeps_its_creator(make_client, add_user, owner_engine):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     ac, ah = session(make_client, add_user, "boss", role="admin")
     alice_id = uid(owner_engine, "alice")
     first = create(c, h, recurrence=WEEKLY_THU, people=[alice_id]).json()["event"]["id"]
@@ -391,7 +393,7 @@ def test_mutations_need_a_csrf_token_and_a_session(make_client, add_user):
     anon = make_client()
     assert anon.get("/api/schedule/events", params={"from": "2026-11-01", "to": "2026-11-30"}).status_code == 401
     assert anon.post("/api/schedule/events", json=body(), headers=ORIGIN).status_code == 401
-    c, _ = session(make_client, add_user, "alice")
+    c, _ = session(make_client, add_user, "alice", role="admin")
     assert c.post("/api/schedule/events", json=body(), headers=ORIGIN).status_code == 403
 
 

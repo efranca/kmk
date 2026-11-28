@@ -106,7 +106,7 @@ def create_task(
     settings: Settings = Depends(get_settings_dep),
 ):
     task = service.create_task(db, auth[0], body, request_ip(request, settings))
-    payload = service.task_payload(db, task)
+    payload = service.task_payload(db, task, auth[0])
     db.commit()
     return {"task": payload}
 
@@ -125,7 +125,7 @@ def clear_completed(
 
 @router.get("/{task_id}")
 def read_task(task_id: TaskId, auth: tuple[User, UserSession] = Depends(reader), db: Session = Depends(get_db)):
-    return {"task": service.task_payload(db, service.get_task(db, task_id, auth[0]))}
+    return {"task": service.task_payload(db, service.get_task(db, task_id, auth[0]), auth[0])}
 
 
 @router.patch("/{task_id}")
@@ -138,7 +138,7 @@ def change_task(
     settings: Settings = Depends(get_settings_dep),
 ):
     task = service.update_task(db, auth[0], task_id, body, request_ip(request, settings))
-    payload = service.task_payload(db, task)
+    payload = service.task_payload(db, task, auth[0])
     db.commit()
     return {"task": payload}
 
@@ -152,7 +152,7 @@ def _status_route(path: str, status: str):
         settings: Settings = Depends(get_settings_dep),
     ):
         task = service.set_status(db, auth[0], task_id, status, request_ip(request, settings))
-        payload = service.task_payload(db, task)
+        payload = service.task_payload(db, task, auth[0])
         db.commit()
         return {"task": payload}
 

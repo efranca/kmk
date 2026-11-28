@@ -25,7 +25,9 @@ const swimmingEvent: EventDetail = {
 const swimmingOccurrence = occurrence({ event_id: 1, title: "Swimming", date: "2026-11-12", original_date: "2026-11-12", repeating: true });
 const E = "/api/schedule/events";
 
-function setup(target: EventDialogTarget, session = {}) {
+const adminSession = { user: { ...testUser, role: "admin" as const } }; // admins pick the people; Staff make events for themselves
+
+function setup(target: EventDialogTarget, session: object = adminSession) {
   const api = mockApi({
     "GET /api/schedule/people": () => ({ people: [alice, leo] }),
     [`GET ${E}/1`]: () => ({ event: swimmingEvent }),
@@ -40,6 +42,19 @@ function setup(target: EventDialogTarget, session = {}) {
 
 const newSwimming: EventDialogTarget = { kind: "new", date: "2026-11-05", minutes: 18 * 60 }; // a Thursday, 18:00
 const bodyOf = (api: ReturnType<typeof setup>["api"], method: string) => api.calls.find((c) => c.method === method)?.body;
+
+describe("EventDialog for Staff", () => {
+  it("makes a new event for the person themself and locks the people", async () => {
+    const api = setup(newSwimming, {});
+    fireEvent.change(await screen.findByLabelText(/^Title/), { target: { value: "Dentist" } });
+    expect(screen.getByRole("button", { name: "Alice" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Alice" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Leo" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(bodyOf(api.api, "POST")).toBeDefined());
+    expect((bodyOf(api.api, "POST") as { people: number[] }).people).toEqual([1]);
+  });
+});
 
 describe("EventDialog: new event", () => {
   it("savingANewSwimmingEventPostsTheExpectedBody", async () => {
@@ -325,7 +340,7 @@ describe("EventDialog: a person whose account was disabled", () => {
       [`GET ${E}/1`]: () => ({ event: { ...swimmingEvent, recurrence: null, reminders: [], people: [1, 5] } }),
       [`PATCH ${E}/1`]: () => ({ event: swimmingEvent }),
     });
-    renderWithProviders(<EventDialog target={{ kind: "item", item: occurrence({ event_id: 1, title: "Swimming", date: "2026-11-05", original_date: "2026-11-05" }) }} onClose={vi.fn()} />);
+    renderWithProviders(<EventDialog target={{ kind: "item", item: occurrence({ event_id: 1, title: "Swimming", date: "2026-11-05", original_date: "2026-11-05" }) }} onClose={vi.fn()} />, { session: adminSession });
     const face = await screen.findByRole("button", { name: "Gaby Gone" });
     expect(face).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(face);

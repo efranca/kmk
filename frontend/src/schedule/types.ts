@@ -36,6 +36,8 @@ export interface Occurrence {
   modified: boolean;
   people: number[];
   created_by: number | null;
+  /** The server's answer to "may I edit or delete this?" (Staff cannot change what an administrator made). */
+  editable?: boolean;
 }
 
 /** "This occurrence only" change of a repeating event (cancelled, or title, notes, date, time and length overridden). */
@@ -70,6 +72,7 @@ export interface EventDetail {
   exceptions: EventException[];
   created_by: number | null;
   updated_by: number;
+  editable?: boolean;
 }
 
 /** The body of a create or change. */

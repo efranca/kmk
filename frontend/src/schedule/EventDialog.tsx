@@ -75,7 +75,7 @@ function EventForm({ event, item, date, time, onClose }: EventFormProps) {
   const { data: people = [] } = usePeople();
   const narrow = useNarrow();
   const [values, setValues] = useState<EventFormValues>(() => {
-    if (!event) return emptyEventForm(date, time);
+    if (!event) return { ...emptyEventForm(date, time), people: user.role === "user" ? [user.id] : [] }; // Staff make events for themselves
     // an occurrence changed with "this event only" is reopened as it is now
     const changed = event.exceptions.find((x) => x.original_date === item?.original_date && !x.cancelled);
     return fromEvent(event, date, changed);
@@ -196,9 +196,9 @@ function EventForm({ event, item, date, time, onClose }: EventFormProps) {
               moreLabel={(count) => t("schWhoMore", { count })}
               max={narrow ? 3 : 5}
               showNames
-              disabled={!editable}
+              disabled={!editable || user.role === "user"}
             />
-            <p className="field__hint">{t("schFormPeopleHint")}</p>
+            {user.role !== "user" && <p className="field__hint">{t("schFormPeopleHint")}</p>}
           </div>
 
           <ClientPicker value={values.clientId} onChange={(id) => setValues({ ...values, clientId: id, propertyId: id === values.clientId ? values.propertyId : null })} />

@@ -89,7 +89,13 @@ def _iso(value) -> str | None:
     return value.isoformat() if value is not None else None
 
 
-def task_payloads(db: Session, tasks: list[Task]) -> list[dict]:
+def _staff_made(db: Session, tasks: list[Task]) -> set[int]:
+    """Of the people who made these tasks, the ones with the Staff role (a task with no creator was made by the website)."""
+    ids = {t.created_by for t in tasks if t.created_by is not None}
+    return set(db.scalars(select(User.id).where(User.id.in_(ids), User.role == "user"))) if ids else set()
+
+
+def task_payloads(db: Session, tasks: list[Task], actor: User) -> list[dict]:
     """Payloads for several tasks with two queries for people and one for the names (no per-task queries)."""
     ids = [t.id for t in tasks]
     people: dict[int, list[int]] = {i: [] for i in ids}
@@ -103,8 +109,10 @@ def task_payloads(db: Session, tasks: list[Task]) -> list[dict]:
         """None = made by the website (no person)."""
         return None if user_id is None else {"id": user_id, "name": display_name(users[user_id])}
 
+    staff_made = _staff_made(db, tasks)
     return [
         {
+            "editable": policy.can_change_task(actor, t.created_by, frozenset(people[t.id]), t.created_by in staff_made),
             "id": t.id, "title": t.title, "description": t.description, "icon": t.icon, "category_id": t.category_id, "client_id": t.client_id,
             "people": sorted(people[t.id]), "status": t.status, "due_date": _iso(t.due_date),
             "completed_at": _iso(t.completed_at), "show_on_dashboard": t.show_on_dashboard,
@@ -115,8 +123,8 @@ def task_payloads(db: Session, tasks: list[Task]) -> list[dict]:
     ]
 
 
-def task_payload(db: Session, task: Task) -> dict:
-    return task_payloads(db, [task])[0]
+def task_payload(db: Session, task: Task, actor: User) -> dict:
+    return task_payloads(db, [task], actor)[0]
 
 
 def list_tasks(db: Session, actor: User, status: str, person: int | None, whole_team: bool) -> list[dict]:
@@ -130,7 +138,7 @@ def list_tasks(db: Session, actor: User, status: str, person: int | None, whole_
     elif whole_team:
         query = query.where(~exists().where(TaskPerson.task_id == Task.id))
     query = query.order_by(Task.status == "completed", Task.due_date.asc().nulls_last(), Task.created_at.desc(), Task.id.desc()).limit(LIST_LIMIT)
-    return task_payloads(db, list(db.scalars(query)))
+    return task_payloads(db, list(db.scalars(query)), actor)
 
 
 def get_task(db: Session, task_id: int, actor: User, *, lock: bool = False) -> Task:
@@ -164,7 +172,7 @@ def _replace_people(db: Session, task_id: int, people: set[int]) -> None:
 def create_task(db: Session, actor: User, data: TaskIn, ip: str) -> Task:
     _check_category(db, data.category_id)
     check_client(db, actor, data.client_id)
-    people = _checked_people(db, data.people)
+    people = _checked_people(db, data.people if actor.role in policy.PRIVILEGED else [actor.id])  # Staff make tasks for themselves only
     task = Task(created_by=actor.id, updated_by=actor.id)
     _write(task, data)
     db.add(task)
@@ -178,10 +186,11 @@ def create_task(db: Session, actor: User, data: TaskIn, ip: str) -> Task:
 def update_task(db: Session, actor: User, task_id: int, data: TaskIn, ip: str) -> Task:
     task = get_task(db, task_id, actor, lock=True)
     old_people = _people_of(db, task.id)
-    policy.check_task(actor, task.created_by, old_people)
+    policy.check_task(actor, task.created_by, old_people, task.created_by in _staff_made(db, [task]))
     _check_category(db, data.category_id)
     check_client(db, actor, data.client_id, task.client_id)
-    people = _checked_people(db, data.people, keep=old_people)
+    # Staff cannot change who a task is for (a shared task keeps its people)
+    people = _checked_people(db, data.people, keep=old_people) if actor.role in policy.PRIVILEGED else old_people
     fields = [
         name
         for name, new in (
@@ -223,7 +232,7 @@ def set_status(db: Session, actor: User, task_id: int, status: str, ip: str) -> 
 
 def delete_task(db: Session, actor: User, task_id: int, ip: str) -> None:
     task = get_task(db, task_id, actor, lock=True)
-    policy.check_task(actor, task.created_by, _people_of(db, task.id))
+    policy.check_task(actor, task.created_by, _people_of(db, task.id), task.created_by in _staff_made(db, [task]))
     db.delete(task)
     audit.log(db, "task_deleted", actor_user_id=actor.id, ip=ip, details={"task_id": task_id})
 
@@ -232,7 +241,8 @@ def clear_completed(db: Session, actor: User, ip: str) -> int:
     """Deletes the completed tasks the actor may delete; the rest stay."""
     tasks = list(db.scalars(select(Task).where(Task.status == "completed").with_for_update()))
     people = {t.id: _people_of(db, t.id) for t in tasks}
-    doomed = [t for t in tasks if policy.can_change_task(actor, t.created_by, people[t.id])]
+    staff_made = _staff_made(db, tasks)
+    doomed = [t for t in tasks if policy.can_change_task(actor, t.created_by, people[t.id], t.created_by in staff_made)]
     for task in doomed:
         db.delete(task)
     if doomed:

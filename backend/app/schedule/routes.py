@@ -46,7 +46,7 @@ def list_events(
 
 @router.get("/events/{event_id}")
 def read_event(event_id: Annotated[int, Path(ge=1, le=MAX_ID)], auth: tuple[User, UserSession] = Depends(reader), db: Session = Depends(get_db)):
-    return {"event": service.event_payload(db, service.get_event(db, event_id, auth[0]))}
+    return {"event": service.event_payload(db, service.get_event(db, event_id, auth[0]), auth[0])}
 
 
 def _send(background: BackgroundTasks, request: Request, settings: Settings, mail: list) -> None:
@@ -64,7 +64,7 @@ def create_event(
     settings: Settings = Depends(get_settings_dep),
 ):
     event = service.create_event(db, auth[0], body, request_ip(request, settings))
-    payload = service.event_payload(db, event)
+    payload = service.event_payload(db, event, auth[0])
     mail = notices.assignment_emails(db, event, set(payload["people"]), auth[0], settings.public_base_url)
     db.commit()
     _send(background, request, settings, mail)
@@ -81,9 +81,9 @@ def change_event(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
 ):
-    before = set(service.event_payload(db, service.get_event(db, event_id, auth[0]))["people"])
+    before = set(service.event_payload(db, service.get_event(db, event_id, auth[0]), auth[0])["people"])
     event = service.update_event(db, auth[0], event_id, body, request_ip(request, settings))
-    payload = service.event_payload(db, event)
+    payload = service.event_payload(db, event, auth[0])
     mail = notices.assignment_emails(db, event, set(payload["people"]) - before, auth[0], settings.public_base_url)
     db.commit()
     _send(background, request, settings, mail)

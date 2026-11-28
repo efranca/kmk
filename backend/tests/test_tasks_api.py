@@ -72,7 +72,7 @@ def test_status_filter(alice):
 
 
 def test_person_filter_and_none_for_whole_team(make_client, add_user, owner_engine):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     add_user("bob", "bob@example.com")
     bob = uid(owner_engine, "bob")
     create(c, h, title="for bob", people=[bob])
@@ -90,14 +90,14 @@ def test_unknown_category_is_422(alice):
 
 @pytest.mark.parametrize("status", ["invited", "disabled"])
 def test_inactive_person_is_422(make_client, add_user, owner_engine, status):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     add_user("bob", "bob@example.com", status=status)
     r = c.post("/api/tasks", json=body(people=[uid(owner_engine, "bob")]), headers=h)
     assert (r.status_code, r.json()) == (422, {"error": "unknown_person"})
 
 
 def test_patch_keeps_disabled_person(make_client, add_user, owner_engine):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     add_user("bob", "bob@example.com")
     bob = uid(owner_engine, "bob")
     t = create(c, h, people=[bob])
@@ -118,11 +118,11 @@ def test_unlisted_plain_user_cannot_patch_or_delete(make_client, add_user, owner
     assert cc.post(f"/api/tasks/{t['id']}/complete", headers=hh).status_code == 404
 
 
-def test_listed_person_may_edit(make_client, add_user, owner_engine):
-    c, h = session(make_client, add_user, "alice")
+def test_listed_staff_may_complete_but_not_edit_an_admin_made_task(make_client, add_user, owner_engine):
+    c, h = session(make_client, add_user, "alice", role="admin")
     bc, bh = session(make_client, add_user, "bob")
     t = create(c, h, people=[uid(owner_engine, "bob")])
-    assert bc.patch(f"/api/tasks/{t['id']}", json=body(title="By bob", people=t["people"]), headers=bh).status_code == 200
+    assert bc.patch(f"/api/tasks/{t['id']}", json=body(title="By bob", people=t["people"]), headers=bh).status_code == 403
     assert bc.post(f"/api/tasks/{t['id']}/complete", headers=bh).status_code == 200
 
 

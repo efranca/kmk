@@ -25,7 +25,7 @@ def raw_of(url):
 
 @pytest.fixture
 def alice(make_client, add_user):
-    return session(make_client, add_user, "alice")
+    return session(make_client, add_user, "alice", role="admin")
 
 
 # ---- storage and the account routes ----

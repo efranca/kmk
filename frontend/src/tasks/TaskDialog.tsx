@@ -25,7 +25,7 @@ export function TaskDialog({ task, onClose, defaultPeople }: TaskDialogProps) {
   const toast = useToast();
   const { user } = useSession();
   const group = useId();
-  const [values, setValues] = useState<TaskFormValues>(() => (task ? taskToForm(task) : emptyTaskForm(defaultPeople)));
+  const [values, setValues] = useState<TaskFormValues>(() => (task ? taskToForm(task) : emptyTaskForm(user.role === "user" ? [user.id] : defaultPeople)));
   const [errors, setErrors] = useState<TaskFormErrors>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
   const save = useSaveTask();
@@ -74,7 +74,7 @@ export function TaskDialog({ task, onClose, defaultPeople }: TaskDialogProps) {
       {!editable && <p className="notice" role="note">{t("taskViewOnly")}</p>}
       <form id={formId} onSubmit={(e) => swallow(submit(e))} noValidate>
         <fieldset className="sched-form" disabled={!editable}>
-          <TaskFields values={values} errors={errors} onChange={setValues} autoFocus={!task} autoIcon={!task} />
+          <TaskFields values={values} errors={errors} onChange={setValues} autoFocus={!task} autoIcon={!task} peopleLocked={user.role === "user"} />
         </fieldset>
       </form>
       {task && (

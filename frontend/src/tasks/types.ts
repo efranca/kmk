@@ -17,6 +17,8 @@ export type Task = {
   show_on_dashboard: boolean;
   /** null = made by the website (a quote request). */
   created_by: UserRef | null;
+  /** The server's answer to "may I edit or delete this?" (Staff only move and complete what an administrator made). */
+  editable?: boolean;
   updated_by: UserRef | null;
   created_at: string;
   updated_at: string;

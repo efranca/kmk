@@ -83,16 +83,18 @@ def can_invite_role(actor: User, role: str) -> bool:
     return False
 
 
-def can_change_event(actor: User, creator_id: int | None, person_ids: frozenset[int]) -> bool:
-    """Who may edit or delete a schedule event: an admin or the super admin, its creator, or a person it is for.
-    An event for everyone (no listed people) can be changed only by its creator or an admin."""
-    if actor.role in PRIVILEGED or actor.id == creator_id:
+def can_change_event(actor: User, creator_id: int | None, person_ids: frozenset[int], creator_is_staff: bool = True) -> bool:
+    """Who may edit or delete a schedule event: an admin or the super admin; otherwise (Staff) the creator, or a person it is
+    for, but never when an administrator (or the website) made it: those events are only read by Staff."""
+    if actor.role in PRIVILEGED:
         return True
-    return actor.id in person_ids
+    if not creator_is_staff:
+        return False
+    return actor.id == creator_id or actor.id in person_ids
 
 
-def check_event(actor: User, creator_id: int | None, person_ids: frozenset[int]) -> None:
-    if not can_change_event(actor, creator_id, person_ids):
+def check_event(actor: User, creator_id: int | None, person_ids: frozenset[int], creator_is_staff: bool = True) -> None:
+    if not can_change_event(actor, creator_id, person_ids, creator_is_staff):
         raise ApiError(403, "forbidden")
 
 
@@ -102,15 +104,17 @@ def can_see_item(actor: User, creator_id: int | None, person_ids: frozenset[int]
     return actor.role in PRIVILEGED or actor.id == creator_id or actor.id in person_ids
 
 
-def can_change_task(actor: User, creator_id: int | None, person_ids: frozenset[int]) -> bool:
-    """Who may edit or delete a task: an admin or the super admin, its creator, or a person it is for.
-    A task for the whole team (no listed people) can be changed only by its creator or an admin."""
-    return actor.role in PRIVILEGED or actor.id == creator_id or actor.id in person_ids
+def can_change_task(actor: User, creator_id: int | None, person_ids: frozenset[int], creator_is_staff: bool = True) -> bool:
+    """Who may edit or delete a task: an admin or the super admin; otherwise (Staff) its creator or a person it is for, but
+    never when an administrator (or the website) made it: Staff only move and complete those."""
+    if actor.role in PRIVILEGED:
+        return True
+    return creator_is_staff and (actor.id == creator_id or actor.id in person_ids)
 
 
 def can_set_task_status(actor: User, creator_id: int | None, person_ids: frozenset[int]) -> bool:
-    """Who may complete or reopen a task: whoever may edit it, and anyone for a task for the whole team."""
-    return can_change_task(actor, creator_id, person_ids) or not person_ids
+    """Who may move, start, complete or reopen a task: an admin, its creator, or a person it is for (whoever made it)."""
+    return actor.role in PRIVILEGED or actor.id == creator_id or actor.id in person_ids
 
 
 def can_manage_task_categories(actor: User) -> bool:
@@ -128,8 +132,8 @@ def check_documents(actor: User) -> None:
         raise ApiError(403, "forbidden")
 
 
-def check_task(actor: User, creator_id: int | None, person_ids: frozenset[int]) -> None:
-    if not can_change_task(actor, creator_id, person_ids):
+def check_task(actor: User, creator_id: int | None, person_ids: frozenset[int], creator_is_staff: bool = True) -> None:
+    if not can_change_task(actor, creator_id, person_ids, creator_is_staff):
         raise ApiError(403, "forbidden")
 
 

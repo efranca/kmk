@@ -93,8 +93,15 @@ def _resolved_color(event: Event, people: frozenset[int]) -> str:
     return avatar_color(min(people)) if people else EVERYONE_COLOR
 
 
-def _occurrence_payload(o: Occurrence, event: Event, people: frozenset[int]) -> dict:
+def _staff_creators(db: Session, events: list[Event]) -> set[int]:
+    """Of the people who made these events, the ones with the Staff role (an event with no creator was made by the website)."""
+    ids = {e.created_by for e in events if e.created_by is not None}
+    return set(db.scalars(select(User.id).where(User.id.in_(ids), User.role == "user"))) if ids else set()
+
+
+def _occurrence_payload(o: Occurrence, event: Event, people: frozenset[int], editable: bool) -> dict:
     return {
+        "editable": editable,
         "event_id": event.id,
         "original_date": o.original_date.isoformat(),
         "date": o.date.isoformat(),
@@ -130,6 +137,7 @@ def list_occurrences(db: Session, actor: User, from_: date, to: date, q: str | N
     if needle:
         name_of = {u.id: _fold(display_name(u)) for u in db.scalars(select(User))}
 
+    staff_made = _staff_creators(db, list(events))
     found: list[tuple[Occurrence, dict]] = []
     for event in events:
         who = people_of[event.id]
@@ -142,7 +150,7 @@ def list_occurrences(db: Session, actor: User, from_: date, to: date, q: str | N
                 haystack = [_fold(o.title), _fold(o.notes or "")] + [name_of.get(p, "") for p in who]
                 if not any(needle in h for h in haystack):
                     continue
-            found.append((o, _occurrence_payload(o, event, who)))
+            found.append((o, _occurrence_payload(o, event, who, policy.can_change_event(actor, event.created_by, who, event.created_by in staff_made))))
     found.sort(key=lambda pair: (pair[0].date, pair[0].start_time is not None, pair[0].start_time or time.min, pair[0].event_id))
     return [payload for _, payload in found]
 
@@ -171,11 +179,12 @@ def assigned_occurrences(db: Session, user_id: int, from_: date, to: date) -> li
     return found
 
 
-def event_payload(db: Session, event: Event) -> dict:
+def event_payload(db: Session, event: Event, actor: User) -> dict:
     people = _people_of(db, [event.id])[event.id]
     reminders = db.scalars(select(EventReminder).where(EventReminder.event_id == event.id).order_by(EventReminder.id)).all()
     exceptions = sorted(_exceptions_of(db, [event.id])[event.id], key=lambda x: x.original_date)
     return {
+        "editable": policy.can_change_event(actor, event.created_by, people, event.created_by in _staff_creators(db, [event])),
         "id": event.id,
         "title": event.title,
         "notes": event.notes,
@@ -270,7 +279,13 @@ def _replace_links(db: Session, event_id: int, people: set[int], reminders: list
     db.add_all([EventReminder(event_id=event_id, amount=a, unit=u) for a, u in reminders])
 
 
+def _staff_rules(actor: User, data: EventIn) -> EventIn:
+    """Staff make events for themselves only (they may pick a client, like anyone)."""
+    return data if actor.role in policy.PRIVILEGED else data.model_copy(update={"people": [actor.id]})
+
+
 def create_event(db: Session, actor: User, data: EventIn, ip: str) -> Event:
+    data = _staff_rules(actor, data)
     people = _checked_people(db, data.people)
     check_client(db, actor, data.client_id)
     check_property(db, actor, data.property_id, data.client_id)
@@ -334,7 +349,8 @@ def _end_series_before(db: Session, event: Event, day: date, actor: User) -> Non
 def update_event(db: Session, actor: User, event_id: int, data: EventIn, ip: str) -> Event:
     event = get_event(db, event_id, actor)
     old_people = _people_of(db, [event.id])[event.id]
-    policy.check_event(actor, event.created_by, old_people)
+    policy.check_event(actor, event.created_by, old_people, event.created_by in _staff_creators(db, [event]))
+    data = _staff_rules(actor, data)
     scope = _effective_scope(event, data.scope, data.occurrence_date)
     people = _checked_people(db, data.people, keep=old_people)
     check_client(db, actor, data.client_id, event.client_id)
@@ -383,7 +399,7 @@ def update_event(db: Session, actor: User, event_id: int, data: EventIn, ip: str
 
 def delete_event(db: Session, actor: User, event_id: int, scope: str, occurrence_date: date | None, ip: str) -> None:
     event = get_event(db, event_id, actor)
-    policy.check_event(actor, event.created_by, _people_of(db, [event.id])[event.id])
+    policy.check_event(actor, event.created_by, _people_of(db, [event.id])[event.id], event.created_by in _staff_creators(db, [event]))
     effective = _effective_scope(event, scope, occurrence_date)
     if effective == "all":
         db.execute(delete(Event).where(Event.id == event.id))

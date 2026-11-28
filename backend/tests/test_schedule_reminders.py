@@ -7,8 +7,8 @@ from helpers import ORIGIN, login, sql
 WEEKLY_THU = {"freq": "weekly", "interval": 1, "weekdays": ["THU"], "month_day": None, "nth_weekdays": []}
 
 
-def session(make_client, add_user, username):
-    add_user(username, f"{username}@example.com")
+def session(make_client, add_user, username, role="user"):
+    add_user(username, f"{username}@example.com", role=role)
     c = make_client()
     token = login(c, username).json()["csrf_token"]
     return c, {**ORIGIN, "X-CSRF-Token": token}
@@ -43,7 +43,7 @@ def clock(monkeypatch):
 
 @pytest.fixture
 def alice(make_client, add_user):
-    return session(make_client, add_user, "alice")
+    return session(make_client, add_user, "alice", role="admin")  # admins can make events for anyone
 
 
 def test_due_when_two_hours_before(alice, clock):
@@ -73,7 +73,7 @@ def test_not_due_once_the_occurrence_started_over_a_day_ago(alice, clock):
 
 
 def test_everyone_event_reminds_every_user(make_client, add_user, clock):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     bc, _ = session(make_client, add_user, "bob")
     create(c, h)
     clock("2026-11-05T08:00")
@@ -81,7 +81,7 @@ def test_everyone_event_reminds_every_user(make_client, add_user, clock):
 
 
 def test_other_users_event_not_listed(make_client, add_user, owner_engine, clock):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     bc, _ = session(make_client, add_user, "bob")
     create(c, h, people=[uid(owner_engine, "alice")])
     clock("2026-11-05T08:00")
@@ -89,7 +89,7 @@ def test_other_users_event_not_listed(make_client, add_user, owner_engine, clock
 
 
 def test_dismiss_hides_only_for_that_user(make_client, add_user, clock):
-    c, h = session(make_client, add_user, "alice")
+    c, h = session(make_client, add_user, "alice", role="admin")
     bc, _ = session(make_client, add_user, "bob")
     eid = create(c, h)
     clock("2026-11-05T08:00")
