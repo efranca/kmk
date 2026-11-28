@@ -66,8 +66,8 @@ def check_out(event_id: EventId, occurrence_date: date, body: CheckOutIn, reques
 # ---- photos and room skips --------------------------------------------------------------------------------------
 
 
-def _before_body(db: Session, settings: Settings, actor: User, event_id: int, occurrence_date: date) -> None:
-    service.find_visit(db, actor, event_id, occurrence_date)  # 404 before reading anything
+def _before_body(db: Session, settings: Settings, actor: User, event_id: int, occurrence_date: date, room_id: int | None, other_name: str | None) -> None:
+    photos.precheck(db, actor, event_id, occurrence_date, room_id, other_name)  # 404 / 403 / 409 / 422 before reading anything
     photos.ensure_space(settings)  # and 503 before the body is read
     db.rollback()  # do not hold a database connection open while the photo streams in
 
@@ -86,7 +86,7 @@ async def put_photo(
     actor = auth[0]
     # Everything that touches the database or the disk runs in the thread pool: waiting for the visit's row lock on the
     # event loop would freeze every request, and the lock may be released only by work that needs the loop.
-    await run_in_threadpool(_before_body, db, settings, actor, event_id, occurrence_date)
+    await run_in_threadpool(_before_body, db, settings, actor, event_id, occurrence_date, room_id, other_name)
     photos.slots.acquire()
     try:
         try:
@@ -94,10 +94,12 @@ async def put_photo(
                 data = await uploads.read_capped(request, MAX_PHOTO_BYTES, "photo_too_large")
         except TimeoutError:
             raise ApiError(408, "timeout")
+        # The decode runs while the slot is still held, so at most two pictures are decoded at once.
+        content_type = await run_in_threadpool(photos.validate, data)
     finally:
         photos.slots.release()
     ip = request_ip(request, settings)
-    payload = await run_in_threadpool(photos.add, db, settings, actor, event_id, occurrence_date, data, room_id, other_name, service.now(), ip)
+    payload = await run_in_threadpool(photos.add, db, settings, actor, event_id, occurrence_date, data, content_type, room_id, other_name, service.now(), ip)
     return {"visit": payload}
 
 

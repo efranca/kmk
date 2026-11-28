@@ -84,16 +84,31 @@ def _room(db: Session, visit: Visit, room_id: int) -> PropertyRoom:
     return room
 
 
-def add(db: Session, settings: Settings, actor: User, event_id: int, occurrence_date: date, data: bytes, room_id: int | None, other_name: str | None, now: datetime, ip: str) -> dict:
-    content_type = validate(data)  # decoding happens before the visit row is locked
+def _room_name(db: Session, visit: Visit, room_id: int | None, other_name: str | None) -> str:
+    if room_id is not None:
+        return _room(db, visit, room_id).name
+    name = (other_name or "").strip()
+    if not 1 <= len(name) <= ROOM_NAME_MAX:
+        raise ApiError(422, "invalid_room")
+    return name
+
+
+def precheck(db: Session, actor: User, event_id: int, occurrence_date: date, room_id: int | None, other_name: str | None) -> None:
+    """The early filter, before the body is read or decoded: no lock, the same conditions `add` re-checks under the lock."""
+    found = service.find_visit(db, actor, event_id, occurrence_date)
+    visit = found.visit
+    if visit is None or actor.id not in service._active_ids(db, visit.id):
+        raise ApiError(403, "not_checked_in")
+    if visit.closed_at is not None:
+        raise ApiError(409, "already_closed")
+    _room_name(db, visit, room_id, other_name)
+
+
+def add(db: Session, settings: Settings, actor: User, event_id: int, occurrence_date: date, data: bytes, content_type: str, room_id: int | None, other_name: str | None, now: datetime, ip: str) -> dict:
+    """`content_type` comes from `validate(data)`, which the caller ran (before this takes the visit lock)."""
     visit = _open_visit(db, actor, event_id, occurrence_date)
     ensure_space(settings)
-    if room_id is not None:
-        name = _room(db, visit, room_id).name
-    else:
-        name = (other_name or "").strip()
-        if not 1 <= len(name) <= ROOM_NAME_MAX:
-            raise ApiError(422, "invalid_room")
+    name = _room_name(db, visit, room_id, other_name)
     root = root_of(settings)
     file_id = storage.save(root, data)
     try:

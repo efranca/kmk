@@ -292,3 +292,87 @@ def test_upload_waiting_for_the_visit_lock_does_not_block_the_event_loop(team, o
     holder.close()
     assert health.status_code == 200 and waited < 3, "the loop was blocked by the upload waiting for the lock"
     assert result["r"].status_code == 201, result["r"].text
+
+
+@pytest.fixture
+def decodes(monkeypatch):
+    """Records every call of the (expensive) decode helper."""
+    from app.visits import photos
+
+    real = photos.validate
+    calls = []
+
+    def spy(data):
+        calls.append(len(data))
+        return real(data)
+
+    monkeypatch.setattr(photos, "validate", spy)
+    return calls
+
+
+def hostile():
+    return zeroed_after_header(image("JPEG", size=(300, 300)))
+
+
+def test_nothing_is_decoded_for_someone_who_may_not_add(team, decodes):
+    for who in (team.ana, team.bruno):  # visit not started, then listed but not checked in
+        r = upload(who, team, hostile(), room=team.rooms[0]["id"])
+        assert (r.status_code, r.json()) == (403, {"error": "not_checked_in"})
+    ok(checkin(team.ana, team, [team.ids["ana"]]))
+    r = upload(team.bruno, team, hostile(), room=team.rooms[0]["id"])
+    assert (r.status_code, r.json()) == (403, {"error": "not_checked_in"})
+    assert upload(team.dan, team, hostile(), room=team.rooms[0]["id"]).status_code == 404
+    assert upload(team.ana, team, hostile(), room=team.other_room["id"]).status_code == 422  # room refused before decoding too
+    assert decodes == []
+
+
+def test_nothing_is_decoded_on_a_closed_visit(team, decodes):
+    started(team)
+    ok(checkout(team.ana, team, True))
+    r = upload(team.ana, team, hostile(), room=team.rooms[0]["id"])
+    assert (r.status_code, r.json()) == (409, {"error": "already_closed"})
+    assert decodes == []
+
+
+def test_decoding_never_runs_more_than_two_at_once(team, monkeypatch):
+    from app.visits import photos
+
+    started(team)
+    state = {"now": 0, "max": 0}
+    lock = threading.Lock()
+    two_inside = threading.Event()
+    gate = threading.Event()
+
+    def slow_validate(data):
+        with lock:
+            state["now"] += 1
+            state["max"] = max(state["max"], state["now"])
+            if state["now"] == 2:
+                two_inside.set()
+        assert gate.wait(15)
+        with lock:
+            state["now"] -= 1
+        return "image/webp"
+
+    monkeypatch.setattr(photos, "validate", slow_validate)
+    client = team.ana[0]
+    results = []
+    with client:
+        threads = [threading.Thread(target=lambda: results.append(upload(team.ana, team, image(), room=team.rooms[0]["id"]))) for _ in range(2)]
+        for t in threads:
+            t.start()
+        assert two_inside.wait(15)
+        third = upload(team.ana, team, image(), room=team.rooms[0]["id"])  # both slots are taken
+        gate.set()
+        for t in threads:
+            t.join(15)
+    assert (third.status_code, third.json()) == (503, {"error": "busy"})
+    assert sorted(r.status_code for r in results) == [201, 201]
+    assert state["max"] == 2
+
+
+def test_the_slot_is_released_when_decoding_fails(team):
+    started(team)
+    for _ in range(4):  # more than the two slots
+        assert upload(team.ana, team, hostile(), room=team.rooms[0]["id"]).status_code == 422
+    assert upload(team.ana, team, image(), room=team.rooms[0]["id"]).status_code == 201
